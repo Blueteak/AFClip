@@ -1,6 +1,6 @@
-# Framewright
+# Reelet
 
-Framewright is a planned Windows desktop video editor for short-form gameplay marketing videos, typically up to roughly 60 seconds. It brings footage selection, multitrack editing, precise sound placement, and expressive 2D typography and overlays into a local workflow that both people and existing coding agents can control.
+Reelet is a planned Windows desktop video editor for short-form gameplay marketing videos, typically up to roughly 60 seconds. It brings footage selection, multitrack editing, precise sound placement, and expressive 2D typography and overlays into a local workflow that both people and existing coding agents can control.
 
 **Status:** private project setup and planning. There is no application, runnable CLI, or selected implementation stack yet.
 
@@ -20,9 +20,9 @@ See the [design brief](docs/design-brief.md) for requirements, proposed system b
 
 No runtime dependencies, paid services, generated media, bundled fonts, or third-party editor components are included in this initial repository. Project licensing and dependency licensing remain to be decided.
 
-## Working name
+## Project name
 
-Framewright is a working name, not a cleared public brand. Prior naming research reported the `.com` as a resale domain, use of `.app` and `.live`, and similarly named GitHub projects. Those observations are context, not a current availability or trademark determination. Public branding remains unresolved; no domain purchase or public release is part of setup.
+Reelet is the selected project name. Domain selection is deferred; no domain research, registration, purchase, or public release is part of setup.
 
 ## Repository contents
 

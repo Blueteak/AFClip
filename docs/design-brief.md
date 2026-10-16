@@ -1,4 +1,4 @@
-# Framewright design brief
+# Reelet design brief
 
 ## Purpose and scope
 
@@ -76,7 +76,7 @@ Acceptance examples for a future prototype:
 | Export scope | Which aspect ratios, resolutions, frame rates, codecs, and quality presets are needed for the first release? |
 | Fonts and assets | How are missing fonts/assets reported, and how are user-supplied assets packaged while respecting their licenses? |
 | Code execution | How will composition code be validated and isolated, with explicit control over local file and network access? |
-| Project licensing and brand | Choose the project's license and resolve the public name before distributing it. |
+| Project licensing | Choose the project's license before distributing it. |
 
 Keep evaluation notes and architecture decisions with their evidence and tradeoffs. Reuse components where practical, but do not commit to a framework or infer license compatibility solely from feature fit.
 
@@ -113,4 +113,4 @@ Validate installation, local asset relinking, recovery from interrupted work, us
 
 ## Naming context
 
-Framewright is the chosen working name. Prior research supplied for setup reports a resale `.com`, use of `.app` and `.live`, and similarly named GitHub projects. Availability can change, and no trademark conclusion follows from those observations. Retain the private working name while public branding remains unresolved.
+Reelet is the selected project name. Domain selection is deferred until it is needed; setup includes no domain research, registration, purchase, or public release.
