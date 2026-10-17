@@ -24,7 +24,7 @@ function automationGain(clip, local) {
   if (source >= seconds(points[hi].time)) return points[hi].value;
   while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (source < seconds(points[mid].time)) hi = mid; else lo = mid; }
   const a = points[lo], b = points[hi];
-  return a.value + (b.value - a.value) * (source - seconds(a.time)) / (seconds(b.time) - seconds(a.time));
+  return a.value + (b.value - a.value) * easeInOut((source - seconds(a.time)) / (seconds(b.time) - seconds(a.time)));
 }
 function audioGain(clip, local) {
   if (clip.mute) return 0;
@@ -39,7 +39,8 @@ function automationExpression(points, source) {
   function segment(lo, hi) {
     if (hi - lo === 1) {
       const a = points[lo], b = points[hi], delta = b.value - a.value;
-      return delta === 0 ? String(a.value) : `(${a.value}+(${delta})*max(0,min(1,(${source}-${seconds(a.time)})/${seconds(b.time) - seconds(a.time)})))`;
+      const x = `max(0,min(1,(${source}-${seconds(a.time)})/${seconds(b.time) - seconds(a.time)}))`;
+      return delta === 0 ? String(a.value) : `(${a.value}+(${delta})*(${x})*(${x})*(3-2*(${x})))`;
     }
     const mid = (lo + hi) >> 1;
     return `if(lt(${source},${seconds(points[mid].time)}),${segment(lo, mid)},${segment(mid, hi)})`;
