@@ -126,7 +126,7 @@ window.NativePreview = class NativePreview {
       if (entry.media.kind !== 'video') continue;
       const c = entry.clip;
       if (c.visibleStart > time && c.visibleStart <= time + 1 && !entry.content) {
-        entry.warming = this.position(entry, this.sourceTime(entry, c.visibleStart)).catch(this.onError).finally(() => { entry.warming = null; });
+        entry.warming = this.position(entry, Math.max(0, this.sourceTime(entry, c.visibleStart - .5))).catch(this.onError).finally(() => { entry.warming = null; });
       } else if (entry.content && (c.visibleEnd < time - 1 || c.visibleStart > time + 2)) {
         entry.content.pause(); entry.content.cancelVideoFrameCallback(entry.videoCallback);
         entry.content.removeAttribute('src'); entry.content.load(); entry.content.remove(); entry.content = null;
@@ -140,20 +140,37 @@ window.NativePreview = class NativePreview {
     if (this.lastTick != null) this.stats.maxTickMs = Math.max(this.stats.maxTickMs, now - this.lastTick);
     this.lastTick = now; this.stats.ticks++;
     const items = this.layout(time), active = new Set(items.map(i => i.clipId));
-    for (const [id, entry] of this.entries) {
-      if (entry.media.kind === 'video' && entry.content && !active.has(id)) entry.content.pause();
-    }
     for (const item of items) {
       const entry = this.entries.get(item.clipId); if (!entry) continue;
-      if (item.kind === 'graphic') { this.graphic(entry, item.sourceTime).catch(this.onError); continue; }
-      if (item.kind !== 'video') continue;
-      if (!entry.content) { this.ensureVideo(entry); entry.content.currentTime = Math.max(0, item.sourceTime); }
+      if (item.kind === 'graphic') this.graphic(entry, item.sourceTime).catch(this.onError);
+    }
+    for (const [id, entry] of this.entries) {
+      if (entry.media.kind !== 'video') continue;
+      const sourceTime = this.sourceTime(entry, time), visible = active.has(id);
+      // Let decoder startup and clock correction finish before a cut/dissolve.
+      const preroll = time >= entry.clip.visibleStart - .5 && time < entry.clip.visibleStart && sourceTime >= 0;
+      if (!visible && !preroll) { entry.content?.pause(); continue; }
+      if (!entry.content) { this.ensureVideo(entry); entry.content.currentTime = Math.max(0, sourceTime); }
       const video = entry.content;
       if (entry.warming || video.readyState < 2 || video.seeking) continue;
-      const error = item.sourceTime - video.currentTime, speed = entry.clip.speed;
-      if (Math.abs(error) > .2) { video.currentTime = Math.max(0, item.sourceTime); this.stats.resyncs++; }
-      else video.playbackRate = Math.max(.0625, Math.min(16, speed * (Math.abs(error) > .025 ? 1 + Math.max(-.05, Math.min(.05, error)) : 1)));
+      const error = sourceTime - video.currentTime, speed = entry.clip.speed;
+      if (Math.abs(error) > .2) { video.currentTime = Math.max(0, sourceTime); this.stats.resyncs++; }
+      else {
+        const correction = preroll ? (Math.abs(error) > .01 ? Math.sign(error) * .2 : 0) : (Math.abs(error) > .025 ? Math.sign(error) * .02 : 0);
+        const rate = Math.max(.0625, Math.min(16, speed * (1 + correction)));
+        if (video.playbackRate !== rate) video.playbackRate = rate;
+      }
       if (video.paused) video.play().catch(error => { if (!this.closed && this.running && error.name !== 'AbortError') this.onError(error); });
+      if (preroll) {
+        // Chromium otherwise consumes hidden video on a 250 ms background
+        // timer. Pull a tiny frame to keep its decoder/presentation queue warm.
+        // The visible picture still comes directly from the video element.
+        if (!this.prerollSink) {
+          const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+          this.prerollSink = canvas.getContext('2d');
+        }
+        this.prerollSink.drawImage(video, 0, 0, 1, 1);
+      }
     }
     this.prepare(time);
   }
