@@ -10,7 +10,9 @@
 
 ## UI Design
 
+- If you are a GPT Model and your task requires creating a new UI Element/Style instead of reusing an existing one, spin up a Claude Opus 5.5 Sub-Agent for that task.
 - Professional, sleek, Dark Mode
 - Keybindings over buttons
 - Minimal text, no explanations in base UI, leave that for tooltips
 - Re-use component layout styling whenever possible
+
