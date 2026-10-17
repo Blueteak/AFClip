@@ -1302,7 +1302,7 @@ function envelopePaths(c) {
   const fade = t => (fi ? ease(t / secs(c.fadeIn)) : 1) * (fo ? ease((duration - t) / secs(c.fadeOut)) : 1);
   const times = new Set([0, duration]);
   for (let i = 0; i <= 32; i++) { times.add(fi * i / 32); times.add(duration - fo * i / 32); }
-  const points = c.volumePoints || [];
+  const points = window.ReeletTimeline.automationPoints(c);
   if (points.length) {
     const marks = [0, ...points.map(p => pointLocal(c, p)).filter(t => t > 0 && t < duration), duration], steps = Math.max(1, Math.min(12, Math.floor(600 / marks.length)));
     for (let i = 1; i < marks.length; i++) for (let k = 0; k < steps; k++) times.add(marks[i - 1] + (marks[i] - marks[i - 1]) * k / steps);
@@ -1326,6 +1326,10 @@ function paintAudioControls(el, c) {
   Object.assign(area.querySelector('[data-audio="fadeIn"]').style, { left: `${100 * fi / duration}%`, top: `${volumePosition(levelGain(c, fi))}%` });
   Object.assign(area.querySelector('[data-audio="fadeOut"]').style, { left: `${100 * (1 - fo / duration)}%`, top: `${volumePosition(levelGain(c, duration - fo))}%` });
   for (const old of area.querySelectorAll('.audio-point')) old.remove();
+  for (const p of window.ReeletTimeline.automationPoints(c).filter(p => p.implicit)) {
+    area.append(h('div', { class: 'audio-point', title: 'Temporary anchor at clip volume',
+      style: { left: `${100 * pointLocal(c, p) / duration}%`, top: `${volumePosition(c.volume ?? 1)}%`, opacity: .45, pointerEvents: 'none' } }));
+  }
   const live = drag?.field === 'point' && drag.c.id === c.id ? drag.ins : -1;
   (c.volumePoints || []).forEach((p, i) => {
     const t = pointLocal(c, p);

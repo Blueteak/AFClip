@@ -4,7 +4,7 @@ const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
 const ffmpeg = require('ffmpeg-static'), ffprobe = require('ffprobe-static').path;
-const { compile, seconds, automationExpression } = require('./timeline.cjs');
+const { compile, seconds, automationPoints, automationExpression } = require('./timeline.cjs');
 const { getFrameIndex, decodeFrameTimestamps } = require('./frame-index.cjs');
 const { verifyOutput } = require('./verify.cjs');
 const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
@@ -34,7 +34,7 @@ async function audioMix(plan, begin, end) {
     const source = c.sourceIn + (start - c.start) * c.speed;
     args.push('-ss', String(Math.max(0, source)), '-t', String(length * c.speed), '-i', path.resolve(config.projectDir, c.media.path));
     const terms = [String(c.volume ?? 1)], local = `(t+${start - c.start})`;
-    if (c.volumePoints?.length) terms.push(automationExpression(c.volumePoints, `(${c.sourceIn}+${local}*${c.speed})`));
+    if (c.volumePoints?.length) terms.push(automationExpression(automationPoints(c), `(${c.sourceIn}+${local}*${c.speed})`));
     const ease = value => { const x = `max(0,min(1,${value}))`; return `(${x})*(${x})*(3-2*(${x}))`; };
     if (c.fadeIn) terms.push(ease(`${local}/${c.fadeIn}`));
     if (c.fadeOut) terms.push(ease(`(${c.duration}-${local})/${c.fadeOut}`));
