@@ -1512,6 +1512,7 @@ function readout(text, bad, at = pointer) {
   r.style.top = `${at.y + 18}px`;
 }
 function endDrag() {
+  drag?.transitionPreview?.remove();
   drag = null;
   $('drag-readout').hidden = true; $('snapline').hidden = true; $('marquee').hidden = true;
   document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragUp); document.removeEventListener('pointercancel', onDragCancel);
@@ -1557,9 +1558,10 @@ function beginMove(e, primary) {
   const rows = list.map(c => disp.findIndex(t => t.id === c.trackId));
   const ids = new Set(list.map(c => c.id));
   startDrag({ type: 'move', x0: e.clientX, y0: e.clientY, primary, list, ids, horizontal: false, dF: 0, dTrack: 0, res: null,
+    pre: { ...snapshot.revisions }, transitionId: uid('transition'),
     minRow: Math.min(...rows), maxRow: Math.max(...rows), minStart: Math.min(...list.map(startF)), targets: snapTargets(ids),
     els: list.map(c => document.querySelector(`.clip[data-id="${c.id}"]`)).filter(Boolean) });
-  hintItems([{ keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
+  hintItems([{ text: 'Push past a neighbour to crossfade' }, { keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
 }
 function beginTrim(e, c, edge) {
   const m = mediaById(c.mediaId), s0 = startF(c), e0 = endF(c);
@@ -1575,15 +1577,45 @@ function onDragMove(e) {
 }
 function moveDrag(e) {
   const d = drag, dx = e.clientX - d.x0;
+  d.transitionPreview?.remove(); d.transitionPreview = null; d.crossfade = null;
   if (!d.horizontal && Math.abs(dx) > 6) d.horizontal = true;
   let dF = d.horizontal ? xFrame(dx) : 0;
   if (d.horizontal) dF += snapFrame([startF(d.primary) + dF, endF(d.primary) + dF], d.targets, e);
   dF = Math.max(dF, -d.minStart);
   const rowH = prefs.trackH;
   const dTrack = Math.max(-d.minRow, Math.min(displayTracks().length - 1 - d.maxRow, Math.round((e.clientY - d.y0) / rowH)));
+  let contact = null, neighbour = null, right = dx > 0, pushed = 0;
+  if (d.horizontal && d.list.length === 1 && dTrack === 0) {
+    const others = clipsOn(d.primary.trackId).filter(c => c.id !== d.primary.id);
+    neighbour = right ? others.filter(c => startF(c) >= endF(d.primary)).sort((a,b) => startF(a)-startF(b))[0]
+      : others.filter(c => endF(c) <= startF(d.primary)).sort((a,b) => endF(b)-endF(a))[0];
+    if (neighbour) {
+      const boundary = right ? startF(neighbour)-endF(d.primary) : endF(neighbour)-startF(d.primary);
+      if (right ? dF >= boundary : dF <= boundary) {
+        contact = boundary; dF = boundary;
+        pushed = (right ? 1 : -1) * (dx - frameX(boundary));
+      }
+    }
+  }
   d.dF = dF; d.dTrack = dTrack; d.res = moveOps(d.list, dF, dTrack);
+  if (contact != null && !d.res.error && pushed > 8) {
+    const moved = { ...d.primary, start: fromF(startF(d.primary)+dF) };
+    const a = right ? moved : neighbour, b = right ? neighbour : moved;
+    const existing = transitions().find(t => t.fromClipId === a.id && t.toClipId === b.id);
+    const alignment = existing?.alignment || 'center', room = dissolveRoom(a,b,alignment,existing?.id);
+    const wanted = Math.max(1, xFrame(pushed)), frames = Math.min(wanted,room);
+    if (frames > 0) {
+      const id = existing?.id || d.transitionId;
+      d.crossfade = { id, frames, limited: frames < wanted, pre: { ...d.pre, ...(!existing ? { [`transition:${id}`]: 0 } : {}) } };
+      d.res.ops.push(put('transitions',{id,trackId:a.trackId,fromClipId:a.id,toClipId:b.id,duration:fromF(frames),alignment}));
+      const before = alignment === 'start' ? 0 : alignment === 'end' ? frames : frames/2;
+      d.transitionPreview = h('div',{class:'xfade selected',style:{left:`${frameX(startF(b)-before)}px`,width:`${Math.max(4,frameX(frames))}px`,pointerEvents:'none'}},icon('dissolve'));
+      d.els[0].parentElement.append(d.transitionPreview);
+    } else d.res.limit = 'No spare source footage for a crossfade';
+  }
   for (const el of d.els) { el.classList.add('dragging'); el.classList.toggle('invalid', !!d.res.error); el.style.transform = `translate(${frameX(dF)}px, ${dTrack * rowH}px)`; }
-  if (dF || dTrack) readout(`${dF >= 0 ? '+' : '−'}${shortTc(Math.abs(dF))}   ${tc(startF(d.primary) + dF)}`, d.res.error || (d.res.dropped ? `Removes ${d.res.dropped} dissolve${d.res.dropped > 1 ? 's' : ''}` : '')); else $('drag-readout').hidden = true;
+  if (d.crossfade) readout(`Crossfade ${shortTc(d.crossfade.frames)}`, d.crossfade.limited ? 'Limited by available source handles or neighbouring transitions' : 'Release to apply');
+  else if (dF || dTrack || contact != null) readout(`${dF >= 0 ? '+' : '−'}${shortTc(Math.abs(dF))}   ${tc(startF(d.primary) + dF)}`, d.res.error || d.res.limit || (d.res.dropped ? `Removes ${d.res.dropped} dissolve${d.res.dropped > 1 ? 's' : ''}` : '')); else $('drag-readout').hidden = true;
 }
 function trimDrag(e) {
   const d = drag, c = d.c, m = d.m, speed = secs(c.speed);
@@ -1645,10 +1677,13 @@ function onDragUp(e) {
     return;
   }
   if (d.type === 'move') {
+    moveDrag(e);
     for (const el of d.els) { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }
     const moved = d.dF || d.dTrack;
     endDrag();
-    if (moved) { if (d.res?.error) say(d.res.error, 'warn'); else commitMove(d.list.map(c => c.id), d.dF, d.dTrack); }
+    if (d.crossfade) {
+      edit(() => ({ ops: d.res.ops, pre: d.crossfade.pre, message: `Crossfade ${shortTc(d.crossfade.frames)}${d.crossfade.limited ? ' · limited by source handles' : ''}` }));
+    } else if (moved) { if (d.res?.error) say(d.res.error, 'warn'); else commitMove(d.list.map(c => c.id), d.dF, d.dTrack); }
   } else if (d.type === 'trim') {
     endDrag();
     const r = d.result;
