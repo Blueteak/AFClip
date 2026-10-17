@@ -1,13 +1,14 @@
 'use strict';
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search),readonly=params.get('mode')==='reelet';
 const state={overview:null,items:[],selected:null,folder:'',collection:'',deleted:false,kind:'',offset:0,nextOffset:null,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
+let requestsInFlight=0,reloadReady=false;
 let native=null,audio=null,playing=false,time=0,markIn=0,markOut=0,preview=null,tick=0,baseTime=0,baseClock=0,eventTimer;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const secs=t=>typeof t==='number'?t:t?t.num/t.den:0;
 const clock=t=>`${String(Math.floor(Math.max(0,t)/60)).padStart(2,'0')}:${(Math.max(0,t)%60).toFixed(3).padStart(6,'0')}`;
 const duration=t=>`${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}`;
 function say(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error);}
-async function api(command,fields={}){const response=await fetch('/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command,author:$('author').value,...fields})});const r=await response.json();if(!r.ok){const e=new Error(r.error.message);e.details=r.error.details;throw e;}return r.result;}
+async function api(command,fields={}){requestsInFlight++;try{const response=await fetch('/v1/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command,author:$('author').value,...fields})});const r=await response.json();if(!r.ok){const e=new Error(r.error.message);e.details=r.error.details;throw e;}return r.result;}finally{requestsInFlight--;}}
 async function act(work,message){try{const result=await work();if(message)say(message);await refresh();return result;}catch(e){say(e.message,true);throw e;}}
 function click(id,fn){$(id).onclick=()=>Promise.resolve().then(fn).catch(e=>say(e.message,true));}
 function nav(label,icon,selected,fn,count){const b=document.createElement('button');b.className='nav-item'+(selected?' active':'');b.innerHTML=`<span>${icon}</span><span>${esc(label)}</span>${count!==undefined?`<span class="count">${count}</span>`:''}`;b.onclick=()=>Promise.resolve(fn()).catch(e=>say(e.message,true));return b;}
@@ -118,7 +119,24 @@ window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.
 const events=new EventSource('/v1/events');let refreshTimer;events.onmessage=()=>{if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;refresh().catch(e=>say(e.message,true));},150);};events.onerror=()=>{$('connection').textContent='Reconnecting…';};events.onopen=()=>{$('connection').textContent='Local catalog · connected';};
 if(readonly)for(const id of ['import','new-folder','new-collection','tags-manager','undo','redo','author','history','cache-manager','jobs'])$(id).hidden=true;
 window.libraryPreviewMetrics=()=>({time,playing,native:native?{...native.stats}:null,video:[...(native?.entries.values()||[])].map(e=>{const q=e.content?.getVideoPlaybackQuality?.();return {time:e.content?.currentTime,quality:q?{total:q.totalVideoFrames,dropped:q.droppedVideoFrames}:null,presentedTime:e.presentedTime};}),prepared:!!preview?.seekProxy});
-refresh().then(async()=>{say('Library ready');if(params.get('asset'))await select(params.get('asset'));}).catch(e=>say(e.message,true));
+const reloadKey='reelet-library-dev-view';
+window.reeletPrepareReload=()=>{
+  if(!reloadReady||state.dirty||requestsInFlight||playing||$('dialog').open||
+    document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')||document.querySelector(':active'))return false;
+  sessionStorage.setItem(reloadKey,JSON.stringify({folder:state.folder,kind:state.kind,collection:state.collection,deleted:state.deleted,offset:state.offset,
+    selected:state.insertRange?.id||state.selected?.id,time,markIn,markOut,temporarySelection:state.temporarySelection,
+    fields:Object.fromEntries(['search','kind','tag-filter','min-duration','max-duration','author'].map(id=>[id,$(id).value])),scroll:$('assets').scrollTop}));
+  return true;
+};
+(async()=>{
+  let saved=null;if(params.get('dev')){try{saved=JSON.parse(sessionStorage.getItem(reloadKey));}catch{}sessionStorage.removeItem(reloadKey);document.title='Reelet Content Library · Dev';}
+  if(saved){for(const key of ['folder','kind','collection','deleted','offset'])state[key]=saved[key];for(const [id,value]of Object.entries(saved.fields))if(id!=='tag-filter')$(id).value=value;}
+  await refresh();
+  if(saved){$('tag-filter').value=saved.fields['tag-filter'];await search();}
+  const id=saved?.selected||params.get('asset');if(id){await select(id);if(saved){await seek(saved.time);markIn=Math.min(saved.markIn,state.selected.duration);markOut=Math.min(saved.markOut,state.selected.duration);state.temporarySelection=saved.temporarySelection;showMarks();}}
+  if(saved)$('assets').scrollTop=saved.scroll;
+  reloadReady=true;say(params.get('dev')?'Library ready · live GUI reload enabled':'Library ready');
+})().catch(e=>{reloadReady=true;say(e.message,true);});
 
 // Renew the selected preview's lease while the window is open, including paused review.
 setInterval(()=>{if(state.selected)api('preview',{id:state.selected.id}).catch(()=>{});},20000);

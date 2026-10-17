@@ -7,6 +7,7 @@
   "scripts": {
     "library": "node src/library/cli.ts",
     "library:gui": "node src/library/cli.ts gui",
+    "library:dev": "node src/library/cli.ts gui --dev",
     "reelet": "node src/cli.ts",
     "start": "node src/gui/launch.cjs",
     "dev": "node src/gui/launch.cjs --dev",

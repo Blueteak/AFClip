@@ -15,6 +15,7 @@ app.whenReady().then(async()=>{
   const supplied=process.argv.find(arg=>arg.startsWith('http:')),url=new URL(supplied?.startsWith('http:')?supplied:endpoint.gui);
   if(url.origin!==new URL(endpoint.gui).origin)throw new Error('Library URL must belong to this catalog');
   if(project){url.searchParams.set('mode','reelet');url.searchParams.set('token',new URL(endpoint.readerGui).searchParams.get('token'));}
+  const dev=process.argv.includes('--dev');if(dev)url.searchParams.set('dev','1');
   Menu.setApplicationMenu(null);
   window=new BrowserWindow({width:1500,height:980,minWidth:900,minHeight:680,title:'Reelet Content Library',backgroundColor:'#0e0f11',webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,partition:project?'persist:library-reader':'persist:library-writer'}});
   const check=e=>{if(e.sender!==window.webContents||e.senderFrame!==window.webContents.mainFrame)throw new Error('Unknown sender');};
@@ -27,5 +28,9 @@ app.whenReady().then(async()=>{
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(e,next)=>{if(new URL(next).origin!==url.origin)e.preventDefault();});
   await window.loadURL(url.toString());window.show();window.focus();
+  if(dev)require('../gui/dev-reload.cjs')(window,undefined,{files:[
+    ...['index.html','app.js','review-tools.js','styles.css'].map(name=>path.join(__dirname,'gui',name)),
+    path.join(__dirname,'../gui/styles.css'),path.join(__dirname,'../gui/native-preview.js'),path.join(__dirname,'../render/timeline.cjs'),
+  ]});
 }).catch(e=>{console.error(e);dialog.showErrorBox('Content Library',e.message);app.exit(1);});
 app.on('window-all-closed',()=>app.quit());
