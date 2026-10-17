@@ -1,0 +1,172 @@
+{
+  "date": "2026-10-16",
+  "oldIndexStageMs": 225991.61059570312,
+  "oldIndexTimingMethod": "First index log creation to audio log creation in original cold export; includes small loop/graphic preparation overhead.",
+  "oldColdExportMs": 326773.7736,
+  "cacheCondition": "No application timestamp indexes; OS filesystem cache not flushed.",
+  "newExport": {
+    "id": "job_b94e0862a1514a8d96c9485a921f1632",
+    "status": "completed",
+    "kind": "export",
+    "mode": "gpu",
+    "output": "C:\\Users\\user\\Documents\\GitHub\\Reelet\\exports\\sample-fast-index.mp4",
+    "createdAt": "2026-10-17T06:28:13.091Z",
+    "projectRevision": 29,
+    "progress": 1,
+    "phase": "completed",
+    "message": "Combining picture and audio",
+    "frame": 1920,
+    "totalFrames": 1920,
+    "fps": 24.77363759599346,
+    "width": 1920,
+    "height": 1080,
+    "duration": 64,
+    "frames": 1920,
+    "stats": {
+      "frames": 1920,
+      "peakDecodedBytes": 29491200,
+      "peakDecoders": 2,
+      "peakChromiumWorkingSetBytes": 727904256,
+      "fullFrameReadback": false,
+      "rejectedPaints": 1142,
+      "decodedSourceFrames": 4252,
+      "restarts": 8,
+      "renderMs": 77503.4722,
+      "renderFps": 24.773083650309022,
+      "wallMs": 102112.43100000001,
+      "indexCacheHits": 0,
+      "indexMs": 928.9309,
+      "indexing": [
+        {
+          "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 2236,
+          "ms": 160.41090000000003
+        },
+        {
+          "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 2629,
+          "ms": 149.5
+        },
+        {
+          "mediaId": "media_e964316100f549dfabdde2221d08cfb4",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 1873,
+          "ms": 60.74359999999996
+        },
+        {
+          "mediaId": "media_643c32a1e3184dd69a5b8fa2fb74da61",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 1393,
+          "ms": 62.62619999999998
+        },
+        {
+          "mediaId": "media_f9a5cfeb8a1a4077b7c936b1c54a5188",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 919,
+          "ms": 54.57000000000005
+        },
+        {
+          "mediaId": "media_980b1f433fbc4f43afe028bd223c4ae6",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 2089,
+          "ms": 137.5983
+        },
+        {
+          "mediaId": "media_9236869f90714997a59baedf8b16bdb2",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 4630,
+          "ms": 248.56139999999994
+        },
+        {
+          "mediaId": "media_9ee988a024bb4a2ea82b8ca17865bbe5",
+          "method": "packet",
+          "cacheHit": false,
+          "frames": 757,
+          "ms": 54.92049999999995
+        }
+      ],
+      "audioClips": 13,
+      "sourceDecode": "software",
+      "composition": "gpu",
+      "encoder": "NVENC D3D11",
+      "rawFrameCacheBytes": 0
+    },
+    "finishedAt": "2026-10-17T06:29:55.304Z"
+  },
+  "parity": {
+    "results": [
+      {
+        "id": "media_d0e2c6c4012348b7b8965045d387a843",
+        "count": 2236,
+        "exact": true
+      },
+      {
+        "id": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+        "count": 2629,
+        "exact": true
+      },
+      {
+        "id": "media_e964316100f549dfabdde2221d08cfb4",
+        "count": 1873,
+        "exact": true
+      },
+      {
+        "id": "media_643c32a1e3184dd69a5b8fa2fb74da61",
+        "count": 1393,
+        "exact": true
+      },
+      {
+        "id": "media_f9a5cfeb8a1a4077b7c936b1c54a5188",
+        "count": 919,
+        "exact": true
+      },
+      {
+        "id": "media_980b1f433fbc4f43afe028bd223c4ae6",
+        "count": 2089,
+        "exact": true
+      },
+      {
+        "id": "media_9236869f90714997a59baedf8b16bdb2",
+        "count": 4630,
+        "exact": true
+      },
+      {
+        "id": "media_9ee988a024bb4a2ea82b8ca17865bbe5",
+        "count": 757,
+        "exact": true
+      }
+    ],
+    "vfr": {
+      "count": 90,
+      "exact": true
+    },
+    "rejected": {
+      "missingPTS": true,
+      "duplicatePTS": true,
+      "countMismatch": true,
+      "corruptFlag": true,
+      "discardFlag": true,
+      "interlaced": true,
+      "otherContainer": true
+    }
+  },
+  "outputHashes": {
+    "exports/sample-first-edit.mp4": "460b75dad2e2f0775c7c57f17d23914050987c7367be9f1182170f2062c0e5af",
+    "exports/sample-fast-index.mp4": "460b75dad2e2f0775c7c57f17d23914050987c7367be9f1182170f2062c0e5af"
+  },
+  "byteIdentical": true,
+  "fallbackCheck": {
+    "method": "decoded",
+    "decodedProbeCalls": 1,
+    "frames": 90
+  }
+}
