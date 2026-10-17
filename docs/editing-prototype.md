@@ -91,6 +91,14 @@ Clips inside the range are removed. Spanning clips become adjacent pieces that r
 
 A disposable edit checked CLI and GUI range deletion, gap deletion, source offsets at half speed, disabled tracks, dissolve preservation, shared undo/redo, and atomic rejection for locked tracks or stale revisions. Its 9.3-second software export passed full verification with 279 frames.
 
+## Push clips to crossfade
+
+Drag one clip horizontally toward its neighbour on the same track. It stops at the cut; continue more than eight screen pixels past contact to preview a crossfade, then release to commit. The attempted overlap sets its duration, clamped to available source handles and room beside existing transitions. Pull back below the threshold to remove the pending fade, or press Escape to cancel the whole drag. If no source handles are available, the clip stops at the cut without adding a transition.
+
+The move and transition are one shared undoable batch. The cut stays at the contact position; overshooting does not shorten the sequence or overlap the stored clips. Audio clips crossfade, visual clips dissolve, and combined clips do both. Pushing an already joined pair adjusts its existing transition. Multi-clip and cross-track moves retain their ordinary collision rules. CLI callers can create the same result in one `apply` batch containing the clip placement and transition `put` operations.
+
+A disposable GUI edit verified both directions, one-step undo, pulling back, Escape, and a half-second overshoot clamped to a 0.2-second transition by source handles.
+
 ## Timeline audio controls
 
 Audio and combined video/audio clips show a waveform below their name. Drag the yellow horizontal line up or down to change clip volume, from silence to +24 dB. Drag the small handles at the top of the waveform left or right to set fade-in and fade-out durations. The inspector remains available for precise values. Fades on combined clips affect both picture and sound, matching the existing clip fade behavior.
