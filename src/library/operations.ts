@@ -44,6 +44,31 @@ export class Operations {
     if(c.name!==undefined){assert(typeof c.name==='string'&&c.name.trim().length>0,'Name is required');next.name=c.name.trim();}
     if(c.notes!==undefined){assert(typeof c.notes==='string'&&c.notes.length<=100000,'Notes must be text under 100 KB');next.notes=c.notes;}
     if(c.tags!==undefined){assert(Array.isArray(c.tags),'Tags must be an array of vocabulary IDs');next.tags=[...new Set(c.tags.map((id:string)=>this.db.get(id,'tag').id))];}
+    if(c.takes!==undefined){
+      assert(o.recordType==='asset'&&Array.isArray(c.takes),'Takes must be an array on an asset');
+      const spans=new Set<string>();
+      next.takes=c.takes.map((t:any)=>{
+        assert(t&&Number.isFinite(t.start)&&Number.isFinite(t.end)&&t.start>=0&&t.end>t.start&&t.end<=a.duration,'Take timestamps must be seconds within the source');
+        assert(t.text===undefined||typeof t.text==='string'&&t.text.length<=100000,'Take text must be under 100 KB');
+        const key=t.start+':'+t.end;assert(!spans.has(key),'A take already exists at these timestamps');spans.add(key);
+        return {start:t.start,end:t.end,...(t.text?{text:t.text}:{})};
+      }).sort((x:any,y:any)=>x.start-y.start||x.end-y.end);
+    }
+    if(c.annotationTracks!==undefined){
+      assert(o.recordType==='asset'&&Array.isArray(c.annotationTracks)&&c.annotationTracks.length>0&&c.annotationTracks.length<=64,'Provide 1-64 annotation tracks');
+      const ids=new Set<string>();
+      next.annotationTracks=c.annotationTracks.map((t:any)=>{
+        assert(typeof t.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(t.id)&&!ids.has(t.id),'Track IDs must be unique');
+        assert(typeof t.name==='string'&&t.name.trim().length>0&&t.name.length<=100,'Track name is required, up to 100 characters');
+        ids.add(t.id);return {id:t.id,name:t.name.trim()};
+      });
+      for(const r of this.db.related('range','assetId',a.id))assert(ids.has(r.trackId||'annotations'),'Move annotations before deleting their track');
+    }
+    if(o.recordType==='range'||c.trackId!==undefined){
+      const tracks=a.annotationTracks||[{id:'annotations'}],trackId=c.trackId??o.trackId??tracks[0].id;
+      assert(o.recordType==='range'&&tracks.some((t:any)=>t.id===trackId),'Choose an annotation track belonging to this asset');
+      next.trackId=trackId;
+    }
     return next;
   }
   folder(id:string) {if(id==='inbox')fail('VALIDATION','Inbox is reserved for project registration');return this.db.get(id,'folder');}

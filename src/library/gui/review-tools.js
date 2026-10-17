@@ -14,7 +14,7 @@ async function sourceFolders(){
   click('source-scan',async()=>{const id=$('source-choice').value;if(!id)throw new Error('Save a mapping before rescanning it');await api('rescan',{id});say('Source scan queued. Progress is available in Jobs.');closeDialog();});
   click('source-remove',async()=>{const old=roots.find(r=>r.id===$('source-choice').value);if(!old)throw new Error('Choose an existing mapping');await api('source-folder-remove',{id:old.id,revision:old.revision});say('Mapping removed; existing assets preserved');closeDialog();});
 }
-const reviewButton=document.createElement('button');reviewButton.id='review-artifacts';reviewButton.textContent='Review artifacts';reviewButton.type='button';$('reveal').before(reviewButton);
+const reviewButton=document.createElement('button');reviewButton.id='review-artifacts';reviewButton.textContent='Review artifacts';reviewButton.type='button';$('prepare').before(reviewButton);
 reviewButton.onclick=()=>reviewArtifacts().catch(e=>say(e.message,true));
 async function reviewArtifacts(){
   const a=state.selected;if(!a)return;

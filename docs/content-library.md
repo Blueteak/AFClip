@@ -21,11 +21,13 @@ The browser version uses the local URL returned by `endpoint`. The desktop versi
 
 1. Import files or a directory into a logical home folder. Imports return before background hashing and probing finish. Exact duplicates eventually resolve to the same asset, retaining provisional IDs as aliases.
 2. Choose **Prepare for review** to generate source audio, exact video frame indexes and the existing Reelet fast-seek cache. MKV/AVI video gets a container-only MP4 remux for native playback. No edited media export is created.
-3. Preview, select vocabulary tags and add notes. **Save & next** advances through the current result page. CLI and GUI edits appear through the same change stream. Unsaved GUI annotations are retained when external changes arrive; saving a stale revision produces a conflict.
-4. Mark In/Out with `I` and `O`, then save an optional named range. Video ranges store source frame indices, integer PTS and a rational time base. Audio ranges store integer sample boundaries. End boundaries are exclusive. Whole-file audio remains useful without a range.
+3. Select a source in the left Content Browser. Preview appears above its annotation timeline. Click the full-clip block for its Tags and Notes popup. Edits to names, tags and notes save automatically, including when the popover closes. CLI and GUI edits appear through the same change stream. Unsaved GUI annotations are retained when external changes arrive; saving a stale revision produces a conflict.
+4. Drag across an empty annotation track to create a named range. The playhead and source preview follow the mouse while hovering or dragging over timeline lanes. With a prepared video, hover and drag starts snap to the displayed source frame. On release, the annotation is saved immediately with empty tags and notes, and its popover opens for editing. Clicking outside closes it without removing the annotation. **Delete** in the popover, or the `Del` key while hovering or selecting an annotation, removes it; Undo restores it. Hover takes priority over selection, and the shortcut does not run while typing in a field. Alternatively, mark In/Out with `I` and `O` and choose **+ Annotation**. Click a range for its Tags and Notes popup. Drag a block to move it in time or between tracks; drag its edges to trim. **+ Track** adds a track; double-click a track name or use its menu to rename, reorder, or delete an empty track. Tracks and range placement are saved in the catalog and support Undo. Video ranges store source frame indices, integer PTS and a rational time base. Audio ranges store integer sample boundaries. End boundaries are exclusive. Whole-file audio remains useful without a range.
+The **Takes** track sits above the full clip. Drag to create a take immediately without opening its popover; its label is derived from timestamp order, so inserting or deleting takes renumbers later ones. Click a take to open its popover containing only optional text, saved automatically, and Delete. Takes with text show a shortened preview on the right side of the block at 50% opacity. Drag blocks or edges to move or trim; `Del` works on hovered or selected takes and Undo restores them. Each asset stores only `takes: [{start, end, text?}]`, with start/end in seconds, sorted by start then end. Names and numbers are not stored. Structured `annotate` accepts the same array; timestamps must be within the source, with distinct spans. Source replacement clears takes.
+
 5. Search names and notes; filter by folder, media type, tag or duration. Assets and ranges appear in the results. Collections can reference either, independently of home folders.
 
-`Space` plays/pauses, `Ctrl+S` saves annotations, `Ctrl+Z` undoes and `Ctrl+Shift+Z` redoes. Right-click a folder or collection in the sidebar to rename, move or delete it. Use **Organize** in the inspector for collection membership, explicit replacement media and catalog purge.
+`Space` plays/pauses, `Ctrl+Z` undoes and `Ctrl+Shift+Z` redoes. Right-click a folder or collection in the sidebar to rename, move or delete it. Use the CLI for collection membership, explicit replacement media and catalog purge.
 
 ## CLI operations
 
@@ -44,6 +46,8 @@ node src/library/cli.ts original --id ASSET_OR_RANGE_ID
 node src/library/cli.ts range-save --assetId ASSET_ID --revision 3 --name "Contact" --startSample 0 --endSample 24000
 node src/library/cli.ts range-save --assetId VIDEO_ASSET_ID --revision 3 --name "Opening" --startFrame 0 --endFrame 90
 ```
+
+`annotate` also accepts an asset `annotationTracks` array of `{id,name}` objects through structured `call` input. `range-save` accepts `trackId`; omitting it preserves an existing assignment or uses the first track for a new range. Nonempty tracks cannot be removed.
 
 IDs and revisions come from `inspect`, `search` and `overview`. Tag assignments accept vocabulary IDs. `--tags ""` clears assignments. Video timing requires review preparation; audio boundaries use the probed source sample rate. `preview` returns authenticated local media URLs and seek/index metadata. `original` returns the original path and structured range provenance for external consumers.
 

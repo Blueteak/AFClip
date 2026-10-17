@@ -44,10 +44,10 @@ async function command(c:any):Promise<any> {
     case 'source-folder-remove':result=db.transaction('Remove source folder mapping',c.author||'agent',()=>{const s=db.get(c.id,'source-folder');db.check(s,c.revision);db.remove(s.id);return {removed:s.id,assetsPreserved:true};});break;
     case 'import':case 'register':result=importFiles(c);break;
     case 'rescan':return intake.queue(c);
-    case 'replace': {const a=ops.asset(c.id);db.check(a,c.revision);assert(c.confirm==='reset-annotations','Confirm reset-annotations to accept replacement');const file=fs.realpathSync(c.path),stat=fs.statSync(file);assert(stat.isFile()&&supported.test(file),'Replacement must be audio/video');result=db.transaction('Accept replacement',c.author||'agent',()=>{const source=db.put('source',{id:uid('source'),locations:[file],size:stat.size,mtimeMs:stat.mtimeMs,status:'pending',duration:{num:0,den:1}});for(const r of db.related('range','assetId',a.id))ops.mutate({command:'range-delete',id:r.id,revision:r.revision});return db.put('asset',{...a,sourceId:source.id,tags:[],notes:'',duration:0});});jobs.enqueue('verify',a.id);break;}
+    case 'replace': {const a=ops.asset(c.id);db.check(a,c.revision);assert(c.confirm==='reset-annotations','Confirm reset-annotations to accept replacement');const file=fs.realpathSync(c.path),stat=fs.statSync(file);assert(stat.isFile()&&supported.test(file),'Replacement must be audio/video');result=db.transaction('Accept replacement',c.author||'agent',()=>{const source=db.put('source',{id:uid('source'),locations:[file],size:stat.size,mtimeMs:stat.mtimeMs,status:'pending',duration:{num:0,den:1}});for(const r of db.related('range','assetId',a.id))ops.mutate({command:'range-delete',id:r.id,revision:r.revision});return db.put('asset',{...a,sourceId:source.id,tags:[],notes:'',takes:[],duration:0});});jobs.enqueue('verify',a.id);break;}
     case 'purge': {const a=ops.asset(c.id);db.check(a,c.revision);assert(a.deleted&&c.confirm==='purge-catalog-record','Trash the asset first, then confirm purge-catalog-record');result=db.transaction('Purge catalog annotations',c.author||'agent',()=>{
       const ids=new Set([a.id,...db.related('range','assetId',a.id).map(r=>r.id)]);
-      const tombstone=db.put('asset',{...a,name:'Deleted library asset',notes:'',tags:[],purged:true});
+      const tombstone=db.put('asset',{...a,name:'Deleted library asset',notes:'',tags:[],takes:[],purged:true});
       for(const id of ids)if(id!==a.id)db.remove(id);
       const clean=(o:any)=>o?.recordType==='collection'?{...o,members:o.members.filter((id:string)=>!ids.has(id))}:o;
       for(const col of db.all('collection'))if(col.members.some((id:string)=>ids.has(id)))db.put('collection',clean(col));
@@ -82,7 +82,7 @@ function media(req:http.IncomingMessage,res:http.ServerResponse,file:string) {
   const type:any={'.mp4':'video/mp4','.mkv':'video/x-matroska','.webm':'video/webm','.mov':'video/mp4','.wav':'audio/wav','.mp3':'audio/mpeg','.ogg':'audio/ogg','.flac':'audio/flac','.mjpg':'image/jpeg','.png':'image/png'};
   res.writeHead(range?206:200,{'Content-Type':type[path.extname(file)]||'application/octet-stream','Accept-Ranges':'bytes','Content-Length':end-start+1,...(range?{'Content-Range':`bytes ${start}-${end}/${size}`}:{})});if(req.method==='HEAD')res.end();else{const stream=fs.createReadStream(file,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);}
 }
-const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/reelet.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/timeline.js':'src/render/timeline.cjs'};
+const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/annotation-timeline.js':'src/library/gui/annotation-timeline.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/reelet.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/timeline.js':'src/render/timeline.cjs'};
 const server=http.createServer(async(req,res)=>{
   try {
     const u=new URL(req.url||'/',`http://${req.headers.host}`);const host=`127.0.0.1:${(server.address() as any).port}`;
