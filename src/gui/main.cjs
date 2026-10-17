@@ -6,7 +6,7 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
+protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
   { scheme: 'reelet-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const args = process.argv.slice(2);
 const projectDir = path.resolve(args[0] || '.');
@@ -118,7 +118,7 @@ app.whenReady().then(async () => {
       if (start > end || start >= stat.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } });
     }
     const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
-    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1),
+    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1), 'Access-Control-Allow-Origin':'file://',
       ...(range ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}) };
     const stream = req.method === 'HEAD' ? null : require('node:stream').Readable.toWeb(require('node:fs').createReadStream(file, { start, end }));
     return new Response(stream, { status: range ? 206 : 200, headers });
@@ -132,7 +132,7 @@ app.whenReady().then(async () => {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
-  window.webContents.on('console-message', (_event, details) => { if (details.level === 'error' || details.level === 3) console.error('GUI:', details.message); });
+  window.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error('GUI:', details.message); });
   previewSession = new (require('./preview-session.cjs'))(projectDir,
     value => { if (!window.isDestroyed()) window.webContents.send('reelet:preview', value); },
     (file, id) => { previewFiles.set(id, file); return `reelet-media://${id}/asset`; },

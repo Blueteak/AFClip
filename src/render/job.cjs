@@ -103,8 +103,11 @@ async function main() {
     decodedBudgetBytes: Math.min(project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024), partial };
   const renderFile = path.join(work, 'renderer.json');
   if (config.kind === 'preview' && config.nativePreview) {
+    const seekCache = await require('./seek-cache.cjs')({ media, plan, directory:path.join(config.projectDir,'cache','seek-preview'),
+      budget:Math.min(project.cacheLimitBytes || 256*1024*1024,512*1024*1024), ffmpeg, ffprobe, run,
+      progress:id => emit({type:'progress',phase:'prepare',message:`Preparing seek frames for ${id}`}) });
     emit({ type: 'ready', audio: audio?.output, nativeSetup: {
-      project, plan, media, graphics, width, height,
+      project, plan, media, graphics, width, height, seekCache,
     } });
     // Keep accepted graphics and mixed audio alive until the editor closes this snapshot.
     await new Promise(resolve => {

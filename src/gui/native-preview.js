@@ -6,6 +6,8 @@ window.NativePreview = class NativePreview {
     this.setup = setup; this.host = host; this.onError = error => { if (!this.closed) onError(error); };
     this.entries = new Map(); this.generation = 0; this.running = false; this.closed = false;
     this.pending = new Map(); this.requestId = 0;
+    this.frames = new Map(); this.frameBytes = 0;
+    this.frameBudget = Math.min(setup.project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024);
     this.stats = { ticks: 0, sourceFrames: 0, maxTickMs: 0, resyncs: 0 };
     this.stage = document.createElement('div'); this.stage.className = 'native-composition';
     this.stage.style.width = setup.width + 'px'; this.stage.style.height = setup.height + 'px';
@@ -55,29 +57,134 @@ window.NativePreview = class NativePreview {
     video.src = entry.media.url;
     const presented = (_now, metadata) => {
       if (this.closed || entry.content !== video) return;
-      entry.presentedTime = metadata.mediaTime; this.stats.sourceFrames++;
+      entry.videoTime = metadata.mediaTime;
+      if (!entry.still || entry.still.hidden) entry.presentedTime = metadata.mediaTime;
+      if (!this.running) this.cacheFrame(entry, metadata.mediaTime);
+      if (entry.prefetch && !this.running && metadata.mediaTime >= entry.prefetch.end - 1e-6) {
+        video.pause(); entry.prefetch = null;
+      }
+      if (entry.prefetchRequest && Math.abs(metadata.mediaTime - entry.prefetchRequest.time) < 1e-6) this.prefetch(entry, entry.prefetchRequest.time);
+      this.stats.sourceFrames++;
       entry.videoCallback = video.requestVideoFrameCallback(presented);
     };
     entry.videoCallback = video.requestVideoFrameCallback(presented);
     return entry.loaded;
   }
   sourceTime(entry, time) { return entry.clip.sourceIn + (time - entry.clip.start) * entry.clip.speed; }
+  frameIndex(entry, time) {
+    const pts = entry.media.pts;
+    let low = 0, high = pts.length;
+    while (low < high) { const mid = (low + high) >>> 1; if (pts[mid] <= time + 1e-7) low = mid + 1; else high = mid; }
+    return Math.max(0, low - 1);
+  }
+  frameTime(entry, time) { return entry.media.pts[this.frameIndex(entry,time)]; }
+  frameKey(entry, time) { return entry.clip.mediaId + ':' + Math.round(time * 1e6); }
+  storeFrame(key, bitmap, demand) {
+    const bytes = bitmap.width * bitmap.height * 4;
+    if (bytes > this.frameBudget || (!demand && this.frameBytes + bytes > this.frameBudget && ![...this.frames.values()].some(f => !f.demand))) { bitmap.close(); return false; }
+    const previous = this.frames.get(key);
+    if (previous) { previous.bitmap.close(); this.frameBytes -= previous.bytes; this.frames.delete(key); }
+    while (this.frameBytes + bytes > this.frameBudget && this.frames.size) {
+      const [oldKey, old] = [...this.frames.entries()].find(([,frame]) => !frame.demand) || this.frames.entries().next().value;
+      old.bitmap.close(); this.frames.delete(oldKey); this.frameBytes -= old.bytes;
+    }
+    this.frames.set(key, { bitmap, bytes, demand }); this.frameBytes += bytes; return true;
+  }
+  proxyFrame(entry, time) {
+    const proxy = entry.media.seekProxy;
+    if (!proxy) return null;
+    const index = this.frameIndex(entry, time) - proxy.first;
+    return proxy.frames[index];
+  }
+  async loadProxy(entry, time, signal) {
+    const packet = this.proxyFrame(entry, time); if (!packet) return false;
+    const [offset, size] = packet;
+    const response = await fetch(entry.media.seekProxy.url, { headers:{Range:`bytes=${offset}-${offset+size-1}`}, signal });
+    if (response.status !== 206) throw new Error('Seek cache range request failed');
+    const bitmap = await createImageBitmap(await response.blob());
+    if (signal.aborted || this.closed) { bitmap.close(); return false; }
+    return this.storeFrame(this.frameKey(entry, this.frameTime(entry,time)), bitmap, true);
+  }
+  cacheFrame(entry, time) {
+    const key = this.frameKey(entry, time); if (this.frames.has(key)) return;
+    const video = entry.content;
+    const scale = Math.min(1, this.setup.width / video.videoWidth, this.setup.height / video.videoHeight);
+    const width = Math.max(1, Math.round(video.videoWidth * scale)), height = Math.max(1, Math.round(video.videoHeight * scale));
+    const bytes = width * height * 4; if (!video.videoWidth || bytes > this.frameBudget) return;
+    const demand = Math.abs(entry.requestedFrame - time) < 1e-6;
+    if (!demand && this.frameBytes + bytes > this.frameBudget && ![...this.frames.values()].some(f => !f.demand)) return;
+    // Copy into our own GPU bitmap. Retaining decoder-owned VideoFrames can
+    // exhaust its surface pool and stall playback. Never read pixels back to JS.
+    if (!this.frameCanvas) this.frameCanvas = new OffscreenCanvas(width, height);
+    if (this.frameCanvas.width !== width) this.frameCanvas.width = width;
+    if (this.frameCanvas.height !== height) this.frameCanvas.height = height;
+    this.frameCanvas.getContext('2d', { alpha:false }).drawImage(video, 0, 0, width, height);
+    const bitmap = this.frameCanvas.transferToImageBitmap();
+    this.storeFrame(key, bitmap, demand);
+  }
+  cachedFrame(entry, time, display = false) {
+    const pts = this.frameTime(entry, time), key = this.frameKey(entry, pts), cached = this.frames.get(key);
+    if (!cached || !display) return !!cached;
+    cached.demand = true;
+    this.frames.delete(key); this.frames.set(key, cached);
+    if (!entry.still) { entry.still = document.createElement('canvas'); entry.layer.append(entry.still); }
+    if (entry.still.width !== cached.bitmap.width) entry.still.width = cached.bitmap.width;
+    if (entry.still.height !== cached.bitmap.height) entry.still.height = cached.bitmap.height;
+    entry.still.getContext('2d', { alpha:false }).drawImage(cached.bitmap, 0, 0);
+    entry.still.style.objectFit = entry.clip.transform?.fit === 'fill' ? 'cover' : 'contain';
+    entry.still.hidden = false;
+    if (entry.content) entry.content.style.visibility = 'hidden';
+    entry.presentedTime = pts;
+    return true;
+  }
+  hideStill(entry) {
+    if (entry.still && !entry.still.hidden) { entry.still.hidden = true; entry.still.width = entry.still.height = 0; }
+    if (entry.content) entry.content.style.visibility = '';
+  }
+  prefetch(entry, time) {
+    entry.prefetchRequest = null;
+    if (this.closed || this.running || !entry.content || !this.cachedFrame(entry, time)) return;
+    const video = entry.content, pts = entry.media.pts, selected = this.frameTime(entry, time);
+    const index = this.frameIndex(entry, selected);
+    const end = pts[Math.min(pts.length - 1, index + 8)];
+    if (entry.prefetch) { entry.prefetch.end = Math.max(entry.prefetch.end, end); return; }
+    if (video.seeking || entry.videoTime < selected - 1e-6 || entry.videoTime >= end - 1e-6) return;
+    this.cachedFrame(entry, time, true);
+    entry.prefetch = { end };
+    video.playbackRate = 1;
+    video.play().catch(() => { entry.prefetch = null; });
+    const pump = () => {
+      if (!entry.prefetch || this.closed || this.running) return;
+      // Consume hidden video at display cadence, as for playback pre-roll.
+      if (video.readyState >= 2) {
+        if (!this.prerollSink) { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1; this.prerollSink = canvas.getContext('2d'); }
+        this.prerollSink.drawImage(video, 0, 0, 1, 1);
+      }
+      entry.prefetchTick = requestAnimationFrame(pump);
+    };
+    cancelAnimationFrame(entry.prefetchTick); entry.prefetchTick = requestAnimationFrame(pump);
+  }
   async position(entry, time) {
-    await this.ensureVideo(entry);
-    if (this.closed || !entry.content) return;
-    const video = entry.content, pts = entry.media.pts;
+    const pts = entry.media.pts;
     let low = 0, high = pts.length;
     while (low < high) { const mid = (low + high) >>> 1; if (pts[mid] <= time + 1e-7) low = mid + 1; else high = mid; }
     const index = Math.max(0, low - 1);
     // Seek inside the selected presentation interval, avoiding timestamp rounding at its edge.
     const target = pts[index] + Math.min(.001, ((pts[index + 1] ?? pts[index] + .02) - pts[index]) / 2);
+    const fresh = !entry.content, loaded = this.ensureVideo(entry), video = entry.content;
+    // Set the startup position before metadata/data arrive, avoiding a decode
+    // of frame zero followed by a second decode of the requested GOP.
+    if (fresh) video.currentTime = Math.max(0, target);
+    await loaded;
+    if (this.closed || entry.content !== video) return;
     video.pause(); video.playbackRate = entry.clip.speed;
-    if (Math.abs(video.currentTime - target) < .0001 && video.readyState >= 2) return;
+    if (Math.abs(video.currentTime - target) < .0001 && video.readyState >= 2 && !video.seeking) return;
     await new Promise((resolve, reject) => {
       const finish = error => { clearTimeout(timer); video.removeEventListener('seeked', done); error ? reject(error) : resolve(); };
       const done = () => finish();
       const timer = setTimeout(() => finish(new Error('Video seek timed out')), 10000);
-      video.addEventListener('seeked', done, { once: true }); video.currentTime = Math.max(0, target);
+      video.addEventListener('seeked', done, { once: true });
+      if (!video.seeking || Math.abs(video.currentTime - target) >= .0001) video.currentTime = Math.max(0, target);
     });
   }
   graphic(entry, time) {
@@ -96,7 +203,10 @@ window.NativePreview = class NativePreview {
   }
   layout(time) {
     const items = window.ReeletTimeline.at(this.setup.plan, time), active = new Set(items.map(i => i.clipId));
-    for (const [id, entry] of this.entries) entry.layer.hidden = !active.has(id);
+    for (const [id, entry] of this.entries) {
+      entry.layer.hidden = !active.has(id);
+      if (entry.layer.hidden) this.hideStill(entry);
+    }
     for (let i = 0; i < items.length; i++) {
       const item = items[i], entry = this.entries.get(item.clipId); if (!entry) continue;
       const tr = item.transform;
@@ -106,19 +216,55 @@ window.NativePreview = class NativePreview {
     }
     return items;
   }
-  async seek(time) {
-    const generation = ++this.generation; this.pause();
-    await this.seekWork?.catch(() => {});
+  async seek(time, forPlayback = false) {
+    const generation = ++this.generation;
+    this.proxyAbort?.abort(); this.proxyAbort = new AbortController();
+    const signal = this.proxyAbort.signal;
+    const selection = window.ReeletTimeline.at(this.setup.plan, time);
+    const cached = !forPlayback && selection.filter(i => i.kind === 'video').every(i => {
+      const entry = this.entries.get(i.clipId); return this.cachedFrame(entry, i.sourceTime) || this.proxyFrame(entry,i.sourceTime);
+    });
+    this.pause(cached);
+    // A cached request need not wait behind an obsolete long-GOP decode.
+    if (!cached) await this.seekWork?.catch(() => {});
     if (generation !== this.generation || this.closed) return false;
     const items = this.layout(time);
-    this.seekWork = Promise.all(items.map(async item => {
+    const priorWork = this.seekWork;
+    const work = Promise.all(items.map(async item => {
       const entry = this.entries.get(item.clipId); if (!entry) return;
-      if (item.kind === 'video') return this.position(entry, item.sourceTime);
+      if (item.kind === 'video') {
+        entry.requestedFrame = this.frameTime(entry, item.sourceTime);
+        if (!forPlayback && this.cachedFrame(entry, item.sourceTime, true)) return;
+        if (!forPlayback && this.proxyFrame(entry, item.sourceTime)) {
+          try {
+            const loaded = await this.loadProxy(entry,item.sourceTime,signal);
+            if (generation !== this.generation || this.closed) return;
+            if (loaded && this.cachedFrame(entry,item.sourceTime,true)) return;
+          } catch (error) {
+            if (signal.aborted || this.closed) return;
+            entry.media.seekProxy = null; // Corrupt/unavailable cache falls back to the source.
+            console.warn('Seek cache fallback:', error.message);
+          }
+          await priorWork?.catch(()=>{});
+          if (generation !== this.generation || this.closed) return;
+        }
+        await this.position(entry, item.sourceTime);
+        if (generation !== this.generation || this.closed) return;
+        this.hideStill(entry);
+        entry.presentedTime = entry.videoTime;
+        return;
+      }
       if (item.kind === 'graphic') { await entry.graphicBusy; entry.graphicNext = null; return this.graphic(entry, item.sourceTime); }
       return entry.loaded;
     }));
-    await this.seekWork;
+    if (!cached) this.seekWork = work;
+    await work;
     if (generation !== this.generation || this.closed) return false;
+    if (!forPlayback) for (const item of items) if (item.kind === 'video' && !this.entries.get(item.clipId).media.seekProxy) {
+      const entry = this.entries.get(item.clipId), frame = this.frameTime(entry, item.sourceTime);
+      if (this.cachedFrame(entry, frame)) this.prefetch(entry, frame);
+      else entry.prefetchRequest = { time:frame };
+    }
     this.prepare(time); return true;
   }
   prepare(time) {
@@ -128,6 +274,7 @@ window.NativePreview = class NativePreview {
       if (c.visibleStart > time && c.visibleStart <= time + 1 && !entry.content) {
         entry.warming = this.position(entry, Math.max(0, this.sourceTime(entry, c.visibleStart - .5))).catch(this.onError).finally(() => { entry.warming = null; });
       } else if (entry.content && (c.visibleEnd < time - 1 || c.visibleStart > time + 2)) {
+        entry.prefetch = null; entry.prefetchRequest = null; cancelAnimationFrame(entry.prefetchTick);
         entry.content.pause(); entry.content.cancelVideoFrameCallback(entry.videoCallback);
         entry.content.removeAttribute('src'); entry.content.load(); entry.content.remove(); entry.content = null;
       }
@@ -153,6 +300,7 @@ window.NativePreview = class NativePreview {
       if (!entry.content) { this.ensureVideo(entry); entry.content.currentTime = Math.max(0, sourceTime); }
       const video = entry.content;
       if (entry.warming || video.readyState < 2 || video.seeking) continue;
+      this.hideStill(entry);
       const error = sourceTime - video.currentTime, speed = entry.clip.speed;
       if (Math.abs(error) > .2) { video.currentTime = Math.max(0, sourceTime); this.stats.resyncs++; }
       else {
@@ -174,12 +322,23 @@ window.NativePreview = class NativePreview {
     }
     this.prepare(time);
   }
-  pause() { this.running = false; this.lastTick = null; for (const e of this.entries.values()) { e.graphicNext = null; if (e.media.kind === 'video') e.content?.pause(); } }
+  pause(preservePrefetch = false) {
+    this.running = false; this.lastTick = null;
+    for (const e of this.entries.values()) {
+      e.graphicNext = null;
+      if (preservePrefetch && e.prefetch) continue;
+      e.prefetch = null; e.prefetchRequest = null; cancelAnimationFrame(e.prefetchTick);
+      if (e.media.kind === 'video') e.content?.pause();
+    }
+  }
   close() {
     this.closed = true; this.generation++; this.pause(); this.resize.disconnect();
+    this.proxyAbort?.abort();
     window.removeEventListener('message', this.message);
     for (const p of this.pending.values()) { clearTimeout(p.timer); p.resolve(); } this.pending.clear();
     for (const e of this.entries.values()) if (e.media.kind === 'video' && e.content) { e.content.cancelVideoFrameCallback(e.videoCallback); e.content.removeAttribute('src'); e.content.load(); }
+    for (const frame of this.frames.values()) frame.bitmap.close(); this.frames.clear(); this.frameBytes = 0;
+    if (this.frameCanvas) this.frameCanvas.width = this.frameCanvas.height = 0;
     this.host.replaceChildren();
   }
 };

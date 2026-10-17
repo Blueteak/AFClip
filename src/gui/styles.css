@@ -172,7 +172,7 @@ kbd, .kbd {
 #native-preview { position: absolute; inset: 0; overflow: hidden; }
 .native-composition { position: absolute; left: 50%; top: 50%; transform-origin: center; overflow: hidden; background: black; color-scheme: normal; }
 .native-layer { position: absolute; inset: 0; transform-origin: center; }
-.native-layer video, .native-layer img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.native-layer video, .native-layer img, .native-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .native-layer iframe { position: absolute; left: 50%; top: 50%; border: 0; transform-origin: center; }
 .stage-busy { position: absolute; left: 0; right: 0; top: 0; height: 2px; overflow: hidden; z-index: 2; }
 .stage-busy::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: var(--accent); animation: sweep 1s ease-in-out infinite; }

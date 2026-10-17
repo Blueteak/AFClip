@@ -47,7 +47,6 @@ class TimelinePlayback {
   }
   async seek(time, resume = this.wantsPlay) {
     this.audio.pause(); this.playing = false; cancelAnimationFrame(this.tickId);
-    this.native?.pause();
     const epoch = ++this.epoch, generation = this.generation;
     this.wantsPlay = resume;
     this.time = Math.max(0, Math.min(time, Math.max(0, Math.ceil(this.duration * this.fps - 1e-8) - 1) / this.fps));
@@ -78,7 +77,7 @@ class TimelinePlayback {
     this.inFlight = true;
     if (this.native) {
       const epoch = this.epoch, sessionId = this.sessionId;
-      this.native.seek(time).then(current => { if (current) this.receive({ type: 'frame', native: true, time, epoch, sessionId, revision: this.revision }); }).catch(error => { if (sessionId === this.sessionId && epoch === this.epoch) this.fail(error); });
+      this.native.seek(time, this.wantsPlay).then(current => { if (current) this.receive({ type: 'frame', native: true, time, epoch, sessionId, revision: this.revision }); }).catch(error => { if (sessionId === this.sessionId && epoch === this.epoch) this.fail(error); });
       return;
     }
     this.api.previewFrame({ sessionId: this.sessionId, epoch: this.epoch, time });
