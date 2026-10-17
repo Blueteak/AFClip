@@ -80,6 +80,13 @@
   for (const t of [3,3.25,3.5,3.75,4,3.75,3.5,3.25,3,4,3,4]) await measure('nearby', t);
   for (const t of [60,16,40,8,56,2,60,16,40,8,56,2]) await measure('distant', t);
   await scrub('uncached-sweep', Array.from({length:60},(_,i)=>20+i/30));
+  // Fixed seed makes broad coverage repeatable while exceeding the bitmap LRU.
+  let seed = 0x25f060;
+  for (let i = 0; i < 120; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    await measure('random-timeline', (seed % Math.floor(playback.duration * playback.fps - 1)) / playback.fps);
+  }
+  await scrub('dissolve-reversals', Array.from({length:120},(_,i)=>7.5+(i<60 ? i : 119-i)/60));
   const summary = [...new Set(rows.map(r => r.category))].map(category => {
     const group = rows.filter(r => r.category === category), values = group.map(r => r.presentedMs).sort((a,b)=>a-b);
     return { category, count:values.length, minMs:values[0], medianMs:values[Math.floor(values.length/2)], p95Ms:values[Math.min(values.length-1,Math.ceil(values.length*.95)-1)], maxMs:values.at(-1), within25ms:values.filter(v=>v<=25).length, within50ms:values.filter(v=>v<=50).length };

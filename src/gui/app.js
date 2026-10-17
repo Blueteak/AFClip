@@ -121,7 +121,8 @@ const playback = new window.TimelinePlayback(api, {
 function syncPlayButton() {
   const running = monitorView === 'export' ? !$('export-video').paused : playback.wantsPlay;
   const button = document.querySelector('#transport-buttons [data-action="play"]');
-  if (button) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', running ? 'Pause' : 'Play'); }
+  const label = running ? 'Pause' : 'Play';
+  if (button && button.getAttribute('aria-label') !== label) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', label); }
 }
 
 
@@ -531,8 +532,13 @@ function selectTransition(id) { selection = new Set(); selTransition = id; drawT
 function setTool(next) { tool = next; syncChrome(); drawTimeline(); idleHint(); }
 function seek(f, render = false) {
   playF = Math.max(0, Math.min(Math.round(f), Math.max(timelineEndF(), 0)));
-  rememberMarks(); drawPlayhead(); drawMonitor();
-  if (clips().length) { setMonitorView('frame'); playback.seek(secs(fromF(Math.min(playF, lastFrame())))); }
+  rememberMarks();
+  // seek() notifies synchronously and redraws the monitor/playhead. Avoid
+  // rebuilding them and the monitor tabs several times for each drag sample.
+  if (clips().length) {
+    if (monitorView !== 'frame') setMonitorView('frame');
+    playback.seek(secs(fromF(Math.min(playF, lastFrame()))));
+  } else drawMonitor();
 }
 function seekEdit(direction) {
   const points = [...new Set(clips().flatMap(c => [startF(c), endF(c)]))].sort((a, b) => a - b);
