@@ -1,0 +1,1095 @@
+{
+  "startedAt": "2026-10-17T05:07:50.442Z",
+  "baseline": ".cache\\windows-benchmark\\2026-10-17T04-46-22-175Z",
+  "out": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z",
+  "checks": [
+    {
+      "name": "QSV system-memory encode 1",
+      "pass": true,
+      "details": {
+        "code": 0,
+        "wallMs": 2352.2765999999997,
+        "hardware": true
+      }
+    },
+    {
+      "name": "QSV system-memory encode 2",
+      "pass": true,
+      "details": {
+        "code": 0,
+        "wallMs": 2301.8749999999995,
+        "hardware": true
+      }
+    },
+    {
+      "name": "QSV system-memory encode 3",
+      "pass": true,
+      "details": {
+        "code": 0,
+        "wallMs": 2293.116,
+        "hardware": true
+      }
+    },
+    {
+      "name": "gpu: renderer completed",
+      "pass": true,
+      "details": {
+        "code": 0
+      }
+    },
+    {
+      "name": "gpu: complete video and audio export",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "frames": "150",
+          "duration": "5.000000"
+        },
+        {
+          "codec": "aac",
+          "frames": "235",
+          "duration": "5.000000"
+        }
+      ]
+    },
+    {
+      "name": "gpu: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.999682
+      }
+    },
+    {
+      "name": "gpu: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.999362
+      }
+    },
+    {
+      "name": "gpu: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.998891
+      }
+    },
+    {
+      "name": "gpu: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.999406
+      }
+    },
+    {
+      "name": "gpu: audio/flash synchronization",
+      "pass": true,
+      "details": [
+        {
+          "time": 1,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 2,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 3,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 4,
+          "offsetMs": 0.0416666666662735,
+          "found": true
+        }
+      ]
+    },
+    {
+      "name": "gpu/source0: 150 frames and source audio",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "duration": "5.000000",
+          "frames": "150"
+        },
+        {
+          "codec": "aac",
+          "duration": "5.000000",
+          "frames": "235"
+        }
+      ]
+    },
+    {
+      "name": "gpu/source0: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.995549
+      }
+    },
+    {
+      "name": "gpu/source0: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.995065
+      }
+    },
+    {
+      "name": "gpu/source0: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994416
+      }
+    },
+    {
+      "name": "gpu/source0: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.996597
+      }
+    },
+    {
+      "name": "gpu/source1: 150 frames and source audio",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "duration": "5.000000",
+          "frames": "150"
+        },
+        {
+          "codec": "aac",
+          "duration": "5.000000",
+          "frames": "235"
+        }
+      ]
+    },
+    {
+      "name": "gpu/source1: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994745
+      }
+    },
+    {
+      "name": "gpu/source1: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994422
+      }
+    },
+    {
+      "name": "gpu/source1: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.980611
+      }
+    },
+    {
+      "name": "gpu/source1: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994463
+      }
+    },
+    {
+      "name": "software: renderer completed",
+      "pass": true,
+      "details": {
+        "code": 0
+      }
+    },
+    {
+      "name": "software: complete video and audio export",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "frames": "150",
+          "duration": "5.000000"
+        },
+        {
+          "codec": "aac",
+          "frames": "235",
+          "duration": "5.000000"
+        }
+      ]
+    },
+    {
+      "name": "software: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.999146
+      }
+    },
+    {
+      "name": "software: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.998113
+      }
+    },
+    {
+      "name": "software: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.998032
+      }
+    },
+    {
+      "name": "software: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.998566
+      }
+    },
+    {
+      "name": "software: audio/flash synchronization",
+      "pass": true,
+      "details": [
+        {
+          "time": 1,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 2,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 3,
+          "offsetMs": 0.04166666666671759,
+          "found": true
+        },
+        {
+          "time": 4,
+          "offsetMs": 0.0416666666662735,
+          "found": true
+        }
+      ]
+    },
+    {
+      "name": "software/source0: 150 frames and source audio",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "duration": "5.000000",
+          "frames": "150"
+        },
+        {
+          "codec": "aac",
+          "duration": "5.000000",
+          "frames": "235"
+        }
+      ]
+    },
+    {
+      "name": "software/source0: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.995822
+      }
+    },
+    {
+      "name": "software/source0: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.993943
+      }
+    },
+    {
+      "name": "software/source0: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.992121
+      }
+    },
+    {
+      "name": "software/source0: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994875
+      }
+    },
+    {
+      "name": "software/source1: 150 frames and source audio",
+      "pass": true,
+      "details": [
+        {
+          "codec": "h264",
+          "duration": "5.000000",
+          "frames": "150"
+        },
+        {
+          "codec": "aac",
+          "duration": "5.000000",
+          "frames": "235"
+        }
+      ]
+    },
+    {
+      "name": "software/source1: exported frame 0 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.994065
+      }
+    },
+    {
+      "name": "software/source1: exported frame 30 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.993117
+      }
+    },
+    {
+      "name": "software/source1: exported frame 75 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.983271
+      }
+    },
+    {
+      "name": "software/source1: exported frame 120 matches capture",
+      "pass": true,
+      "details": {
+        "ssim": 0.990551
+      }
+    },
+    {
+      "name": "GPU/software RGB color agrees",
+      "pass": true,
+      "details": {
+        "maxError": 0,
+        "gpu": [
+          [
+            251,
+            0,
+            0
+          ],
+          [
+            0,
+            253,
+            0
+          ],
+          [
+            251,
+            251,
+            0
+          ],
+          [
+            0,
+            0,
+            251
+          ],
+          [
+            253,
+            0,
+            251
+          ],
+          [
+            0,
+            254,
+            252
+          ]
+        ],
+        "software": [
+          [
+            251,
+            0,
+            0
+          ],
+          [
+            0,
+            253,
+            0
+          ],
+          [
+            251,
+            251,
+            0
+          ],
+          [
+            0,
+            0,
+            251
+          ],
+          [
+            253,
+            0,
+            251
+          ],
+          [
+            0,
+            254,
+            252
+          ]
+        ]
+      }
+    }
+  ],
+  "preparation": [
+    {
+      "id": "fixture",
+      "source": ".cache\\windows-benchmark\\2026-10-17T04-46-22-175Z\\timing-1080p60.mp4",
+      "wallMs": 698.0447999999997,
+      "bytes": 1492992000,
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\fixture.rgba",
+      "width": 1920,
+      "height": 1080,
+      "count": 180
+    },
+    {
+      "id": "vfr",
+      "source": ".cache\\windows-benchmark\\2026-10-17T04-46-22-175Z\\vfr.mp4",
+      "wallMs": 51.82849999999962,
+      "bytes": 24422400,
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\vfr.rgba",
+      "width": 320,
+      "height": 180,
+      "count": 106
+    },
+    {
+      "id": "source0",
+      "source": "D:\\Recordings\\Vellum\\2026-08-31 16-36-14.mp4",
+      "wallMs": 705.2150999999994,
+      "bytes": 1492992000,
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\source0.rgba",
+      "width": 1920,
+      "height": 1080,
+      "count": 180
+    },
+    {
+      "id": "source1",
+      "source": "D:\\Recordings\\Vellum_TrailerCap_November\\Gauntlet.mp4",
+      "wallMs": 1241.7287999999971,
+      "bytes": 2654208000,
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\source1.rgba",
+      "width": 2560,
+      "height": 1440,
+      "count": 180
+    }
+  ],
+  "qsv": [
+    {
+      "code": 0,
+      "wallMs": 2352.2765999999997,
+      "hardware": true
+    },
+    {
+      "code": 0,
+      "wallMs": 2301.8749999999995,
+      "hardware": true
+    },
+    {
+      "code": 0,
+      "wallMs": 2293.116,
+      "hardware": true
+    }
+  ],
+  "rendering": [
+    {
+      "mode": "gpu",
+      "checks": [
+        {
+          "name": "fixture: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "VFR frame at 0.3",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.333333333333",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.366666666667",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.4",
+          "pass": true,
+          "details": {
+            "expected": 10,
+            "value": 39
+          }
+        },
+        {
+          "name": "VFR frame at 1",
+          "pass": true,
+          "details": {
+            "expected": 26,
+            "value": 72
+          }
+        },
+        {
+          "name": "VFR frame at 2",
+          "pass": true,
+          "details": {
+            "expected": 50,
+            "value": 119
+          }
+        },
+        {
+          "name": "VFR frame at 3",
+          "pass": true,
+          "details": {
+            "expected": 76,
+            "value": 172
+          }
+        },
+        {
+          "name": "vfr: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 5
+          }
+        },
+        {
+          "name": "source0: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "source1: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "Arbitrary seeks reproduce exact composition",
+          "pass": true,
+          "details": [
+            "50f12fcf370558935a10ae0c2ccaac460d202b52e1b01bae84a33a3f26c0707e",
+            "509c96e0f11c226f8a78a06e97cba52471b42fa4aac4d900b597997a91ffaabd",
+            "e1221aff28bb0d02dec5b2bdc455f061670bc2027e7008d999b0468747304ade",
+            "50f12fcf370558935a10ae0c2ccaac460d202b52e1b01bae84a33a3f26c0707e",
+            "a485f8617109870bb8c86c5befb62607542b7006283bc45f8d38d32cab73174a",
+            "509c96e0f11c226f8a78a06e97cba52471b42fa4aac4d900b597997a91ffaabd"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "id": "fixture",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 22.02249999999998,
+            "p95": 164.1888,
+            "max": 164.1888
+          },
+          "uniqueFrames": 10
+        },
+        {
+          "id": "vfr",
+          "seekAndPaintMs": {
+            "n": 7,
+            "median": 14.658999999999992,
+            "p95": 27.566800000000057,
+            "max": 27.566800000000057
+          },
+          "uniqueFrames": 5
+        },
+        {
+          "id": "source0",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 16.663800000000037,
+            "p95": 17.553099999999972,
+            "max": 17.553099999999972
+          },
+          "uniqueFrames": 10
+        },
+        {
+          "id": "source1",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 20.52240000000006,
+            "p95": 41.35089999999991,
+            "max": 41.35089999999991
+          },
+          "uniqueFrames": 10
+        }
+      ],
+      "exports": [
+        {
+          "id": "fixture",
+          "prefix": "gpu",
+          "wallMs": 3431.3553,
+          "fps": 43.71450546085973,
+          "realtime": 1.4571501820286579,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 18.517799999999625,
+            "p95": 30.580199999999422,
+            "max": 34.20640000000003
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.5652000000000044,
+            "p95": 1.9670000000000982,
+            "max": 3.4615000000001146
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-gpu.mp4",
+          "preparationAndExportMs": 4177.692099999999,
+          "preparationAndExportRealtime": 1.196833055265131
+        },
+        {
+          "id": "source0",
+          "prefix": "gpu-source0",
+          "wallMs": 3282.8706999999995,
+          "fps": 45.691717313143045,
+          "realtime": 1.5230572437714347,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 17.662600000000566,
+            "p95": 29.792499999999563,
+            "max": 32.32980000000043
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.5453999999990629,
+            "p95": 1.8276999999998225,
+            "max": 12.161699999999655
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-gpu-source0.mp4",
+          "preparationAndExportMs": 4038.2450999999983,
+          "preparationAndExportRealtime": 1.2381615964816008
+        },
+        {
+          "id": "source1",
+          "prefix": "gpu-source1",
+          "wallMs": 3488.8251,
+          "fps": 42.99441665906382,
+          "realtime": 1.433147221968794,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 19.69430000000102,
+            "p95": 30.051499999999578,
+            "max": 34.62299999999959
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.5424000000002707,
+            "p95": 1.7615000000005239,
+            "max": 3.0958000000009633
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-gpu-source1.mp4",
+          "preparationAndExportMs": 4778.207699999997,
+          "preparationAndExportRealtime": 1.046417467369617
+        }
+      ],
+      "export": {
+        "id": "fixture",
+        "prefix": "gpu",
+        "wallMs": 3431.3553,
+        "fps": 43.71450546085973,
+        "realtime": 1.4571501820286579,
+        "renderAndReadbackMs": {
+          "n": 150,
+          "median": 18.517799999999625,
+          "p95": 30.580199999999422,
+          "max": 34.20640000000003
+        },
+        "pipeMs": {
+          "n": 150,
+          "median": 1.5652000000000044,
+          "p95": 1.9670000000000982,
+          "max": 3.4615000000001146
+        },
+        "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-gpu.mp4",
+        "preparationAndExportMs": 4177.692099999999,
+        "preparationAndExportRealtime": 1.196833055265131
+      },
+      "gpuFeatures": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      },
+      "colors": [
+        [
+          251,
+          0,
+          0
+        ],
+        [
+          0,
+          253,
+          0
+        ],
+        [
+          251,
+          251,
+          0
+        ],
+        [
+          0,
+          0,
+          251
+        ],
+        [
+          253,
+          0,
+          251
+        ],
+        [
+          0,
+          254,
+          252
+        ]
+      ]
+    },
+    {
+      "mode": "software",
+      "checks": [
+        {
+          "name": "fixture: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "VFR frame at 0.3",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.333333333333",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.366666666667",
+          "pass": true,
+          "details": {
+            "expected": 9,
+            "value": 38
+          }
+        },
+        {
+          "name": "VFR frame at 0.4",
+          "pass": true,
+          "details": {
+            "expected": 10,
+            "value": 39
+          }
+        },
+        {
+          "name": "VFR frame at 1",
+          "pass": true,
+          "details": {
+            "expected": 26,
+            "value": 72
+          }
+        },
+        {
+          "name": "VFR frame at 2",
+          "pass": true,
+          "details": {
+            "expected": 50,
+            "value": 119
+          }
+        },
+        {
+          "name": "VFR frame at 3",
+          "pass": true,
+          "details": {
+            "expected": 76,
+            "value": 172
+          }
+        },
+        {
+          "name": "vfr: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 5
+          }
+        },
+        {
+          "name": "source0: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "source1: distinct source frames",
+          "pass": true,
+          "details": {
+            "uniqueFrames": 10
+          }
+        },
+        {
+          "name": "Arbitrary seeks reproduce exact composition",
+          "pass": true,
+          "details": [
+            "78899f523dbab563a53165aecc78088ce40409cd5246b90edaa32f4f3c472302",
+            "aa74d8d83c87c0c01806cd297026b616c2c0407f29bb6a41480918fed95969d6",
+            "e904ec4d5042ea721593e9974baaaec81c9f2c1b3d01847d1d34ebcb5ba9c096",
+            "78899f523dbab563a53165aecc78088ce40409cd5246b90edaa32f4f3c472302",
+            "e70888bc432de097dd21f647242aaedfa0ae050c52e38c13b71cec0c053827e5",
+            "aa74d8d83c87c0c01806cd297026b616c2c0407f29bb6a41480918fed95969d6"
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "id": "fixture",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 12.7346,
+            "p95": 19.396199999999993,
+            "max": 19.396199999999993
+          },
+          "uniqueFrames": 10
+        },
+        {
+          "id": "vfr",
+          "seekAndPaintMs": {
+            "n": 7,
+            "median": 11.892999999999972,
+            "p95": 13.188499999999976,
+            "max": 13.188499999999976
+          },
+          "uniqueFrames": 5
+        },
+        {
+          "id": "source0",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 12.26019999999994,
+            "p95": 17.202299999999923,
+            "max": 17.202299999999923
+          },
+          "uniqueFrames": 10
+        },
+        {
+          "id": "source1",
+          "seekAndPaintMs": {
+            "n": 10,
+            "median": 15.4375,
+            "p95": 29.080299999999966,
+            "max": 29.080299999999966
+          },
+          "uniqueFrames": 10
+        }
+      ],
+      "exports": [
+        {
+          "id": "fixture",
+          "prefix": "software",
+          "wallMs": 2196.9413999999997,
+          "fps": 68.2767414733957,
+          "realtime": 2.2758913824465234,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 11.840400000000045,
+            "p95": 15.934199999999919,
+            "max": 18.687800000000152
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.3069000000000415,
+            "p95": 1.6131999999997788,
+            "max": 8.352599999999939
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-software.mp4",
+          "preparationAndExportMs": 2943.278199999999,
+          "preparationAndExportRealtime": 1.6987860678613398
+        },
+        {
+          "id": "source0",
+          "prefix": "software-source0",
+          "wallMs": 2223.7463,
+          "fps": 67.4537378656909,
+          "realtime": 2.248457928856363,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 11.9371000000001,
+            "p95": 16.454999999999927,
+            "max": 23.51929999999993
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.3170000000000073,
+            "p95": 1.586500000000342,
+            "max": 9.248699999999644
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-software-source0.mp4",
+          "preparationAndExportMs": 2979.1206999999986,
+          "preparationAndExportRealtime": 1.678347574168446
+        },
+        {
+          "id": "source1",
+          "prefix": "software-source1",
+          "wallMs": 3509.6794999999993,
+          "fps": 42.73894525126868,
+          "realtime": 1.4246315083756227,
+          "renderAndReadbackMs": {
+            "n": 150,
+            "median": 20.429799999999886,
+            "p95": 26.74159999999938,
+            "max": 39.386099999999715
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.3018999999994776,
+            "p95": 1.5258999999996377,
+            "max": 3.032000000000153
+          },
+          "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-software-source1.mp4",
+          "preparationAndExportMs": 4799.0620999999965,
+          "preparationAndExportRealtime": 1.0418702437711742
+        }
+      ],
+      "export": {
+        "id": "fixture",
+        "prefix": "software",
+        "wallMs": 2196.9413999999997,
+        "fps": 68.2767414733957,
+        "realtime": 2.2758913824465234,
+        "renderAndReadbackMs": {
+          "n": 150,
+          "median": 11.840400000000045,
+          "p95": 15.934199999999919,
+          "max": 18.687800000000152
+        },
+        "pipeMs": {
+          "n": 150,
+          "median": 1.3069000000000415,
+          "p95": 1.6131999999997788,
+          "max": 8.352599999999939
+        },
+        "output": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\composed-software.mp4",
+        "preparationAndExportMs": 2943.278199999999,
+        "preparationAndExportRealtime": 1.6987860678613398
+      },
+      "gpuFeatures": {
+        "2d_canvas": "unavailable_software",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "disabled_software",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "disabled_off",
+        "rasterization": "disabled_software",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "disabled_software",
+        "video_encode": "disabled_software",
+        "webgl": "unavailable_software",
+        "webgpu": "unavailable_software",
+        "webnn": "unavailable_software"
+      },
+      "colors": [
+        [
+          251,
+          0,
+          0
+        ],
+        [
+          0,
+          253,
+          0
+        ],
+        [
+          251,
+          251,
+          0
+        ],
+        [
+          0,
+          0,
+          251
+        ],
+        [
+          253,
+          0,
+          251
+        ],
+        [
+          0,
+          254,
+          252
+        ]
+      ]
+    }
+  ],
+  "versions": {
+    "ffmpeg": "ffmpeg version 6.1.1-essentials_build-www.gyan.dev Copyright (c) 2000-2023 the FFmpeg developers\r",
+    "electron": "44.8.0"
+  },
+  "audioPreparation": {
+    "fixture": {
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\mix-fixture.wav",
+      "wallMs": 48.29199999999946
+    },
+    "source0": {
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\mix-source0.wav",
+      "wallMs": 50.15929999999935
+    },
+    "source1": {
+      "file": ".cache\\windows-solutions\\2026-10-17T05-07-50-441Z\\mix-source1.wav",
+      "wallMs": 47.65380000000005
+    }
+  },
+  "finishedAt": "2026-10-17T05:08:49.353Z",
+  "checkCounts": {
+    "pass": 62,
+    "fail": 0
+  },
+  "toolingProbe": {
+    "version": "FFmpeg 9.0.2 essentials",
+    "archiveSha256": "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba",
+    "download": "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+    "explicitUpload": "Device initialized, then texture allocation failed with 80070057",
+    "systemMemory": "Passed; no upgrade required because FFmpeg 6.1.1 also passed"
+  },
+  "notes": [
+    "One composed-export timing per source and mode in the final run; warm filesystem caches.",
+    "preparationAndExportMs sums decoded-cache creation, audio mix and export; excludes Electron startup, metadata inspection and checks.",
+    "Four PNG captures are saved after each export timer, unlike the original baseline.",
+    "All source frames are decoded in software at original resolution, then sampled onto the fixed 30 fps project grid.",
+    "Raw RGBA cache files are deleted after the run; encoded outputs, PNGs and logs remain local."
+  ]
+}
