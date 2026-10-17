@@ -169,6 +169,12 @@ Final lifecycle checks verified Play/Pause button state, original-video resume, 
 
 Artifacts: .cache/seek-perf/broad-before.json, .cache/seek-perf/broad-no-warmup.json and .cache/seek-perf/background-muted/seeks.json. Summary and source-frame evidence are retained in seeking-performance.json. Syntax and diff checks passed; no always-run tests were introduced.
 
+### Paused original-resolution refinement
+
+Fast seek pictures are temporary. After 150 ms without another seek, GPU preview positions the visible original videos while retaining the proxy image, then reveals the original decoded frame. Titles and compositing stay at the selected timeline time. Pausing an already-correct original frame keeps it on screen immediately. New seeks, playback and closing/replacing the preview invalidate pending refinement; original decoding never blocks a cached scrub request. This is progressive quality: the 25 ms interaction metric measures the first correct picture, not completion of the original-source decode.
+
+Manual checks at timeline 2, 60, 16, 40, 8 and 56 seconds showed exact selected timestamps with the proxy hidden and each source decoded at 2560×1440, including both sides of dissolves. A newer seek arriving during refinement settled on its own full-quality frame. Captures are in .cache/playback-perf/refined-*.png. The opt-in latency check still measured 120/120 random seeks under 25 ms (p95 20.8 ms, maximum 24.5 ms); the concurrent diagnostic run had one missed next-display sample in each scrub category, within previously observed cadence variability. Diagnostics now use their own Chromium profile to avoid sharing the interactive editor's disk cache.
+
 ## Current limits
 
 The agreed throughput target is **sustained 60 fps at full 1920×1080**, using a 60 fps version of the representative edit with original footage, titles, dissolves and synchronized audio. The original 24.6 fps result at 540p is not acceptable against this target. Seeking now targets 25 ms at p95 and 60 fps updates during continuous scrubbing; the prepared-cache path meets those targets on this representative edit, with the limits below.
