@@ -1,5 +1,7 @@
 # Windows rendering fixes
 
+Follow-up: [shared-texture GPU export](windows-gpu-export.md) removes the full-frame readback and raw-video pipe that made this version's GPU compositor slower than software composition. The measurements below remain the historical bitmap baseline.
+
 The follow-up experiment resolves the measured color mismatch, provides original-media HEVC software rendering, and makes Intel QSV encoding work. It also replaces per-frame browser video seeks and screenshot capture with decoded RGB frames and Electron paint events. The shared project engine and editor remain unimplemented.
 
 ## What changed

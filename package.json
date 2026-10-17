@@ -5,7 +5,8 @@
   "description": "Experimental Windows media measurements, not the Reelet editor",
   "scripts": {
     "bench:windows": "node benchmarks/windows/run.cjs",
-    "bench:solutions": "node benchmarks/windows/solutions.cjs"
+    "bench:solutions": "node benchmarks/windows/solutions.cjs",
+    "bench:gpu": "node benchmarks/windows/gpu.cjs"
   },
   "devDependencies": {
     "electron": "44.8.0",
