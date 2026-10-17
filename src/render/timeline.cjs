@@ -1,6 +1,39 @@
 const seconds = value => typeof value === 'number' ? value : value ? value.num / value.den : 0;
 const clamp = x => Math.max(0, Math.min(1, x));
 const easeInOut = value => { const x = clamp(value); return x * x * (3 - 2 * x); };
+// Points live in source time so edits to placement, trim, split and speed retain
+// the envelope on the same sounds. Hold the first/last value outside the points.
+function automationGain(clip, local) {
+  const points = clip.volumePoints || [];
+  if (!points.length) return 1;
+  const source = seconds(clip.sourceIn) + local * (clip.speed == null ? 1 : seconds(clip.speed));
+  let lo = 0, hi = points.length - 1;
+  if (source <= seconds(points[lo].time)) return points[lo].value;
+  if (source >= seconds(points[hi].time)) return points[hi].value;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (source < seconds(points[mid].time)) hi = mid; else lo = mid; }
+  const a = points[lo], b = points[hi];
+  return a.value + (b.value - a.value) * (source - seconds(a.time)) / (seconds(b.time) - seconds(a.time));
+}
+function audioGain(clip, local) {
+  if (clip.mute) return 0;
+  const fi = seconds(clip.fadeIn), fo = seconds(clip.fadeOut);
+  return (clip.volume ?? 1) * automationGain(clip, local)
+    * (fi ? easeInOut(local / fi) : 1) * (fo ? easeInOut((seconds(clip.duration) - local) / fo) : 1);
+}
+// Balanced branches keep FFmpeg expression depth bounded for longer envelopes.
+function automationExpression(points, source) {
+  if (!points?.length) return '1';
+  if (points.length === 1) return String(points[0].value);
+  function segment(lo, hi) {
+    if (hi - lo === 1) {
+      const a = points[lo], b = points[hi], delta = b.value - a.value;
+      return delta === 0 ? String(a.value) : `(${a.value}+(${delta})*max(0,min(1,(${source}-${seconds(a.time)})/${seconds(b.time) - seconds(a.time)})))`;
+    }
+    const mid = (lo + hi) >> 1;
+    return `if(lt(${source},${seconds(points[mid].time)}),${segment(lo, mid)},${segment(mid, hi)})`;
+  }
+  return segment(0, points.length - 1);
+}
 function compile(project) {
   const media = new Map(project.media.map(m => [m.id, m]));
   const tracks = new Map(project.tracks.map((t, index) => [t.id, { ...t, index }]));
@@ -22,11 +55,11 @@ function compile(project) {
 }
 function at(plan, time) {
   return plan.clips.filter(c => time >= c.visibleStart - 1e-8 && time < c.visibleEnd - 1e-8).map(c => {
-    let visual = 1, audio = c.mute ? 0 : (c.volume ?? 1);
     const local = time - c.start;
+    let visual = 1, audio = audioGain(c, local);
     const fadeIn = c.fadeIn ? clamp(local / c.fadeIn) : 1;
     const fadeOut = c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1;
-    visual *= fadeIn * fadeOut; audio *= easeInOut(fadeIn) * easeInOut(fadeOut);
+    visual *= fadeIn * fadeOut;
     for (const tr of c.transitions) if (time >= tr.start && time < tr.end) {
       const p = clamp((time - tr.start) / tr.duration);
       if (tr.side === 'in') { visual *= p; audio *= p; } else audio *= 1 - p;
@@ -35,5 +68,5 @@ function at(plan, time) {
       opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
-if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut };
-else window.ReeletTimeline = { seconds, compile, at, easeInOut };
+if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationGain, audioGain, automationExpression };
+else window.ReeletTimeline = { seconds, compile, at, easeInOut, automationGain, audioGain };
