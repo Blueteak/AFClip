@@ -2,7 +2,7 @@
 
 ## The idea
 
-Reelet is a pared-down, local-first desktop video editor for Windows and Mac, built around indie-game marketing. Its job is to turn existing gameplay captures into clear, compelling shorts and trailers, typically up to about 60 seconds, using supplied music, sound effects, images, fonts and brand assets.
+Reelet is a pared-down, local-first desktop video editor for Windows and Mac, built around indie-game marketing. Its job is to turn existing gameplay captures into clear, compelling shorts and trailers, typically up to about 90 seconds, using supplied music, sound effects, images, fonts and brand assets.
 
 The experience should support AI-first creation and enjoyable hands-on editing. An agent can assemble a first cut from a brief, and a person can immediately inspect it, change the pacing, reposition a title or tighten a sound cue. Both should work on the same project, with predictable results and an easy way to undo a change.
 
