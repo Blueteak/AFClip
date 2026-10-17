@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, shell } = require('electron');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
@@ -93,7 +93,10 @@ app.whenReady().then(async () => {
     return net.fetch(pathToFileURL(file).href, { headers: req.headers });
   });
 
-  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1000, minHeight: 650, backgroundColor: '#111516', title: 'Reelet', show: false, autoHideMenuBar: true,
+  // The renderer owns every shortcut, so drop Electron's default menu accelerators (reload, devtools, close).
+  Menu.setApplicationMenu(null);
+  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1080, minHeight: 680, backgroundColor: '#0e0f11', title: 'Reelet', show: false,
+    titleBarStyle: 'hidden', titleBarOverlay: { color: '#141518', symbolColor: '#9ba1aa', height: 36 },
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -101,17 +104,20 @@ app.whenReady().then(async () => {
   window.webContents.on('console-message', (_event, details) => { if (details.level === 'error' || details.level === 3) console.error('GUI:', details.message); });
   handle('inspect', () => request('/inspect'));
   handle('command', payload => {
-    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
-  handle('import', async () => {
-    const selected = await dialog.showOpenDialog(window, { title: 'Import media', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Media', extensions: ['mp4', 'mov', 'mkv', 'webm', 'wav', 'mp3', 'm4a', 'flac', 'png', 'jpg', 'jpeg'] }] });
+  handle('import', async kind => {
+    const graphic = kind === 'graphic';
+    const selected = graphic
+      ? await dialog.showOpenDialog(window, { title: 'Import graphic folder', properties: ['openDirectory'] })
+      : await dialog.showOpenDialog(window, { title: 'Import media', properties: ['openFile', 'multiSelections'], filters: [{ name: 'Media', extensions: ['mp4', 'mov', 'mkv', 'webm', 'wav', 'mp3', 'm4a', 'flac', 'png', 'jpg', 'jpeg'] }] });
     if (selected.canceled) return null;
     const imported = [];
-    for (const file of selected.filePaths) imported.push(await request('/command', { command: 'import', path: file }));
+    for (const file of selected.filePaths) imported.push(await request('/command', { command: 'import', path: file, ...(graphic ? { kind: 'graphic' } : {}) }));
     return imported;
   });
-  handle('render', async ({ kind, mode, frameTime, verification = 'quick' }) => {
+  handle('render', async ({ kind, mode, frameTime, range, verification = 'quick' }) => {
     if (!['frame', 'export'].includes(kind) || !['gpu', 'software'].includes(mode || 'gpu')) throw new Error('Invalid render request');
     if (!['quick', 'full'].includes(verification)) throw new Error('Invalid verification mode');
     let output;
@@ -126,7 +132,7 @@ app.whenReady().then(async () => {
       await fs.mkdir(path.dirname(output), { recursive: true });
     }
     outputs.add(path.resolve(output));
-    return request('/command', { command: 'render', kind, mode: mode || 'gpu', verification, frameTime, output });
+    return request('/command', { command: 'render', kind, mode: mode || 'gpu', verification, frameTime, range: kind === 'export' ? range : undefined, output });
   });
   handle('media-url', async file => {
     if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result');

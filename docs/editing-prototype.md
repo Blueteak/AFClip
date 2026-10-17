@@ -17,7 +17,7 @@ node src/cli.ts export examples/vellum-first-edit exports/vellum-first-edit.mp4 
 
 The supplied example is a 64-second Vellum edit assembled from local gameplay, a music bed, sound effects and two animated HTML graphics. Its source paths belong to this PC. `npm run edit:example` imports those sources and commits the timeline through engine commands. It takes a starting checkpoint and refuses to replace a project that already contains clips.
 
-The GUI displays the media bin, tracks, clips and dissolves. You can import media, add it on a new track, change a selected clip's name/start/source-in/duration/volume, disable or lock tracks, undo/redo, render an exact frame, export, cancel and play the finished MP4. CLI changes arrive live through the same engine. Closing the GUI leaves an active export running.
+The GUI displays the media bin, checkpoints, tracks, clips and dissolves. You can import media and graphic folders, drag media onto tracks, move, trim, stretch, split, copy, paste and delete clips, add and adjust dissolves, edit clip timing, audio and transforms in the inspector, change sequence resolution and frame rate, rename, disable or lock tracks, undo/redo, create or restore checkpoints, render an exact frame, export the sequence or an In/Out range, cancel and play the finished MP4. Each action has a keyboard shortcut shown in menus and tooltips; `?` lists them all. Edits are built from the latest project state and carry its revisions, so a conflicting CLI or agent batch is rejected rather than overwritten. CLI changes arrive live through the same engine. Closing the GUI leaves an active export running.
 
 Frame preview currently runs a rendering job and briefly locks edits. It is not continuous timeline playback. The first render indexes source presentation timestamps. Later renders reuse that index until the source changes.
 
@@ -151,7 +151,7 @@ All 16,526 source timestamps exactly matched the prior decoded indexes. The 90-f
 
 MP4 exports now default to `--verify quick`. Before publishing the finished file, the worker checks H.264/AAC streams, dimensions, frame rate, zero start times, video packet count, packet flags, continuous presentation timestamps, stream durations, and stereo 48 kHz audio coverage. This relies on our encoders producing one video packet per frame without B-frame reordering. AAC priming is allowed before time zero. MP4 duration rounding gets a 1 ms allowance at the final video packet; ordinary frame timestamps remain checked against the video time base.
 
-For a decoded-frame check, enable **Thorough export check** in the editor or use:
+For a decoded-frame check, choose **Thorough** verification in the Export dialog or use:
 
 ```powershell
 node src/cli.ts export examples/vellum-first-edit exports/vellum-first-edit.mp4 --verify full --wait

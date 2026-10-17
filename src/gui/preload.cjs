@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('reelet', Object.freeze({
   inspect: () => ipcRenderer.invoke('reelet:inspect'),
   command: payload => ipcRenderer.invoke('reelet:command', payload),
-  importMedia: () => ipcRenderer.invoke('reelet:import'),
+  importMedia: kind => ipcRenderer.invoke('reelet:import', kind),
   render: options => ipcRenderer.invoke('reelet:render', options),
   mediaUrl: file => ipcRenderer.invoke('reelet:media-url', file),
   showOutput: file => ipcRenderer.invoke('reelet:show-output', file),
