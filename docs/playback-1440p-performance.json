@@ -1,0 +1,339 @@
+{
+  "date": "2026-10-17",
+  "hardware": "Core Ultra 9 285K / RTX 5080 / 64 GB, Windows, Electron 44.8.0, Chromium 152.0.7977.167",
+  "workload": "Two full 64-second runs at 2560x1440, 60 fps, original 1440p60 HEVC, seven dissolves, two titles, mixed audio",
+  "comparison": "1080p baseline is in playback-performance.json. Both resolutions decode the same original 1440p sources. Output pixel count increases 77.78%.",
+  "runs": [
+    {
+      "artifactDirectory": ".cache/playback/2026-10-17T17-36-28-382Z",
+      "stage": {
+        "x": 0,
+        "y": 0,
+        "width": 2560,
+        "height": 1440,
+        "top": 0,
+        "right": 2560,
+        "bottom": 1440,
+        "left": 0
+      },
+      "devicePixelRatio": 1,
+      "stats": {
+        "ticks": 3844,
+        "sourceFrames": 4455,
+        "maxTickMs": 21.80000001192093,
+        "resyncs": 0
+      },
+      "presentation": {
+        "disableDirectComposition": true,
+        "disableGpuVsync": true,
+        "disableFrameRateLimit": false
+      },
+      "byClip": [
+        {
+          "clip": "shot_1",
+          "callbacks": 512,
+          "seconds": 8.5335,
+          "callbackFps": 59.88164293666139,
+          "presentedFps": 59.88164293666139,
+          "p95GapMs": 16.700000000000728,
+          "maxGapMs": 33.399999999999864,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 13.245999999999647,
+          "maxClockErrorMs": 13.29799999999981,
+          "fpsAfterFirstPointSixSeconds": 59.9989830680836,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_2",
+          "callbacks": 540,
+          "seconds": 8.9834,
+          "callbackFps": 59.99955473428769,
+          "presentedFps": 59.99955473428769,
+          "p95GapMs": 16.700000000000728,
+          "maxGapMs": 16.80000000000109,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 1.3820000000066557,
+          "maxClockErrorMs": 2.0619999999951233,
+          "fpsAfterFirstPointSixSeconds": 59.998807180771756,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_3",
+          "callbacks": 540,
+          "seconds": 8.9836,
+          "callbackFps": 59.998218976802185,
+          "presentedFps": 59.998218976802185,
+          "p95GapMs": 16.700000000000728,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 3.0490000000007456,
+          "maxClockErrorMs": 3.145999999999205,
+          "fpsAfterFirstPointSixSeconds": 59.99832673989173,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_4",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.700000000004366,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 2.144000000001256,
+          "maxClockErrorMs": 2.2039999999989845,
+          "fpsAfterFirstPointSixSeconds": 59.998807180771756,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_5",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.700000000004366,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 2.2039999999989845,
+          "maxClockErrorMs": 2.37600000000171,
+          "fpsAfterFirstPointSixSeconds": 59.99832673989171,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_6",
+          "callbacks": 536,
+          "seconds": 8.9835,
+          "callbackFps": 59.55362609228029,
+          "presentedFps": 59.55362609228029,
+          "p95GapMs": 16.80000000000291,
+          "maxGapMs": 33.400000000001455,
+          "droppedWhileVisible": 3,
+          "p95ClockErrorMs": 2.316000000002205,
+          "maxClockErrorMs": 2.3660000000003123,
+          "fpsAfterFirstPointSixSeconds": 59.998807180771756,
+          "dropSampleTimes": [
+            39.772961,
+            40.022178
+          ]
+        },
+        {
+          "clip": "shot_7",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.700000000004366,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 1.7929999999992674,
+          "maxClockErrorMs": 1.8640000000047507,
+          "fpsAfterFirstPointSixSeconds": 59.99832673989171,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_8",
+          "callbacks": 505,
+          "seconds": 8.4835,
+          "callbackFps": 59.40944185772382,
+          "presentedFps": 59.40944185772382,
+          "p95GapMs": 16.700000000004366,
+          "maxGapMs": 33.400000000001455,
+          "droppedWhileVisible": 5,
+          "p95ClockErrorMs": 1.94500000000275,
+          "maxClockErrorMs": 1.986000000003152,
+          "fpsAfterFirstPointSixSeconds": 59.99898306808357,
+          "dropSampleTimes": [
+            55.7731,
+            56.022437
+          ]
+        }
+      ],
+      "totalVisibleSourceDrops": 8
+    },
+    {
+      "artifactDirectory": ".cache/playback/2026-10-17T17-37-56-499Z",
+      "stage": {
+        "x": 0,
+        "y": 0,
+        "width": 2560,
+        "height": 1440,
+        "top": 0,
+        "right": 2560,
+        "bottom": 1440,
+        "left": 0
+      },
+      "devicePixelRatio": 1,
+      "stats": {
+        "ticks": 3845,
+        "sourceFrames": 4455,
+        "maxTickMs": 21.30000001192093,
+        "resyncs": 0
+      },
+      "presentation": {
+        "disableDirectComposition": true,
+        "disableGpuVsync": true,
+        "disableFrameRateLimit": false
+      },
+      "byClip": [
+        {
+          "clip": "shot_1",
+          "callbacks": 512,
+          "seconds": 8.5335,
+          "callbackFps": 59.88164293666139,
+          "presentedFps": 59.88164293666139,
+          "p95GapMs": 16.799999999999727,
+          "maxGapMs": 33.40000000000009,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 15.666999999999653,
+          "maxClockErrorMs": 15.722999999999487,
+          "fpsAfterFirstPointSixSeconds": 59.99898306808359,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_2",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.799999999999272,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 1.1310000000008813,
+          "maxClockErrorMs": 1.6709999999982017,
+          "fpsAfterFirstPointSixSeconds": 59.99809151199962,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_3",
+          "callbacks": 540,
+          "seconds": 8.983600000000003,
+          "callbackFps": 59.99821897680216,
+          "presentedFps": 59.99821897680216,
+          "p95GapMs": 16.799999999999272,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 1.118999999999204,
+          "maxClockErrorMs": 1.2230000000004182,
+          "fpsAfterFirstPointSixSeconds": 59.998807180771756,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_4",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.799999999999272,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 6.152999999997633,
+          "maxClockErrorMs": 6.262999999998797,
+          "fpsAfterFirstPointSixSeconds": 59.999043839938814,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_5",
+          "callbacks": 539,
+          "seconds": 8.9836,
+          "callbackFps": 59.88690502693799,
+          "presentedFps": 59.88690502693799,
+          "p95GapMs": 16.700000000004366,
+          "maxGapMs": 33.30000000000291,
+          "droppedWhileVisible": 1,
+          "p95ClockErrorMs": 6.456000000000017,
+          "maxClockErrorMs": 6.504999999998873,
+          "fpsAfterFirstPointSixSeconds": 59.99832673989176,
+          "dropSampleTimes": [
+            31.856466
+          ]
+        },
+        {
+          "clip": "shot_6",
+          "callbacks": 540,
+          "seconds": 8.9835,
+          "callbackFps": 59.99888684811042,
+          "presentedFps": 59.99888684811042,
+          "p95GapMs": 16.80000000000291,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 1.8879999999992236,
+          "maxClockErrorMs": 1.9389999999983587,
+          "fpsAfterFirstPointSixSeconds": 59.999043839938786,
+          "dropSampleTimes": []
+        },
+        {
+          "clip": "shot_7",
+          "callbacks": 532,
+          "seconds": 8.983400000000001,
+          "callbackFps": 59.10902330966003,
+          "presentedFps": 59.10902330966003,
+          "p95GapMs": 16.799999999995634,
+          "maxGapMs": 33.400000000001455,
+          "droppedWhileVisible": 8,
+          "p95ClockErrorMs": 6.252000000003477,
+          "maxClockErrorMs": 6.353999999994642,
+          "fpsAfterFirstPointSixSeconds": 59.999522866617355,
+          "dropSampleTimes": [
+            47.605865,
+            47.856975,
+            48.106366
+          ]
+        },
+        {
+          "clip": "shot_8",
+          "callbacks": 510,
+          "seconds": 8.483500000000006,
+          "callbackFps": 59.99882124123293,
+          "presentedFps": 59.99882124123293,
+          "p95GapMs": 16.70000000001164,
+          "maxGapMs": 16.80000000000291,
+          "droppedWhileVisible": 0,
+          "p95ClockErrorMs": 0.7930000000002657,
+          "maxClockErrorMs": 1.3530000000034903,
+          "fpsAfterFirstPointSixSeconds": 59.99873152787462,
+          "dropSampleTimes": []
+        }
+      ],
+      "totalVisibleSourceDrops": 9
+    }
+  ],
+  "gpuSampling": {
+    "artifact": ".cache/playback/2026-10-17T17-36-28-382Z/gpu-samples.csv",
+    "samples": 30,
+    "interval": "Approximately 1.07 seconds during the middle of run 1",
+    "scope": "Whole-GPU nvidia-smi utilization, not process-isolated; coarse samples can miss short spikes",
+    "metrics": {
+      "gpuPercent": {
+        "min": 1,
+        "median": 5,
+        "max": 9,
+        "mean": 4
+      },
+      "memoryPercent": {
+        "min": 0,
+        "median": 8,
+        "max": 18,
+        "mean": 6.7
+      },
+      "decoderPercent": {
+        "min": 4,
+        "median": 9,
+        "max": 33,
+        "mean": 10.733333333333333
+      },
+      "encoderPercent": {
+        "min": 0,
+        "median": 0,
+        "max": 0,
+        "mean": 0
+      },
+      "powerWatts": {
+        "min": 15.91,
+        "median": 18.48,
+        "max": 34.56,
+        "mean": 21.173333333333336
+      }
+    }
+  },
+  "conclusion": "Resolution and GPU capacity headroom is present. All shots sustain about 60 fps after their first 0.6 seconds, but startup drops persist: 8 and 9 visible source-frame drops in the two runs. Whole-shot averages span 59.109 to 60.000 fps. No large clock resyncs. This does not measure maximum fps, physical scanout, or capacity for more effects/layers."
+}

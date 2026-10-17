@@ -1,5 +1,5 @@
-// Opt-in, visible playback measurement. Uses a disposable 1080p60 project copy.
-// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds]
+// Opt-in, visible playback measurement. Uses a disposable 60 fps project copy.
+// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds] [1080|1440|2160]
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
@@ -8,11 +8,13 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (!process.versions.electron) {
   const source = path.resolve(process.argv[2] || path.join(root, 'examples/vellum-first-edit'));
+  const height = Number(process.argv[4] || 1080), width = height * 16 / 9;
+  if (![1080, 1440, 2160].includes(height)) throw new Error('Measurement height must be 1080, 1440 or 2160');
   const output = path.join(root, '.cache/playback', new Date().toISOString().replace(/[:.]/g, '-'));
   const projectDir = path.join(output, 'project'); fs.mkdirSync(projectDir, { recursive: true });
   const project = JSON.parse(fs.readFileSync(path.join(source, 'project.json'), 'utf8'));
-  project.id = require('node:crypto').randomUUID(); project.name = '1080p60 playback measurement';
-  project.fps = { num: 60, den: 1 }; project.resolution = { width: 1920, height: 1080 };
+  project.id = require('node:crypto').randomUUID(); project.name = height + 'p60 playback measurement';
+  project.fps = { num: 60, den: 1 }; project.resolution = { width, height };
   for (const media of project.media) media.path = path.resolve(source, media.path);
   fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify(project, null, 2));
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
@@ -26,6 +28,7 @@ if (!process.versions.electron) {
 } else {
   const { app, BrowserWindow, screen } = require('electron');
   const output = path.resolve(process.argv[3]), seconds = Number(process.argv[4]);
+  const { width, height } = JSON.parse(fs.readFileSync(path.join(output, 'project/project.json'))).resolution;
   if (!(seconds > 0 && seconds <= 600)) throw new Error('Measurement length must be between 0 and 600 seconds');
   app.commandLine.appendSwitch('force-device-scale-factor', '1');
   process.argv = [process.argv[0], path.join(root, 'src/gui/main.cjs'), path.join(output, 'project')];
@@ -44,9 +47,12 @@ if (!process.versions.electron) {
       if (ready) break; await sleep(500);
     }
     if (!ready) throw new Error('Native preview did not become ready');
-    win.setContentSize(2160, 1300); win.setPosition(0, 0);
+    const display = screen.getAllDisplays().find(d => d.workArea.width >= width && d.workArea.height >= height + 40);
+    if (!display) throw new Error('No display can fit the requested viewport at device-pixel ratio 1');
+    win.setContentSize(Math.min(width + 240, display.workArea.width), Math.min(height + 220, display.workArea.height - 40));
+    win.setPosition(display.workArea.x, display.workArea.y);
     await win.webContents.executeJavaScript(`
-      Object.assign(document.getElementById('stage').style, { position:'fixed', left:'0', top:'0', width:'1920px', height:'1080px', margin:'0', zIndex:'999' });
+      Object.assign(document.getElementById('stage').style, { position:'fixed', left:'0', top:'0', width:'${width}px', height:'${height}px', margin:'0', zIndex:'999' });
       playback.native.fit();
       window.playbackSamples = []; window.qualitySamples = [];
       const observeVideo = entry => {
