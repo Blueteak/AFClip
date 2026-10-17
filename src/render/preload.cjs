@@ -26,7 +26,16 @@ async function draw(items) {
       if (total > config.decodedBudgetBytes) throw new Error(`Active decoded frames exceed ${config.decodedBudgetBytes} byte budget`);
       decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log')); decoders.set(item.clipId, decoder); stats.restarts++;
     }
-    const previous = decoder.index, buffer = await decoder.read(index); stats.decodedSourceFrames += index - previous;
+    const previous = decoder.index;
+    let buffer;
+    try { buffer = await decoder.read(index); }
+    catch (error) {
+      if (!media.hwaccel) throw error;
+      decoder.close(); media.hwaccel = false;
+      decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log'));
+      decoders.set(item.clipId, decoder); buffer = await decoder.read(index);
+    }
+    stats.decodedSourceFrames += index - previous;
     if (canvas.width !== media.width || canvas.height !== media.height) { canvas.width = media.width; canvas.height = media.height; }
     canvas.getContext('2d', { colorSpace: 'srgb' }).putImageData(new ImageData(new Uint8ClampedArray(buffer.buffer, buffer.byteOffset, buffer.byteLength), media.width, media.height, { colorSpace: 'srgb' }), 0, 0);
   }
@@ -35,7 +44,7 @@ async function draw(items) {
   return { ...stats };
 }
 contextBridge.exposeInMainWorld('reeletFrames', {
-  getSetup: () => ({ width: config.width, height: config.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: config.media[c.mediaId].kind })) }),
+  getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: config.media[c.mediaId].kind })) }),
   draw,
   close: () => { for (const d of decoders.values()) d.close(); decoders.clear(); return { ...stats }; }
 });

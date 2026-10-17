@@ -27,7 +27,7 @@ const fromF = n => frac(n * rate().den, rate().num);
 const endOf = c => fadd(c.start, c.duration);
 const startF = c => toF(c.start);
 const endF = c => toF(endOf(c));
-const timelineEndF = () => Math.max(0, ...clips().map(endF));
+const timelineEndF = () => Math.max(0, ...clips().map(c => Math.ceil(secs(endOf(c)) * fps() - 1e-8)));
 const lastFrame = () => Math.max(0, timelineEndF() - 1);
 const tc = f => {
   const n = nominal(), a = Math.abs(Math.round(f)), s = Math.floor(a / n);
@@ -99,6 +99,29 @@ let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, co
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', finishedExport = null, monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
 const HEAD_W = 176;
+const playback = new window.TimelinePlayback(api, {
+  time: time => {
+    playF = Math.min(lastFrame(), Math.floor(time * fps() + 1e-7));
+    drawPlayhead();
+    const scroll = $('tl-scroll'), x = frameX(playF);
+    if (x < scroll.scrollLeft || x > scroll.scrollLeft + scroll.clientWidth - HEAD_W - 24) scroll.scrollLeft = Math.max(0, x - 40);
+  },
+  frame: event => {
+    if (monitorView !== 'frame') return;
+    const firstPreview = !shown;
+    $('preview').src = event.image;
+    shown = { f: Math.round(event.time * fps()), revision: event.revision, live: true };
+    drawMonitor(); if (firstPreview) api.ready();
+  },
+  state: () => { drawMonitor(); syncPlayButton(); },
+  error: error => report(error, 'Preview stopped'),
+});
+function syncPlayButton() {
+  const running = monitorView === 'export' ? !$('export-video').paused : playback.wantsPlay;
+  const button = document.querySelector('#transport-buttons [data-action="play"]');
+  if (button) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', running ? 'Pause' : 'Play'); }
+}
+
 
 // ---------------------------------------------------------------- DOM helpers
 function h(tag, props = {}, ...children) {
@@ -254,7 +277,7 @@ action('nudgeLeft5', { label: 'Nudge left 5 frames', keys: ['Alt+Shift+Left'], e
 action('nudgeRight5', { label: 'Nudge right 5 frames', keys: ['Alt+Shift+Right'], enabled: () => editable() && selection.size > 0, run: () => nudge(5) });
 
 action('renderFrame', { menu: 'Timeline', group: 1, label: 'Render frame', icon: 'render', keys: ['Enter'], desc: 'Render the exact frame at the playhead from original media.', enabled: () => clips().length > 0 && !exportJobId, run: () => renderFrame(true) });
-action('play', { label: 'Play / pause export', icon: 'play', keys: ['Space'], run: togglePlay });
+action('play', { menu: 'Timeline', group: 1, label: 'Play / pause', icon: 'play', keys: ['Space'], desc: 'Play the timeline with synchronized audio. Pause to inspect the current frame.', enabled: () => clips().length > 0 && connected, run: togglePlay });
 action('markIn', { menu: 'Timeline', group: 2, label: 'Mark In', icon: 'in', keys: ['I'], desc: 'Start the export range at the playhead.', enabled: () => !!project(), run: () => setMarks(playF, outF != null && outF < playF ? null : outF) });
 action('markOut', { menu: 'Timeline', group: 2, label: 'Mark Out', icon: 'out', keys: ['O'], desc: 'End the export range on the playhead frame.', enabled: () => !!project(), run: () => setMarks(inF != null && inF > playF ? null : inF, Math.min(playF, lastFrame())) });
 action('goIn', { menu: 'Timeline', group: 2, label: 'Go to In', keys: ['Shift+I'], enabled: () => inF != null, run: () => seek(inF, true) });
@@ -278,8 +301,8 @@ action('zoomOut', { menu: 'View', group: 1, label: 'Zoom out', icon: 'zoom-out',
 action('zoomFit', { menu: 'View', group: 1, label: 'Zoom to fit', icon: 'fit', keys: ['\\'], desc: 'Show the whole sequence.', run: () => { fitZoom = true; drawTimeline(); } });
 action('taller', { menu: 'View', group: 2, label: 'Taller tracks', keys: ['Ctrl+='], run: () => trackHeight(10) });
 action('shorter', { menu: 'View', group: 2, label: 'Shorter tracks', keys: ['Ctrl+-'], run: () => trackHeight(-10) });
-action('autoRender', { menu: 'View', group: 3, label: 'Render frame automatically', desc: 'Update the program monitor after seeks and edits. Renders briefly pause edits.', checked: () => prefs.autoRender, run: () => { prefs.autoRender = !prefs.autoRender; savePrefs(); syncChrome(); if (prefs.autoRender) requestFrame(0); } });
-action('softwareRender', { menu: 'View', group: 3, label: 'Use software rendering', icon: 'chip', desc: 'CPU composition and x264. Use it when the GPU path is unavailable.', checked: () => prefs.renderMode === 'software', run: () => setRenderMode(prefs.renderMode === 'gpu' ? 'software' : 'gpu') });
+action('autoRender', { menu: 'View', group: 3, label: 'Update preview after edits', desc: 'Refresh the program monitor when GUI or CLI edits change the project.', checked: () => prefs.autoRender, run: () => { prefs.autoRender = !prefs.autoRender; savePrefs(); syncChrome(); if (prefs.autoRender) requestFrame(0); } });
+action('softwareRender', { menu: 'View', group: 3, label: 'Use software rendering', icon: 'chip', desc: 'Software preview decoding and CPU exports. Use it when the GPU path is unavailable.', checked: () => prefs.renderMode === 'software', run: () => setRenderMode(prefs.renderMode === 'gpu' ? 'software' : 'gpu') });
 action('resetLayout', { menu: 'View', group: 4, label: 'Reset panel layout', run: () => { Object.assign(prefs, { leftW: 250, rightW: 290, tlH: 330, trackH: 50 }); savePrefs(); applyLayout(); fitZoom = true; drawTimeline(); } });
 action('palette', { menu: 'Help', group: 1, label: 'Search commands…', icon: 'command', keys: ['Ctrl+Shift+P'], desc: 'Find any action by name and see its shortcut.', run: () => openPalette() });
 action('shortcuts', { menu: 'Help', group: 1, label: 'Keyboard shortcuts', icon: 'keyboard', keys: ['?', 'Ctrl+/'], run: () => openShortcuts() });
@@ -414,7 +437,7 @@ function openPalette() {
 
 function openShortcuts() {
   const groups = MENUS.map(name => ({ name, rows: Object.values(actions).filter(a => a.menu === name && a.keys.length).map(a => [a.label.replace(/…$/, ''), a.keys]) }));
-  groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']], ['Play / pause export', ['Space']]);
+  groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
     ['Add to selection', ['Ctrl', '#Click']], ['Box select', ['#Drag empty track']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
@@ -443,6 +466,7 @@ function setConnected(on, message) {
 async function refresh() { snapshot = await api.inspect(); setConnected(true); draw(); return snapshot; }
 // A preview render holds the editing lock. Our own preview is about to go stale, so cancel it rather than make the edit wait.
 async function whenEditable() {
+  playback.pause(false);
   if (exportJobId) throw new Error('Edits are locked while exporting. Cancel the export to keep editing.');
   for (let i = 0; frameJobId === 'pending' && i < 100; i++) await sleep(30);
   frameQueued = false;
@@ -506,7 +530,7 @@ function setTool(next) { tool = next; syncChrome(); drawTimeline(); idleHint(); 
 function seek(f, render = false) {
   playF = Math.max(0, Math.min(Math.round(f), Math.max(timelineEndF(), 0)));
   rememberMarks(); drawPlayhead(); drawMonitor();
-  if (render && prefs.autoRender) requestFrame(220);
+  if (clips().length) { setMonitorView('frame'); playback.seek(secs(fromF(Math.min(playF, lastFrame())))); }
 }
 function seekEdit(direction) {
   const points = [...new Set(clips().flatMap(c => [startF(c), endF(c)]))].sort((a, b) => a - b);
@@ -515,7 +539,7 @@ function seekEdit(direction) {
 }
 function setMarks(i, o) { inF = i; outF = o; rememberMarks(); drawPlayhead(); syncChrome(); say(i == null && o == null ? 'In and Out cleared' : `Range ${i == null ? 'start' : tc(i)} → ${o == null ? 'end' : tc(o)}`); }
 function rememberMarks() { const id = project()?.id; if (!id) return; prefs.marks[id] = { in: inF, out: outF, play: playF }; clearTimeout(rememberMarks.t); rememberMarks.t = setTimeout(savePrefs, 400); }
-function setRenderMode(mode) { prefs.renderMode = mode; savePrefs(); syncChrome(); say(mode === 'gpu' ? 'GPU rendering (D3D11 + NVENC)' : 'Software rendering (CPU + x264)'); }
+function setRenderMode(mode) { prefs.renderMode = mode; savePrefs(); if (project()) playback.setProject(project(), mode); requestFrame(0); syncChrome(); say(mode === 'gpu' ? 'GPU rendering (D3D11 + NVENC)' : 'Software rendering (CPU + x264)'); }
 function zoom(factor, anchorX) {
   const scroll = $('tl-scroll'), anchor = anchorX ?? (frameX(playF) - scroll.scrollLeft);
   const atSec = (scroll.scrollLeft + anchor) / pps;
@@ -726,8 +750,9 @@ function jobFraction(job) {
   const p = typeof job.progress === 'number' ? job.progress : d.fraction ?? d.progress ?? (d.frame && d.totalFrames ? d.frame / d.totalFrames : 0);
   return Math.max(0, Math.min(1, Number(p) || 0));
 }
-function requestFrame(delay = 200) { clearTimeout(frameTimer); frameTimer = setTimeout(() => renderFrame(false), delay); }
+function requestFrame(delay = 100) { clearTimeout(frameTimer); frameTimer = setTimeout(() => { if (clips().length && !playback.wantsPlay && monitorView === 'frame') playback.seek(secs(fromF(Math.min(playF, lastFrame()))), false); }, delay); }
 async function renderFrame(force) {
+  playback.pause(false); setMonitorView('frame');
   clearTimeout(frameTimer);
   if (!project() || !clips().length || exportJobId) return;
   if (editsInFlight) { requestFrame(300); return; }
@@ -759,7 +784,7 @@ async function onJob(job, { silent = false } = {}) {
     if (seenJobs.has(job.id)) return; seenJobs.add(job.id);
     if (frameJobId === job.id) frameJobId = null;
     const info = frameFor.get(job.id) || { f: toF(job.frameTime || job.config?.frameTime || job.result?.frameTime), revision: job.projectRevision };
-    if (done && jobOutput(job)) await showFrame(jobOutput(job), info);
+    if (done && jobOutput(job) && !playback.wantsPlay && info.f === Math.min(playF, lastFrame()) && info.revision === project().revision) await showFrame(jobOutput(job), info);
     else if (failed && !silent && job.status === 'failed') report(job.error?.message || job.error || 'Frame render failed', 'Frame not rendered');
     drawMonitor(); syncChrome();
     if (frameQueued) { frameQueued = false; requestFrame(0); }
@@ -826,20 +851,25 @@ async function playExport() {
 }
 function togglePlay() {
   if (monitorView === 'export' && finishedExport) { const v = $('export-video'); v.paused ? v.play() : v.pause(); return; }
-  flashHint([{ text: 'Live playback is not available yet.' }, { keys: 'Enter', text: 'renders the exact frame' }, ...(finishedExport ? [{ text: 'Open the Export tab to play the last export' }] : [])], 5000);
+  clearTimeout(frameTimer);
+  if (playback.wantsPlay) { playback.pause(); rememberMarks(); }
+  else playback.play(secs(fromF(playF)));
 }
 function setMonitorView(view) {
+  if (view !== 'frame') playback.pause(false);
   monitorView = view;
   for (const t of document.querySelectorAll('.monitor .tab')) t.classList.toggle('active', t.dataset.view === view);
   const video = $('export-video');
   if (view !== 'export') video.pause();
-  video.hidden = view !== 'export'; video.controls = view === 'export';
+  video.hidden = view !== 'export'; video.controls = view === 'export'; syncPlayButton();
   drawMonitor();
 }
 
 // ---------------------------------------------------------------- Drawing
 function draw() {
   const p = project(); if (!p) return;
+  playback.setProject(p, prefs.renderMode);
+  if (!p.clips.length) { shown = null; $('preview').removeAttribute('src'); }
   if (firstLoad) {
     const saved = prefs.marks[p.id];
     if (saved) { inF = saved.in ?? null; outF = saved.out ?? null; playF = saved.play ?? 0; } else if (p.clips.length) playF = Math.min(2 * nominal(), lastFrame());
@@ -870,7 +900,7 @@ function syncChrome() {
     h('button', { class: 'icon-button', onclick: cancelExport, tip: { title: 'Cancel export', desc: 'Stops rendering and deletes the incomplete file. A previous export at the same path is kept.' } }, icon('x')));
   const mode = $('mode-chip');
   mode.replaceChildren(icon('chip'), prefs.renderMode === 'gpu' ? 'GPU' : 'CPU');
-  mode.tip = { title: prefs.renderMode === 'gpu' ? 'GPU rendering' : 'Software rendering', desc: prefs.renderMode === 'gpu' ? 'Frames and exports use D3D11 + NVENC. Click to switch to software.' : 'Frames and exports use CPU composition + x264. Click to switch to GPU.' };
+  mode.tip = { title: prefs.renderMode === 'gpu' ? 'GPU rendering' : 'Software rendering', desc: prefs.renderMode === 'gpu' ? 'Preview uses D3D11 video decoding with software fallback. Exports use NVENC. Click to switch to software.' : 'Preview uses software decoding. Exports use CPU composition and x264. Click to switch to GPU.' };
   const save = $('save-status');
   save.replaceChildren(...(exportJobId ? [icon('lock'), 'Locked for export'] : connected ? [icon('check'), 'Saved'] : ['Offline']));
   save.tip = { title: exportJobId ? 'Edits locked' : 'All edits saved', desc: exportJobId ? 'GUI and CLI edits wait until the export finishes or is cancelled.' : 'Every committed edit is written to project.json immediately. Undo history is shared with the CLI.' };
@@ -943,22 +973,23 @@ function confirmRestore(p) {
 
 function drawMonitor() {
   const p = project(); if (!p) return;
-  const busy = !!frameJobId, cur = Math.min(playF, lastFrame());
-  const stale = !!shown && (shown.f !== cur || shown.revision !== p.revision);
+  const busy = !!frameJobId || playback.busy, cur = Math.min(playF, lastFrame());
+  const stale = !!shown && !playback.wantsPlay && (shown.f !== cur || shown.revision !== p.revision);
   const state = $('frame-state');
   state.className = `frame-state ${busy ? 'busy' : stale ? 'stale' : ''}`;
   state.replaceChildren();
   if (monitorView === 'export') state.append(icon('export'), basename(finishedExport));
-  else if (busy) state.append(icon('render'), `Rendering ${tc(cur)}`);
+  else if (busy) state.append(icon('render'), playback.busy ? (playback.ready ? 'Seeking' : 'Preparing preview') : `Rendering ${tc(cur)}`);
+  else if (playback.wantsPlay) state.append(icon('play'), 'Playing');
   else if (stale) state.append(icon('alert'), shown.f !== cur ? 'Not at playhead' : 'Edited since render', kbd('Enter'));
   else if (shown) state.append(h('span', {}, `Frame ${tc(shown.f)}`));
-  state.tip = monitorView === 'export' ? null : busy ? { title: 'Rendering exact frame', desc: 'Uses original media. Edits briefly wait until it finishes.' } : stale ? { action: 'renderFrame', desc: 'The image shows an earlier frame or project state. Render to update it.' } : null;
+  state.tip = monitorView === 'export' ? null : busy ? { title: 'Rendering exact frame', desc: frameJobId ? 'Full-resolution frame from original media.' : 'Preview uses the same composition and timing as export.' } : stale ? { action: 'renderFrame', desc: 'The image shows an earlier frame or project state. Render to update it.' } : null;
   $('stage').classList.toggle('stale', stale && monitorView === 'frame');
   $('stage-busy').hidden = !busy;
   $('preview').hidden = monitorView !== 'frame' || !shown;
   const empty = $('stage-empty');
   empty.hidden = monitorView !== 'frame' || !!shown;
-  if (!empty.hidden) empty.replaceChildren(icon(clips().length ? 'render' : 'layers'), h('div', {}, clips().length ? h('span', {}, 'Press ', kbd('Enter'), ' to render the frame at the playhead') : 'Drag media onto the timeline to start your edit'));
+  if (!empty.hidden) empty.replaceChildren(icon(clips().length ? 'render' : 'layers'), h('div', {}, clips().length ? h('span', {}, 'Press ', kbd('Space'), ' to play the timeline') : 'Drag media onto the timeline to start your edit'));
   $('duration').textContent = tc(timelineEndF());
   $('duration').tip = { title: 'Sequence duration', meta: `${p.resolution.width}×${p.resolution.height} · ${fpsLabel()} fps` };
   drawPlayhead();
@@ -1276,13 +1307,14 @@ function readout(text, bad, at = pointer) {
 function endDrag() {
   drag = null;
   $('drag-readout').hidden = true; $('snapline').hidden = true; $('marquee').hidden = true;
-  document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragUp);
+  document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragUp); document.removeEventListener('pointercancel', onDragCancel);
   idleHint();
   if (deferredDraw) drawTimeline();
 }
 function startDrag(state) {
+  if (state.type === 'move' || state.type === 'trim') playback.pause();
   drag = state; hideTip();
-  document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragUp);
+  document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragUp); document.addEventListener('pointercancel', onDragCancel);
 }
 $('tracks').addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
@@ -1373,6 +1405,12 @@ function marqueeDrag(e) {
   for (const el of document.querySelectorAll('.clip')) el.classList.toggle('selected', hit.has(el.dataset.id));
   d.hit = hit;
 }
+function onDragCancel() {
+  const d = drag; if (!d) return;
+  if (d.type === 'move') d.els.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); });
+  endDrag(); drawTimeline();
+  if (d.type === 'scrub') playback.seek(secs(fromF(Math.min(playF, lastFrame()))), false);
+}
 function onDragUp(e) {
   const d = drag; if (!d) return;
   if (d.type === 'move') {
@@ -1398,14 +1436,16 @@ function onDragUp(e) {
     endDrag();
     if (d.moved) select([...(d.hit || [])]);
     else { if (!d.additive) select([]); seek(laneFrame(d.x0), true); }
-  } else if (d.type === 'scrub') { endDrag(); requestFrame(0); }
+  } else if (d.type === 'scrub') { endDrag(); playback.seek(secs(fromF(Math.min(playF, lastFrame()))), d.resume); }
 }
 function scrubber(el, frameAt) {
   el.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
-    startDrag({ type: 'scrub', frameAt });
+    el.setPointerCapture(e.pointerId);
+    const resume = playback.wantsPlay; playback.pause(false);
+    startDrag({ type: 'scrub', frameAt, resume });
     seek(frameAt(e.clientX));
-    hintItems([{ text: 'Release to render the frame' }]);
+    hintItems([{ text: 'Scrub to preview. Release to settle on the exact frame.' }]);
   });
 }
 scrubber($('ruler'), x => laneFrame(x));
@@ -1457,7 +1497,7 @@ function buildChrome() {
   $('tool-group').append(actionButton('selectTool'), actionButton('razorTool'), actionButton('snap'));
   $('edit-group').append(actionButton('split'), actionButton('dissolve'), actionButton('addTrack'));
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
-  $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('renderFrame', 'render', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
+  $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('play', 'play', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), actionButton('renderFrame'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
   for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
   $('command-center-keys').replaceWith(kbd('Ctrl+Shift+P'));
   $('command-center').onclick = () => run('palette', 'key');
@@ -1467,7 +1507,7 @@ function buildChrome() {
   document.querySelector('.bin [data-tab="media"]').tip = { title: 'Media bin', desc: 'Imported footage, audio, images and graphics. Originals stay where they are.' };
   document.querySelector('.bin [data-tab="history"]').tip = { title: 'History', desc: 'Shared undo/redo and restorable checkpoints.' };
   for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'export' ? playExport() : setMonitorView('frame');
-  document.querySelector('.monitor [data-view="frame"]').tip = { title: 'Program monitor', desc: 'Exact composited frames rendered from original media.', keys: 'Enter' };
+  document.querySelector('.monitor [data-view="frame"]').tip = { title: 'Program monitor', desc: 'Live timeline preview with audio. Enter renders a full-resolution frame.', keys: 'Enter' };
   $('export-tab').tip = { title: 'Last export', desc: 'Play the most recent finished MP4.', keys: 'Space' };
   $('search').oninput = drawMedia;
   $('search').tip = { title: 'Search media', desc: 'Filter the bin by file name.' };
@@ -1494,6 +1534,7 @@ function buildChrome() {
       s.onpointerup = () => { s.onpointermove = s.onpointerup = null; s.classList.remove('active'); savePrefs(); drawTimeline(); };
     };
   }
+  for (const name of ['play', 'pause', 'ended']) $('export-video').addEventListener(name, syncPlayButton);
   new ResizeObserver(() => { if (fitZoom && project()) drawTimeline(); }).observe($('tl-scroll'));
   let pinFrame = 0;
   $('tl-scroll').addEventListener('scroll', () => { cancelAnimationFrame(pinFrame); pinFrame = requestAnimationFrame(pinLabels); }, { passive: true });
@@ -1534,6 +1575,7 @@ document.addEventListener('keydown', e => {
   if (drag) return;
   const id = keymap.get(combo);
   if (!id) return;
+  if (id === 'play' && e.repeat) { e.preventDefault(); return; }
   e.preventDefault();
   run(id, 'key');
 });
@@ -1541,7 +1583,7 @@ document.addEventListener('keydown', e => {
 // ---------------------------------------------------------------- Events and startup
 api.onEvent(async event => {
   try {
-    if (event.type === 'disconnected') { setConnected(false, event.value?.message); syncChrome(); say('Project connection closed. Reopen the project to reconnect.', 'error'); return; }
+    if (event.type === 'disconnected') { playback.pause(false); setConnected(false, event.value?.message); syncChrome(); say('Project connection closed. Reopen the project to reconnect.', 'error'); return; }
     if (event.type === 'job') { await onJob(event.value.job || event.value); return; }
     if (event.type === 'change' || event.type === 'hello') {
       const next = event.value.inspect || event.value;

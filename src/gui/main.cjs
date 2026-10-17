@@ -1,9 +1,8 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, net, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell } = require('electron');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { pathToFileURL } = require('node:url');
 const { randomUUID } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
@@ -12,6 +11,8 @@ const args = process.argv.slice(2);
 const projectDir = path.resolve(args[0] || '.');
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
 let window, endpoint, streamController, captureTimer, captured = false;
+let previewSession, previewGeneration = 0;
+const previewFiles = new Map();
 const files = new Map();
 const outputs = new Set();
 
@@ -75,7 +76,7 @@ async function capture() {
   await fs.mkdir(path.dirname(destination), { recursive: true });
   await fs.writeFile(destination, (await window.webContents.capturePage()).toPNG());
   console.log(JSON.stringify({ capture: destination }));
-  if (args.includes('--quit-after-capture')) { streamController?.abort(); app.exit(0); }
+  if (args.includes('--quit-after-capture')) { previewSession?.close(); streamController?.abort(); app.exit(0); }
 }
 
 app.whenReady().then(async () => {
@@ -86,11 +87,27 @@ app.whenReady().then(async () => {
   const parsed = new URL(endpoint.url);
   if (parsed.hostname !== '127.0.0.1' || parsed.protocol !== 'http:') throw new Error('The project endpoint must be local');
 
-  protocol.handle('reelet-media', req => {
+  protocol.handle('reelet-media', async req => {
     const id = new URL(req.url).hostname;
-    const file = files.get(id);
+    const file = files.get(id) || previewFiles.get(id);
     if (!file) return new Response('Not found', { status: 404 });
-    return net.fetch(pathToFileURL(file).href, { headers: req.headers });
+    // Chromium needs real byte-range responses to seek a mixed WAV or export.
+    let stat;
+    try { stat = await fs.stat(file); } catch { return new Response('Not found', { status: 404 }); }
+    const range = req.headers.get('range');
+    let start = 0, end = stat.size - 1;
+    if (range) {
+      const match = /^bytes=(\d*)-(\d*)$/.exec(range);
+      if (!match || (!match[1] && !match[2])) return new Response(null, { status: 416 });
+      if (!match[1]) start = Math.max(0, stat.size - Number(match[2]));
+      else { start = Number(match[1]); if (match[2]) end = Math.min(end, Number(match[2])); }
+      if (start > end || start >= stat.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } });
+    }
+    const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.png': 'image/png' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1),
+      ...(range ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}) };
+    const stream = req.method === 'HEAD' ? null : require('node:stream').Readable.toWeb(require('node:fs').createReadStream(file, { start, end }));
+    return new Response(stream, { status: range ? 206 : 200, headers });
   });
 
   // The renderer owns every shortcut, so drop Electron's default menu accelerators (reload, devtools, close).
@@ -102,6 +119,18 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('console-message', (_event, details) => { if (details.level === 'error' || details.level === 3) console.error('GUI:', details.message); });
+  previewSession = new (require('./preview-session.cjs'))(projectDir,
+    value => { if (!window.isDestroyed()) window.webContents.send('reelet:preview', value); },
+    (file, id) => { previewFiles.clear(); previewFiles.set(id, file); return `reelet-media://${id}/audio.wav`; });
+  handle('preview-open', async mode => {
+    if (!['gpu', 'software'].includes(mode)) throw new Error('Invalid preview mode');
+    const generation = ++previewGeneration;
+    const state = await request('/inspect');
+    if (generation !== previewGeneration) return { id: null, revision: state.project.revision };
+    return previewSession.open(state.project, mode);
+  });
+  handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewSession.close(); });
+  ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
   handle('command', payload => {
     if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore'].includes(payload.command)) throw new Error('Unsupported editor command');
@@ -148,5 +177,5 @@ app.whenReady().then(async () => {
   if (option('--capture')) captureTimer = setTimeout(() => capture().catch(console.error), 45000);
 }).catch(error => { console.error(error.stack || error.message); if (!args.includes('--quit-after-capture')) dialog.showErrorBox('Reelet could not open the project', error.message); app.exit(1); });
 
-app.on('window-all-closed', () => { streamController?.abort(); app.exit(0); });
-app.on('before-quit', () => { streamController?.abort(); clearTimeout(captureTimer); });
+app.on('window-all-closed', () => { previewSession?.close(); streamController?.abort(); app.exit(0); });
+app.on('before-quit', () => { previewSession?.close(); streamController?.abort(); clearTimeout(captureTimer); });
