@@ -22,12 +22,22 @@ Provisionally use Chromium for HTML/CSS composition, sharing composition code an
 
 Bundle pinned FFmpeg and ffprobe builds for inspection, conversion and export. Users should not need to install them separately. Keep their command syntax inside the worker implementation. The precise decoding, capture and GPU frame-transfer paths remain subject to prototype results.
 
+### Content Library and shared media infrastructure
+
+The standalone [Content Library](content-library-overview.md) lives in this monorepo and owns reusable video/audio asset identity, source versions, annotations, ranges and organization. Its headless service, GUI, CLI, state and history remain separate from Reelet's project engine. Both applications share media processing code as workflows require it.
+
+Use versioned local operations and change subscriptions across the application boundary. Neither application accesses the other's database internals. Reelet may register sources and retain or withdraw durable project-bin references; it cannot author library annotations or folders. Inbox lifetime and promotion are enforced by the library. Registration and project insertion are separate transactions with idempotent, retryable reconciliation, including failed insertion and project undo.
+
+Persist library provenance, source-version identity, usable source locations and selected source timing in Reelet projects. Existing edits remain playable and exportable without the library service if their originals are present. Preserve library source-frame/PTS and audio-sample boundaries independently of the project frame grid. Library range changes update browser metadata without rewriting timeline cuts or swapping source versions.
+
+The current prototype has project-local media identities and caches. Durable library identity, service integration and shared artifact ownership are planned work. Extract existing decoding, indexing, waveform and proxy code as the first library workflows need it rather than replacing the editor architecture upfront.
+
 ## Project representation and persistence
 
 - Store authoritative times as exact integer fractions, independently of project frame rate. Frame numbers serve snapping and display. Changing frame rate must not rewrite clip positions.
 - Use a project folder containing a readable manifest, graphic source files and bounded history. Save committed state atomically so interruption cannot leave a half-written manifest.
 - Reference original media by default. Provide a per-project setting to copy newly imported media into the project folder. Changing that setting affects future imports; Collect project brings existing references into the folder.
-- Store disposable proxies, waveforms, frame-color barcodes and frame indexes in a separate regenerable cache with a configurable size limit. Evict unused entries as needed. Imported originals and graphic assets are not disposable cache data.
+- Store disposable artifacts separately from authoritative data, with configurable cache limits and protection for active readers. The Content Library owns reusable source proxies, waveforms, frame-color barcodes and indexes; Reelet owns timeline-specific compositions and mixed audio. Until library integration is implemented, the prototype's source caches remain project-local. Imported originals and graphic assets are not disposable cache data.
 - Require project edits to go through GUI or CLI while the project is open. Direct manifest editing is supported only while it is closed. Graphic-code hot reload is the explicit exception.
 
 ### Transactions and conflicts

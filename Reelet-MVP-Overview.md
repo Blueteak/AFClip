@@ -10,7 +10,7 @@ This is the agreed MVP scope, consolidated from the design discussion. It descri
 - Agent passes may be substantial. Changes must stay within the requested scope unless explicitly expanded.
 - Agents choose whether to reuse existing tracks or create new ones. Preserve useful organization and give new tracks clear names.
 - Every project action must be available through the CLI. Gesture-driven actions have explicit command equivalents, such as stretching to a duration or creating a transition.
-- GUI and CLI invoke the same underlying operations. CLI inspection returns structured results with stable identifiers for clips, tracks, markers and selects.
+- GUI and CLI invoke the same underlying operations. CLI inspection returns structured results with stable identifiers for clips, tracks and markers, plus Content Library identities for referenced assets and named selects.
 - The CLI can edit, run and render with the GUI closed. When open, the GUI reflects CLI changes live without reloading.
 
 ### Concurrent edits
@@ -41,7 +41,11 @@ Committed GUI and CLI edits save automatically. Recover the last committed state
 
 Normal saves reference existing media. A separate Collect project action copies required media and graphic dependencies into a portable folder.
 
-A searchable project bin contains imported media and reusable named selects. Provide source preview and editable in/out points. Selects reference originals rather than duplicating media, have optional descriptions, and can be created by humans or agents before timeline placement. Agents can inspect source frames and short sections.
+A searchable project bin contains imported media. Video and audio imports register with the standalone [Content Library](content-library-overview.md), which owns reusable tags, notes and named selects. Images and graphics remain project-owned until the library supports them. Provide source preview and temporary editorial In/Out selection in Reelet. Humans and agents author reusable annotations through the library GUI or CLI; Reelet provides read-only library browsing, preview, insertion and an "Edit in library" action.
+
+New unorganized registrations enter the library's temporary Inbox. Removing a project-bin item withdraws that project's reference; the library removes an unpromoted Inbox item only after its last project reference is withdrawn. Closing a project or deleting a timeline instance does not withdraw that reference. Promoted assets are permanent and cannot be removed by Reelet. The library overview defines retry and undo behavior.
+
+Library metadata updates propagate into Reelet, but range edits never move existing timeline cuts or replace their source version. New insertion uses the current selection. Keep sufficient source and timing data in the project to play and export existing edits without the library service when originals are available.
 
 Missing files appear as placeholders. Relinking preserves cuts and settings. Block export of affected sections until the media is relinked; the explicit broken-graphic override below is the exception.
 
