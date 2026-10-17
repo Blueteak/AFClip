@@ -1,7 +1,7 @@
 'use strict';
 // These controls use the same versioned operations as the CLI.
 if(!readonly){
-  const sourceButton=document.createElement('button');sourceButton.id='source-folders';sourceButton.className='nav-item';sourceButton.textContent='▱  Source folders';
+  const sourceButton=document.createElement('button');sourceButton.id='source-folders';sourceButton.textContent='Source Folders';
   $('tags-manager').before(sourceButton);sourceButton.onclick=()=>sourceFolders().catch(e=>say(e.message,true));
 }
 async function sourceFolders(){

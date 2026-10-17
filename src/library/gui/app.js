@@ -2,6 +2,14 @@
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search),readonly=params.get('mode')==='reelet';
 const state={overview:null,items:[],selected:null,folder:'',collection:'',deleted:false,kind:'',offset:0,nextOffset:null,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
 let requestsInFlight=0,reloadReady=false;
+function setBrowserView(mode){
+  $('assets').classList.toggle('asset-list',mode==='list');
+  for(const view of ['grid','list'])$('view-'+view).setAttribute('aria-pressed',view===mode);
+  try{localStorage.setItem('reelet-library-view',mode);}catch{}
+}
+for(const mode of ['grid','list'])click('view-'+mode,()=>setBrowserView(mode));
+try{setBrowserView(localStorage.getItem('reelet-library-view')==='list'?'list':'grid');}catch{}
+
 let native=null,audio=null,playing=false,time=0,markIn=0,markOut=0,preview=null,tick=0,baseTime=0,baseClock=0,eventTimer;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const secs=t=>typeof t==='number'?t:t?t.num/t.den:0;
