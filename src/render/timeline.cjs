@@ -1,5 +1,6 @@
 const seconds = value => typeof value === 'number' ? value : value ? value.num / value.den : 0;
 const clamp = x => Math.max(0, Math.min(1, x));
+const easeInOut = value => { const x = clamp(value); return x * x * (3 - 2 * x); };
 function compile(project) {
   const media = new Map(project.media.map(m => [m.id, m]));
   const tracks = new Map(project.tracks.map((t, index) => [t.id, { ...t, index }]));
@@ -23,8 +24,9 @@ function at(plan, time) {
   return plan.clips.filter(c => time >= c.visibleStart - 1e-8 && time < c.visibleEnd - 1e-8).map(c => {
     let visual = 1, audio = c.mute ? 0 : (c.volume ?? 1);
     const local = time - c.start;
-    const fade = (c.fadeIn ? clamp(local / c.fadeIn) : 1) * (c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1);
-    visual *= fade; audio *= fade;
+    const fadeIn = c.fadeIn ? clamp(local / c.fadeIn) : 1;
+    const fadeOut = c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1;
+    visual *= fadeIn * fadeOut; audio *= easeInOut(fadeIn) * easeInOut(fadeOut);
     for (const tr of c.transitions) if (time >= tr.start && time < tr.end) {
       const p = clamp((time - tr.start) / tr.duration);
       if (tr.side === 'in') { visual *= p; audio *= p; } else audio *= 1 - p;
@@ -33,5 +35,5 @@ function at(plan, time) {
       opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
-if (typeof module !== 'undefined') module.exports = { seconds, compile, at };
-else window.ReeletTimeline = { seconds, compile, at };
+if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut };
+else window.ReeletTimeline = { seconds, compile, at, easeInOut };

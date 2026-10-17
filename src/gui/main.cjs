@@ -136,7 +136,8 @@ app.whenReady().then(async () => {
   previewSession = new (require('./preview-session.cjs'))(projectDir,
     value => { if (!window.isDestroyed()) window.webContents.send('reelet:preview', value); },
     (file, id) => { previewFiles.set(id, file); return `reelet-media://${id}/asset`; },
-    graphics => { previewGraphics.graphics = structuredClone(graphics); });
+    graphics => { previewGraphics.graphics = structuredClone(graphics); },
+    id => previewFiles.delete(id));
   handle('preview-open', async mode => {
     if (!['gpu', 'software'].includes(mode)) throw new Error('Invalid preview mode');
     const generation = ++previewGeneration;
@@ -146,8 +147,21 @@ app.whenReady().then(async () => {
     return previewSession.open(state.project, mode);
   });
   handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewGraphics.graphics = {}; previewSession.close(); });
+  handle('preview-audio', async ({ sessionId, revision }) => {
+    const state = await request('/inspect');
+    if (state.project.revision !== revision) throw new Error('Project changed while preparing audio');
+    return previewSession.audio(sessionId, state.project);
+  });
   ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
+  handle('waveform', async id => {
+    const { project } = await request('/inspect');
+    const clip = project.clips.find(c => c.id === id);
+    const media = clip && project.media.find(m => m.id === clip.mediaId);
+    if (!media || !['audio', 'video'].includes(media.kind) || media.metadata?.hasAudio === false) throw new Error('Clip has no audio');
+    const seconds = t => t.num / t.den;
+    return require('../render/waveform.cjs').waveform(path.resolve(projectDir, media.path), seconds(clip.sourceIn), seconds(clip.duration) * seconds(clip.speed));
+  });
   handle('library', async id => {
     await request('/command', {command:'library-sync'});
     const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });

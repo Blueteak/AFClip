@@ -989,7 +989,7 @@ function drawMonitor() {
   state.className = `frame-state ${busy ? 'busy' : stale ? 'stale' : ''}`;
   state.replaceChildren();
   if (monitorView === 'export') state.append(icon('export'), basename(finishedExport));
-  else if (busy) state.append(icon('render'), playback.busy ? (playback.ready ? 'Seeking' : 'Preparing preview') : `Rendering ${tc(cur)}`);
+  else if (busy) state.append(icon('render'), playback.busy ? (playback.ready ? 'Seeking' : playback.audioDirty ? 'Updating audio' : 'Preparing preview') : `Rendering ${tc(cur)}`);
   else if (playback.wantsPlay) state.append(icon('play'), 'Playing');
   else if (stale) state.append(icon('alert'), shown.f !== cur ? 'Not at playhead' : 'Edited since render', kbd('Enter'));
   else if (shown) state.append(h('span', {}, `Frame ${tc(shown.f)}`));
@@ -1257,15 +1257,97 @@ function clipBlock(c, t) {
   if (c.mute) badges.push(h('span', { class: 'clip-badge' }, icon('mute')));
   const el = h('div', { class: `clip ${m?.kind || 'missing'} ${selection.has(c.id) ? 'selected' : ''} ${t.locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
     width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(m?.kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
-    width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
+    !hasAudio(m) && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
     secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
     secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
     t.locked ? null : h('i', { class: 'handle l' }), t.locked ? null : h('i', { class: 'handle r' }));
+  if (hasAudio(m)) addAudioControls(el, c, t);
   el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(m?.kind)} · ${mediaName(m)}`,
     meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, hasAudio(m) ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null].filter(Boolean).join('   ')].filter(Boolean).join('\n'),
     hint: t.locked ? [{ text: 'Track is locked' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' }] });
   el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
+}
+const waveformRequests = new Map();
+function volumePosition(volume) {
+  const db = volume > 0 ? Math.max(-60, 20 * Math.log10(volume)) : -60;
+  return (24 - db) / 84 * 100;
+}
+function paintAudioControls(el, c) {
+  const area = el.querySelector('.clip-audio');
+  if (!area) return;
+  area.querySelector('.volume-line').style.top = `${volumePosition(c.volume)}%`;
+  area.style.opacity = c.mute ? '.35' : '1';
+  const duration = secs(c.duration);
+  for (const field of ['fadeIn', 'fadeOut']) {
+    const fraction = secs(c[field]) / duration;
+    area.querySelector(`[data-audio="${field}"]`).style.left = `${100 * (field === 'fadeIn' ? fraction : 1 - fraction)}%`;
+    const side = field === 'fadeIn' ? 'in' : 'out';
+    let shade = el.querySelector(`.fade.${side}`);
+    if (!shade) {
+      shade = h('i', { class: `fade ${side}` });
+      el.insertBefore(shade, area);
+    }
+    shade.style.width = `${secs(c[field]) * pps}px`;
+    shade.hidden = fraction === 0;
+  }
+  const canvas = area.querySelector('canvas'), ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!canvas.peaks) return;
+  ctx.strokeStyle = '#c5e6da'; ctx.globalAlpha = .65; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x < canvas.width; x++) {
+    const time = (x + .5) / canvas.width * duration;
+    const fade = (secs(c.fadeIn) ? window.ReeletTimeline.easeInOut(time / secs(c.fadeIn)) : 1) * (secs(c.fadeOut) ? window.ReeletTimeline.easeInOut((duration - time) / secs(c.fadeOut)) : 1);
+    const peak = Math.min(1, canvas.peaks[x] * c.volume * fade) * (canvas.height / 2 - 1);
+    ctx.moveTo(x + .5, canvas.height / 2 - peak); ctx.lineTo(x + .5, canvas.height / 2 + peak);
+  }
+  ctx.stroke();
+}
+function addAudioControls(el, c, t) {
+  const canvas = h('canvas', { width: 2048, height: 64, class: 'clip-waveform' });
+  const area = h('div', { class: 'clip-audio' }, canvas,
+    h('div', { class: 'volume-line', dataset: { audio: 'volume' }, title: 'Drag up/down to adjust volume' }),
+    h('div', { class: 'audio-fade in', dataset: { audio: 'fadeIn' }, title: 'Drag to set fade in (Ease In/Out)' }),
+    h('div', { class: 'audio-fade out', dataset: { audio: 'fadeOut' }, title: 'Drag to set fade out (Ease In/Out)' }));
+  if (t.locked || !editable()) area.classList.add('audio-locked');
+  el.append(area);
+  paintAudioControls(el, c);
+  const m = mediaById(c.mediaId);
+  const key = JSON.stringify([c.mediaId, m?.revision, c.sourceIn, c.duration, c.speed]);
+  if (!waveformRequests.has(key)) {
+    waveformRequests.set(key, api.waveform(c.id).then(peaks => ({ peaks }), error => ({ error: error.message })));
+    while (waveformRequests.size > 64) waveformRequests.delete(waveformRequests.keys().next().value);
+  }
+  area.dataset.status = 'Preparing waveform';
+  waveformRequests.get(key).then(result => {
+    if (result.error) { area.dataset.status = 'Waveform unavailable'; area.title = result.error; return; }
+    delete area.dataset.status;
+    canvas.peaks = result.peaks;
+    paintAudioControls(el, drag?.type === 'audio' && drag.c.id === c.id ? { ...c, ...drag.changes } : c);
+  });
+}
+function beginAudioDrag(e, c, field) {
+  playback.pause();
+  const el = document.querySelector(`.clip[data-id="${c.id}"]`);
+  startDrag({ type: 'audio', c, field, el, x0: e.clientX, y0: e.clientY,
+    height: el.querySelector('.clip-audio').getBoundingClientRect().height, changes: null });
+  hintItems([{ keys: 'Escape', text: 'cancel' }]);
+}
+function audioDrag(e) {
+  const d = drag;
+  if (d.field === 'volume') {
+    const initial = d.c.volume > 0 ? Math.max(-60, 20 * Math.log10(d.c.volume)) : -60;
+    const db = Math.max(-60, Math.min(24, initial + (d.y0 - e.clientY) / d.height * 84));
+    d.changes = { volume: db <= -60 ? 0 : 10 ** (db / 20) };
+    readout(`Volume ${toDb(d.changes.volume)} dB`);
+  } else {
+    const delta = xFrame(e.clientX - d.x0) * (d.field === 'fadeIn' ? 1 : -1);
+    const frames = Math.max(0, Math.min(Math.floor(secs(d.c.duration) * fps() + 1e-8), toF(d.c[d.field]) + delta));
+    d.changes = { [d.field]: fromF(frames) };
+    readout(`${d.field === 'fadeIn' ? 'Fade in' : 'Fade out'} ${shortTc(frames)}`);
+  }
+  paintAudioControls(d.el, { ...d.c, ...d.changes });
 }
 function trackMenu(t) {
   return [
@@ -1335,6 +1417,14 @@ $('tracks').addEventListener('pointerdown', e => {
   if (clipEl) {
     const c = clipById(clipEl.dataset.id); if (!c) return;
     if (tool === 'razor') { const f = laneFrame(e.clientX), d = Math.abs(f - playF) <= 8 / pps * fps() && prefs.snap && !e.altKey ? playF - f : 0; splitAt([c.id], f + d); return; }
+    const audio = e.target.closest('[data-audio]');
+    if (audio) {
+      e.preventDefault();
+      if (trackById(c.trackId)?.locked || !editable()) return;
+      select([c.id]);
+      beginAudioDrag(e, c, audio.dataset.audio);
+      return;
+    }
     if (e.ctrlKey || e.metaKey) { select([c.id], 'toggle'); return; }
     if (e.shiftKey && !handle) select([c.id], 'add');
     else if (!selection.has(c.id) || handle) select([c.id]);
@@ -1363,6 +1453,7 @@ function beginTrim(e, c, edge) {
 }
 function onDragMove(e) {
   if (!drag) return;
+  if (drag.type === 'audio') { audioDrag(e); return; }
   if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
 }
 function moveDrag(e) {
@@ -1424,6 +1515,15 @@ function onDragCancel() {
 }
 function onDragUp(e) {
   const d = drag; if (!d) return;
+  if (d.type === 'audio') {
+    endDrag(); drawTimeline();
+    if (d.changes) edit(() => {
+      const current = clipById(d.c.id);
+      if (!current || current.revision !== d.c.revision) return refuse('The clip changed during the drag. Nothing was applied.');
+      return { ops: [put('clips', { id: current.id, ...d.changes })], message: d.field === 'volume' ? `Volume ${toDb(d.changes.volume)} dB` : 'Adjusted fade' };
+    });
+    return;
+  }
   if (d.type === 'move') {
     for (const el of d.els) { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }
     const moved = d.dF || d.dTrack;

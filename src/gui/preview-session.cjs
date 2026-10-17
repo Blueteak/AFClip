@@ -4,8 +4,8 @@ const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 
 module.exports = class PreviewSession {
-  constructor(projectDir, send, registerFile, registerGraphics) {
-    Object.assign(this, { projectDir, send, registerFile, registerGraphics });
+  constructor(projectDir, send, registerFile, registerGraphics, unregisterFile = () => {}) {
+    Object.assign(this, { projectDir, send, registerFile, registerGraphics, unregisterFile });
   }
   async open(project, mode) {
     this.close();
@@ -25,7 +25,7 @@ module.exports = class PreviewSession {
     child.stdin.on('error', () => {});
     let buffer = '', errorLog = '', terminal = false;
     child.stderr.on('data', b => { errorLog = (errorLog + b).slice(-4000); });
-    const send = value => { if (this.current === session) this.send({ ...value, sessionId: id, revision: project.revision }); };
+    const send = value => { if (this.current === session) this.send({ ...value, sessionId: id, revision: session.revision }); };
     child.stdout.on('data', b => {
       buffer += b.toString();
       let end;
@@ -64,12 +64,52 @@ module.exports = class PreviewSession {
     if (session?.id !== sessionId || !Number.isFinite(time) || !Number.isSafeInteger(epoch)) return;
     session.child?.stdin.write(JSON.stringify({ time, epoch }) + '\n');
   }
+  async audio(sessionId, project) {
+    const session = this.current;
+    if (!session || session.id !== sessionId) throw new Error('Preview replaced');
+    const generation = session.audioGeneration = (session.audioGeneration || 0) + 1;
+    if (session.audioCancel) await fs.writeFile(session.audioCancel, '').catch(() => {});
+    const id = randomUUID(), root = path.join(session.root, id);
+    await fs.mkdir(root, { recursive: true });
+    const output = path.join(root, 'mix.wav'), config = path.join(root, 'config.json'), cancelFile = path.join(root, 'cancel');
+    if (generation !== session.audioGeneration || this.current !== session) throw new Error('Preview replaced');
+    session.audioCancel = cancelFile;
+    await fs.writeFile(config, JSON.stringify({ projectDir: this.projectDir, project, kind: 'preview-audio',
+      output, cancelFile }));
+    if (this.current !== session || generation !== session.audioGeneration) throw new Error('Preview replaced');
+    const work = new Promise((resolve, reject) => {
+      const child = spawn(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      let error = '';
+      child.stdout.resume(); child.stderr.on('data', b => { error = (error + b).slice(-4000); });
+      child.on('error', reject);
+      child.on('close', code => code ? reject(new Error(error || 'Audio preparation failed')) : resolve());
+    });
+    session.audioWork ||= new Set(); session.audioWork.add(work);
+    try { await work; }
+    catch (error) { await fs.rm(root, { recursive: true, force: true, maxRetries: 3 }).catch(() => {}); throw error; }
+    finally { session.audioWork.delete(work); }
+    if (this.current !== session || generation !== session.audioGeneration) {
+      await fs.rm(root, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+      throw new Error('Preview replaced');
+    }
+    session.revision = project.revision;
+    session.child?.stdin.write(JSON.stringify({ type: 'plan', plan: require('../render/timeline.cjs').compile(project) }) + '\n');
+    session.audioFiles ||= [];
+    session.audioFiles.push({ id, root });
+    while (session.audioFiles.length > 2) {
+      const previous = session.audioFiles.shift();
+      this.unregisterFile(previous.id);
+      fs.rm(previous.root, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+    }
+    return { audioUrl: this.registerFile(output, id), revision: project.revision };
+  }
   clean(session) {
-    if (path.dirname(session.root) === path.resolve(this.projectDir, '.reelet', 'gui-preview')) fs.rm(session.root, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
+    if (path.dirname(session.root) === path.resolve(this.projectDir, '.reelet', 'gui-preview')) Promise.allSettled([...(session.audioWork || [])]).then(() => fs.rm(session.root, { recursive: true, force: true, maxRetries: 3 })).catch(() => {});
   }
   close() {
     const session = this.current; this.current = null;
     if (!session) return;
+    if (session.audioCancel) fs.writeFile(session.audioCancel, '').catch(() => {});
     if (session.closed) { this.clean(session); return; }
     session.child?.stdin.end(JSON.stringify({ type: 'close' }) + '\n');
     fs.writeFile(session.cancelFile, '').catch(() => {});
