@@ -94,7 +94,7 @@ function applyLayout() {
 
 // ---------------------------------------------------------------- UI state
 let playF = 0, inF = null, outF = null, tool = 'select', pps = 40, fitZoom = true;
-let selection = new Set(), selTransition = null, binSelection = null, clipboard = null;
+let selection = new Set(), selTransition = null, selPoint = null, binSelection = null, clipboard = null;
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', finishedExport = null, monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
@@ -444,7 +444,7 @@ function openShortcuts() {
   groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
-    ['Add to selection', ['Ctrl', '#Click']], ['Box select', ['#Drag empty track']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
+    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
   ], joined: true });
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
@@ -526,10 +526,10 @@ const selectedClips = () => [...selection].map(clipById).filter(Boolean);
 function select(ids, mode = 'replace') {
   if (mode === 'replace') selection = new Set(ids);
   else for (const id of ids) mode === 'toggle' && selection.has(id) ? selection.delete(id) : selection.add(id);
-  selTransition = null;
+  selTransition = null; selPoint = null;
   drawTimeline(); drawInspector(); syncChrome();
 }
-function selectTransition(id) { selection = new Set(); selTransition = id; drawTimeline(); drawInspector(); syncChrome(); }
+function selectTransition(id) { selection = new Set(); selTransition = id; selPoint = null; drawTimeline(); drawInspector(); syncChrome(); }
 function setTool(next) { tool = next; syncChrome(); drawTimeline(); idleHint(); }
 function seek(f, render = false) {
   playF = Math.max(0, Math.min(Math.round(f), Math.max(timelineEndF(), 0)));
@@ -597,7 +597,18 @@ function splitAt(ids, f, fallback) {
 }
 function splitAtPlayhead() { splitAt([...selection], playF, true); }
 
+// A selected volume point takes Delete before its clip does.
+function deletePoint(point) {
+  selPoint = null;
+  return edit(() => {
+    const c = clipById(point.clipId), points = c?.volumePoints || [];
+    if (!c || !points.some(p => sameTime(p.time, point.time))) return refuse('The volume point no longer exists');
+    if (lockedRefusal([c]) !== false) return null;
+    return { ops: [put('clips', { id: c.id, volumePoints: points.filter(p => !sameTime(p.time, point.time)) })], message: 'Removed volume point' };
+  });
+}
 function deleteSelection() {
+  if (selPoint && selection.size === 1 && selection.has(selPoint.clipId)) return deletePoint(selPoint);
   const tid = selTransition, ids = [...selection];
   selection = new Set(); selTransition = null;
   if (tid) return edit(() => transitionById(tid) ? { ops: [remove('transitions', tid)], message: 'Dissolve removed' } : null);
@@ -1263,46 +1274,67 @@ function clipBlock(c, t) {
     t.locked ? null : h('i', { class: 'handle l' }), t.locked ? null : h('i', { class: 'handle r' }));
   if (hasAudio(m)) addAudioControls(el, c, t);
   el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(m?.kind)} · ${mediaName(m)}`,
-    meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, hasAudio(m) ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null].filter(Boolean).join('   ')].filter(Boolean).join('\n'),
-    hint: t.locked ? [{ text: 'Track is locked' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' }] });
+    meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, hasAudio(m) ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   ')].filter(Boolean).join('\n'),
+    hint: t.locked ? [{ text: 'Track is locked' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
+      ...(hasAudio(m) ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
   el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
 }
 const waveformRequests = new Map();
 function volumePosition(volume) {
   const db = volume > 0 ? Math.max(-60, 20 * Math.log10(volume)) : -60;
-  return (24 - db) / 84 * 100;
+  return Math.max(0, Math.min(100, (24 - db) / 84 * 100));
 }
+const pointLocal = (c, p) => (secs(p.time) - secs(c.sourceIn)) / secs(c.speed);
+const sourceAtFrame = (c, f) => fadd(c.sourceIn, fmul(fsub(fromF(f), c.start), c.speed));
+const sameTime = (a, b) => a.num * b.den === b.num * a.den;
+const levelGain = (c, t) => (c.volume ?? 1) * window.ReeletTimeline.automationGain(c, t);
+// Gain is linear between points, so subdivide each segment to draw its dB curve.
 function envelopePaths(c) {
-  const duration = secs(c.duration), fi = secs(c.fadeIn), fo = secs(c.fadeOut), ease = window.ReeletTimeline.easeInOut;
-  const level = volumePosition(c.volume), gain = t => (fi ? ease(t / fi) : 1) * (fo ? ease((duration - t) / fo) : 1);
+  const duration = secs(c.duration), fi = Math.min(secs(c.fadeIn), duration), fo = Math.min(secs(c.fadeOut), duration), ease = window.ReeletTimeline.easeInOut;
+  const fade = t => (fi ? ease(t / secs(c.fadeIn)) : 1) * (fo ? ease((duration - t) / secs(c.fadeOut)) : 1);
   const times = new Set([0, duration]);
-  for (let i = 0; i <= 32; i++) { times.add(Math.min(fi, duration) * i / 32); times.add(duration - Math.min(fo, duration) * i / 32); }
-  const points = [...times].sort((a, b) => a - b).map(t => [t / duration * 1000, 100 - gain(t) * (100 - level)]);
-  const line = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`).join('');
-  return { line, shade: `${line}L1000 ${level}L0 ${level}Z`, fill: `${line}L1000 100L0 100Z` };
+  for (let i = 0; i <= 32; i++) { times.add(fi * i / 32); times.add(duration - fo * i / 32); }
+  const points = c.volumePoints || [];
+  if (points.length) {
+    const marks = [0, ...points.map(p => pointLocal(c, p)).filter(t => t > 0 && t < duration), duration], steps = Math.max(1, Math.min(12, Math.floor(600 / marks.length)));
+    for (let i = 1; i < marks.length; i++) for (let k = 0; k < steps; k++) times.add(marks[i - 1] + (marks[i] - marks[i - 1]) * k / steps);
+  }
+  const sorted = [...times].sort((a, b) => a - b), x = t => (t / duration * 1000).toFixed(2);
+  const level = sorted.map(t => volumePosition(levelGain(c, t)));
+  const line = sorted.map((t, i) => `${i ? 'L' : 'M'}${x(t)} ${(100 - fade(t) * (100 - level[i])).toFixed(2)}`).join('');
+  const top = sorted.map((t, i) => `L${x(t)} ${level[i].toFixed(2)}`).reverse().join('');
+  return { line, shade: `${line}${top}Z`, fill: `${line}L1000 100L0 100Z` };
 }
 function paintAudioControls(el, c) {
   const area = el.querySelector('.clip-audio');
   if (!area) return;
-  const duration = secs(c.duration), level = volumePosition(c.volume), paths = envelopePaths(c);
-  const fi = Math.min(1, secs(c.fadeIn) / duration), fo = Math.min(1, secs(c.fadeOut) / duration);
+  const duration = secs(c.duration), paths = envelopePaths(c);
+  const fi = Math.min(duration, secs(c.fadeIn)), fo = Math.min(duration, secs(c.fadeOut));
   area.classList.toggle('muted', !!c.mute);
   area.querySelector('.env-shade').setAttribute('d', paths.shade);
   area.querySelector('.env-fill').setAttribute('d', paths.fill);
   area.querySelector('.env-line').setAttribute('d', paths.line);
-  Object.assign(area.querySelector('.volume-line').style, { top: `${level}%`, left: `${100 * fi}%`, right: `${100 * fo}%` });
-  Object.assign(area.querySelector('[data-audio="fadeIn"]').style, { left: `${100 * fi}%`, top: `${level}%` });
-  Object.assign(area.querySelector('[data-audio="fadeOut"]').style, { left: `${100 * (1 - fo)}%`, top: `${level}%` });
+  area.querySelector('.env-hit').setAttribute('d', paths.line);
+  Object.assign(area.querySelector('[data-audio="fadeIn"]').style, { left: `${100 * fi / duration}%`, top: `${volumePosition(levelGain(c, fi))}%` });
+  Object.assign(area.querySelector('[data-audio="fadeOut"]').style, { left: `${100 * (1 - fo / duration)}%`, top: `${volumePosition(levelGain(c, duration - fo))}%` });
+  for (const old of area.querySelectorAll('.audio-point')) old.remove();
+  const live = drag?.field === 'point' && drag.c.id === c.id ? drag.ins : -1;
+  (c.volumePoints || []).forEach((p, i) => {
+    const t = pointLocal(c, p);
+    if (t < -1e-9 || t > duration + 1e-9) return;
+    const selected = live === i || (live < 0 && selPoint?.clipId === c.id && sameTime(selPoint.time, p.time));
+    area.append(h('div', { class: `audio-point ${selected ? 'selected' : ''} ${live === i ? 'dragging' : ''}`, dataset: { audio: 'point', index: i },
+      title: `${toDb(p.value)} dB`, style: { left: `${100 * t / duration}%`, top: `${volumePosition((c.volume ?? 1) * p.value)}%` } }));
+  });
   const canvas = area.querySelector('canvas'), ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!canvas.peaks) return;
   ctx.strokeStyle = '#c5e6da'; ctx.globalAlpha = .65; ctx.lineWidth = 1;
   ctx.beginPath();
+  const audible = { ...c, mute: false };
   for (let x = 0; x < canvas.width; x++) {
-    const time = (x + .5) / canvas.width * duration;
-    const fade = (secs(c.fadeIn) ? window.ReeletTimeline.easeInOut(time / secs(c.fadeIn)) : 1) * (secs(c.fadeOut) ? window.ReeletTimeline.easeInOut((duration - time) / secs(c.fadeOut)) : 1);
-    const peak = Math.min(1, canvas.peaks[x] * c.volume * fade) * (canvas.height / 2 - 1);
+    const peak = Math.min(1, canvas.peaks[x] * window.ReeletTimeline.audioGain(audible, (x + .5) / canvas.width * duration)) * (canvas.height / 2 - 1);
     ctx.moveTo(x + .5, canvas.height / 2 - peak); ctx.lineTo(x + .5, canvas.height / 2 + peak);
   }
   ctx.stroke();
@@ -1311,9 +1343,10 @@ function addAudioControls(el, c, t) {
   const canvas = h('canvas', { width: 2048, height: 64, class: 'clip-waveform' });
   const envelope = document.createElementNS(SVG, 'svg');
   envelope.setAttribute('class', 'clip-envelope'); envelope.setAttribute('viewBox', '0 0 1000 100'); envelope.setAttribute('preserveAspectRatio', 'none');
-  for (const name of ['env-fill', 'env-shade', 'env-line']) { const path = document.createElementNS(SVG, 'path'); path.setAttribute('class', name); envelope.append(path); }
+  for (const name of ['env-fill', 'env-shade', 'env-line', 'env-hit']) { const path = document.createElementNS(SVG, 'path'); path.setAttribute('class', name); envelope.append(path); }
+  const hit = envelope.lastChild, title = document.createElementNS(SVG, 'title');
+  hit.dataset.audio = 'volume'; title.textContent = 'Drag up/down to adjust volume · Ctrl+click to add a point'; hit.append(title);
   const area = h('div', { class: 'clip-audio' }, canvas, envelope,
-    h('div', { class: 'volume-line', dataset: { audio: 'volume' }, title: 'Drag up/down to adjust volume' }),
     h('div', { class: 'audio-fade in', dataset: { audio: 'fadeIn' }, title: 'Drag to set fade in (Ease In/Out)' }),
     h('div', { class: 'audio-fade out', dataset: { audio: 'fadeOut' }, title: 'Drag to set fade out (Ease In/Out)' }));
   if (t.locked || !editable()) area.classList.add('audio-locked');
@@ -1342,9 +1375,44 @@ function beginAudioDrag(e, c, field) {
     height: el.querySelector('.clip-audio').getBoundingClientRect().height, changes: null });
   hintItems([{ keys: 'Escape', text: 'cancel' }]);
 }
+// Points are edited on frame-snapped timeline positions but stored in source time.
+// An untouched axis keeps the stored value exactly, and the whole gesture commits once.
+function beginPointDrag(e, c, index) {
+  playback.pause();
+  const points = c.volumePoints || [], rate = fps(), s0 = startF(c), e0 = endF(c);
+  let base = index == null ? null : points[index];
+  if (!base) {
+    const f = Math.max(s0, Math.min(e0, laneFrame(e.clientX))), time = sourceAtFrame(c, f), hit = points.findIndex(p => sameTime(p.time, time));
+    base = hit >= 0 ? points[hit] : { time, value: window.ReeletTimeline.automationGain(c, secs(fsub(fromF(f), c.start))) };
+    index = hit >= 0 ? hit : null;
+  }
+  const rest = points.filter(p => p !== base), at = rest.findIndex(p => secs(p.time) > secs(base.time)), ins = at < 0 ? rest.length : at;
+  const frameOf = p => s0 + pointLocal(c, p) * rate, prev = rest[ins - 1], next = rest[ins];
+  const el = document.querySelector(`.clip[data-id="${c.id}"]`), area = el.querySelector('.clip-audio');
+  const d = { type: 'audio', field: 'point', c, el, x0: e.clientX, y0: e.clientY, height: area.getBoundingClientRect().height, rest, ins, base, cur: base, added: index == null,
+    f0: Math.round(frameOf(base)), minF: Math.max(s0, prev ? Math.floor(frameOf(prev) + 1e-6) + 1 : s0), maxF: Math.min(e0, next ? Math.ceil(frameOf(next) - 1e-6) - 1 : e0) };
+  d.changes = d.added ? { volumePoints: [...rest.slice(0, ins), base, ...rest.slice(ins)] } : null;
+  if (!d.added) selPoint = { clipId: c.id, time: base.time };
+  area.classList.add('active');
+  startDrag(d);
+  paintAudioControls(el, d.changes ? { ...c, ...d.changes } : c);
+  readout(`Point ${toDb(base.value)} dB   ${tc(d.f0)}`);
+  hintItems([{ keys: 'Escape', text: 'cancel' }]);
+}
+function pointDrag(e) {
+  const d = drag, locked = d.minF > d.maxF;
+  const f = locked ? d.f0 : Math.max(d.minF, Math.min(d.maxF, d.f0 + xFrame(e.clientX - d.x0)));
+  const db0 = d.base.value > 0 ? Math.max(-60, 20 * Math.log10(d.base.value)) : -60, dy = d.y0 - e.clientY;
+  const db = Math.max(-60, Math.min(24, db0 + dy / d.height * 84));
+  const value = dy === 0 ? d.base.value : db <= -60 ? 0 : Math.min(16, 10 ** (db / 20));
+  d.cur = { time: f === d.f0 ? d.base.time : sourceAtFrame(d.c, f), value };
+  d.changes = d.added || d.cur.value !== d.base.value || d.cur.time !== d.base.time ? { volumePoints: [...d.rest.slice(0, d.ins), d.cur, ...d.rest.slice(d.ins)] } : null;
+  readout(`Point ${toDb(value)} dB   ${tc(f)}`, locked && e.clientX !== d.x0 ? 'No room between neighbouring points' : '');
+}
 function audioDrag(e) {
   const d = drag;
-  if (d.field === 'volume') {
+  if (d.field === 'point') pointDrag(e);
+  else if (d.field === 'volume') {
     const initial = d.c.volume > 0 ? Math.max(-60, 20 * Math.log10(d.c.volume)) : -60;
     const db = Math.max(-60, Math.min(24, initial + (d.y0 - e.clientY) / d.height * 84));
     d.changes = { volume: db <= -60 ? 0 : 10 ** (db / 20) };
@@ -1425,12 +1493,15 @@ $('tracks').addEventListener('pointerdown', e => {
   if (clipEl) {
     const c = clipById(clipEl.dataset.id); if (!c) return;
     if (tool === 'razor') { const f = laneFrame(e.clientX), d = Math.abs(f - playF) <= 8 / pps * fps() && prefs.snap && !e.altKey ? playF - f : 0; splitAt([c.id], f + d); return; }
-    const audio = e.target.closest('[data-audio]');
+    const audio = e.target.closest('[data-audio]'), field = audio?.dataset.audio;
     if (audio) {
       e.preventDefault();
-      if (trackById(c.trackId)?.locked || !editable()) return;
+      const addPoint = (e.ctrlKey || e.metaKey) && field === 'volume';
+      if (!editable()) return;
+      if (trackById(c.trackId)?.locked) { if (addPoint) refuse(`“${trackById(c.trackId).name}” is locked`); return; }
       select([c.id]);
-      beginAudioDrag(e, c, audio.dataset.audio);
+      if (field === 'point' || addPoint) beginPointDrag(e, c, field === 'point' ? Number(audio.dataset.index) : null);
+      else beginAudioDrag(e, c, field);
       return;
     }
     if (e.ctrlKey || e.metaKey) { select([c.id], 'toggle'); return; }
@@ -1524,11 +1595,14 @@ function onDragCancel() {
 function onDragUp(e) {
   const d = drag; if (!d) return;
   if (d.type === 'audio') {
+    if (d.field === 'point' && d.changes) selPoint = { clipId: d.c.id, time: d.cur.time };
     endDrag(); drawTimeline();
     if (d.changes) edit(() => {
       const current = clipById(d.c.id);
       if (!current || current.revision !== d.c.revision) return refuse('The clip changed during the drag. Nothing was applied.');
-      return { ops: [put('clips', { id: current.id, ...d.changes })], message: d.field === 'volume' ? `Volume ${toDb(d.changes.volume)} dB` : 'Adjusted fade' };
+      if (trackById(current.trackId)?.locked) return refuse(`“${trackById(current.trackId).name}” is locked`);
+      const message = d.field === 'point' ? `${d.added ? 'Added' : 'Moved'} volume point · ${toDb(d.cur.value)} dB` : d.field === 'volume' ? `Volume ${toDb(d.changes.volume)} dB` : 'Adjusted fade';
+      return { ops: [put('clips', { id: current.id, ...d.changes })], message };
     });
     return;
   }
@@ -1695,6 +1769,7 @@ document.addEventListener('keydown', e => {
   }
   if (combo === 'Escape') {
     if (drag) { const d = drag; if (d.type === 'move') d.els.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }); endDrag(); drawTimeline(); say('Drag cancelled'); }
+    else if (selPoint) { selPoint = null; drawTimeline(); }
     else if (tool !== 'select') setTool('select');
     else if (hasSelection()) select([]);
     e.preventDefault(); return;

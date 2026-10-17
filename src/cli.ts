@@ -27,7 +27,9 @@ Times accept decimal seconds or exact fractions, e.g. 1001/30000.
 Graphics import copies a folder containing index.html into project assets.
 Batch: {preconditions:{"clip:ID":1,"track:ID":1,"occupancy:ID":1,"media:ID":1},
  operations:[{op:"put",collection:"clips",value:{id:"ID",volume:0.5}}]}.
-Inspect returns revision keys. New IDs and missing relationship keys have revision 0.
+Clip volumePoints accepts [{time:{num,den},value:0.25}] in absolute source seconds.
+Points interpolate linear gain, hold endpoint values, and multiply clip volume and fades.
+Use [] to clear automation. Inspect returns revision keys. New IDs and missing relationship keys have revision 0.
 Put updates supplied fields. Remove uses {op:"remove",collection:"clips",id:"ID"}.
 Project changes use {op:"project",value:{name?,fps?,resolution?}} and project revision.
 The engine keeps session undo for five idle minutes; close ends that session.

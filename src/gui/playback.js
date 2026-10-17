@@ -29,7 +29,7 @@ class TimelinePlayback {
       media: project.media.filter(m => pictureMedia.has(m.id)),
       tracks: project.tracks.filter(t => pictureTracks.has(t.id)),
       transitions: visualTransitions,
-      clips: pictureClips.map(c => ({ ...c, volume: 1, mute: false, fadeIn: 0, fadeOut: 0 })),
+      clips: pictureClips.map(c => ({ ...c, volume: 1, mute: false, volumePoints: [], fadeIn: 0, fadeOut: 0 })),
     }, (key, value) => {
       if (key === 'revision' || key === 'relationshipRevisions') return undefined;
       // Engine patches and undo can reorder keys without changing the picture.
