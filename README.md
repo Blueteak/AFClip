@@ -26,9 +26,9 @@ node src/cli.ts export /path/to/project exports/sample-first-edit.mp4 --mode gpu
 
 The example references local recordings and audio on this PC. It is not a portable media bundle. `npm run edit:example` assembles the example through engine commands when it does not already contain clips, and refuses to overwrite an existing edit. See the [prototype guide](docs/editing-prototype.md) for creating your own project, editing batches, graphics, checkpoints, GPU prerequisites and current limits.
 
-The GUI currently offers clip selection and numeric edits, track controls, exact-frame rendering and playback of completed exports. Continuous timeline playback and most gesture-based editing are not implemented. The overviews describe the destination, not completed features.
+The GUI is a keyboard-first dark editor modeled on Premiere and Resolve conventions. Drag media from the bin, move and trim clips, Shift-drag edges to change speed, split with Ctrl+K or the razor (C), add dissolves with Ctrl+D, mark In/Out with I and O, and export with Ctrl+M. Every menu item and tooltip shows its shortcut. Press `?` for the full list or Ctrl+Shift+P to search commands. The program monitor renders exact frames; continuous timeline playback is not implemented yet. The overviews describe the destination, not completed features.
 
-Exports use fast container and timestamp verification by default. Enable **Thorough export check** in the editor or pass `--verify full` to also decode and count the output frames.
+Exports use fast container and timestamp verification by default. Choose **Thorough** verification in the Export dialog or pass `--verify full` to also decode and count the output frames.
 
 ## Rendering experiments
 
