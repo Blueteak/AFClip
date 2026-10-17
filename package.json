@@ -2,8 +2,12 @@
   "name": "reelet-prototypes",
   "version": "0.0.0",
   "private": true,
-  "description": "Experimental Windows media measurements, not the Reelet editor",
+  "type": "module",
+  "description": "Reelet project engine and Windows editing prototype",
   "scripts": {
+    "reelet": "node src/cli.ts",
+    "start": "node src/gui/launch.cjs",
+    "edit:example": "node /path/to/project/build.mjs",
     "bench:windows": "node benchmarks/windows/run.cjs",
     "bench:solutions": "node benchmarks/windows/solutions.cjs",
     "bench:gpu": "node benchmarks/windows/gpu.cjs"

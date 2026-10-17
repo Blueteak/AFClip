@@ -1,0 +1,324 @@
+{
+  "date": "2026-10-16",
+  "coldExport": {
+    "id": "job_63fafc3321444868912207ca23776ed9",
+    "status": "completed",
+    "kind": "export",
+    "mode": "gpu",
+    "output": "C:\\Users\\user\\Documents\\GitHub\\Reelet\\exports\\sample-first-edit.mp4",
+    "createdAt": "2026-10-17T06:10:48.200Z",
+    "projectRevision": 28,
+    "progress": 1,
+    "phase": "completed",
+    "message": "Combining picture and audio",
+    "frame": 1920,
+    "totalFrames": 1920,
+    "fps": 25.02359304505985,
+    "width": 1920,
+    "height": 1080,
+    "duration": 64,
+    "frames": 1920,
+    "stats": {
+      "frames": 1920,
+      "peakDecodedBytes": 29491200,
+      "peakDecoders": 2,
+      "peakChromiumWorkingSetBytes": 729509888,
+      "fullFrameReadback": false,
+      "rejectedPaints": 1144,
+      "decodedSourceFrames": 4252,
+      "restarts": 8,
+      "renderMs": 76729.3115,
+      "renderFps": 25.02303177840974,
+      "wallMs": 326773.7736,
+      "indexCacheHits": 0,
+      "audioClips": 13,
+      "sourceDecode": "software",
+      "composition": "gpu",
+      "encoder": "NVENC D3D11",
+      "rawFrameCacheBytes": 0
+    },
+    "finishedAt": "2026-10-17T06:16:15.079Z"
+  },
+  "softwareSection": {
+    "id": "job_24dbdb50d7534e848876d1876d610dae",
+    "status": "completed",
+    "kind": "export",
+    "mode": "software",
+    "output": "C:\\Users\\user\\Documents\\GitHub\\Reelet\\exports\\sample-software-check.mp4",
+    "createdAt": "2026-10-17T06:17:05.495Z",
+    "projectRevision": 28,
+    "progress": 1,
+    "phase": "completed",
+    "message": "Combining picture and audio",
+    "frame": 90,
+    "totalFrames": 90,
+    "fps": 19.925475621656577,
+    "width": 1920,
+    "height": 1080,
+    "duration": 3,
+    "frames": 90,
+    "stats": {
+      "frames": 90,
+      "peakDecodedBytes": 14745600,
+      "peakDecoders": 1,
+      "peakChromiumWorkingSetBytes": 740548608,
+      "fullFrameReadback": true,
+      "rejectedPaints": 181,
+      "decodedSourceFrames": 179,
+      "restarts": 1,
+      "renderMs": 4703.8414,
+      "renderFps": 19.13329815924491,
+      "wallMs": 5624.2044000000005,
+      "indexCacheHits": 1,
+      "audioClips": 3,
+      "sourceDecode": "software",
+      "composition": "software",
+      "encoder": "libx264",
+      "rawFrameCacheBytes": 0
+    },
+    "finishedAt": "2026-10-17T06:17:11.206Z"
+  },
+  "vfr": {
+    "coldHit": false,
+    "warmHit": true,
+    "coldMs": 39.0996,
+    "warmMs": 1.326900000000002,
+    "probeCalls": 1,
+    "frameCount": 90,
+    "samples": [
+      {
+        "time": 0.06666666666666667,
+        "index": 2,
+        "pts": 0.06666666666666667,
+        "gray": 24,
+        "expected": 24,
+        "pass": true
+      },
+      {
+        "time": 0.16666666666666666,
+        "index": 5,
+        "pts": 0.16666666666666666,
+        "gray": 30,
+        "expected": 30,
+        "pass": true
+      },
+      {
+        "time": 0.4666666666666667,
+        "index": 12,
+        "pts": 0.4666666666666667,
+        "gray": 44,
+        "expected": 44,
+        "pass": true
+      },
+      {
+        "time": 0.5666666666666667,
+        "index": 15,
+        "pts": 0.5666666666666667,
+        "gray": 50,
+        "expected": 50,
+        "pass": true
+      },
+      {
+        "time": 0,
+        "index": 0,
+        "pts": 0,
+        "gray": 19,
+        "expected": 20,
+        "pass": true
+      },
+      {
+        "time": 0.299999,
+        "index": 8,
+        "pts": 0.26666666666666666,
+        "gray": 36,
+        "expected": 36,
+        "pass": true
+      },
+      {
+        "time": 0.3,
+        "index": 9,
+        "pts": 0.3,
+        "gray": 38,
+        "expected": 38,
+        "pass": true
+      },
+      {
+        "time": 0.3333333333333333,
+        "index": 9,
+        "pts": 0.3,
+        "gray": 38,
+        "expected": 38,
+        "pass": true
+      },
+      {
+        "time": 0.399999,
+        "index": 9,
+        "pts": 0.3,
+        "gray": 38,
+        "expected": 38,
+        "pass": true
+      },
+      {
+        "time": 0.4,
+        "index": 10,
+        "pts": 0.4,
+        "gray": 39,
+        "expected": 40,
+        "pass": true
+      },
+      {
+        "time": 0.7,
+        "index": 19,
+        "pts": 0.7,
+        "gray": 58,
+        "expected": 58,
+        "pass": true
+      },
+      {
+        "time": 0.7333333333333333,
+        "index": 19,
+        "pts": 0.7,
+        "gray": 58,
+        "expected": 58,
+        "pass": true
+      },
+      {
+        "time": 0.799999,
+        "index": 19,
+        "pts": 0.7,
+        "gray": 58,
+        "expected": 58,
+        "pass": true
+      },
+      {
+        "time": 0.8,
+        "index": 20,
+        "pts": 0.8,
+        "gray": 60,
+        "expected": 60,
+        "pass": true
+      },
+      {
+        "time": 3.5,
+        "index": 89,
+        "pts": 3.5,
+        "gray": 197,
+        "expected": 198,
+        "pass": true
+      }
+    ],
+    "sequential": [
+      {
+        "target": 0,
+        "gray": 19,
+        "pass": true
+      },
+      {
+        "target": 9,
+        "gray": 38,
+        "pass": true
+      },
+      {
+        "target": 10,
+        "gray": 39,
+        "pass": true
+      },
+      {
+        "target": 19,
+        "gray": 58,
+        "pass": true
+      },
+      {
+        "target": 20,
+        "gray": 60,
+        "pass": true
+      },
+      {
+        "target": 89,
+        "gray": 197,
+        "pass": true
+      }
+    ]
+  },
+  "audioAlignment": {
+    "musicTimelineOffset": 1,
+    "window": {
+      "source": 4,
+      "output": 5,
+      "seconds": 0.5
+    },
+    "lag": 0,
+    "correlation": 0.9980145192140036,
+    "offsetMs": 0
+  },
+  "finalExport": {
+    "id": "job_0dcebce9d6f94e7eaf1c935913ddc6e8",
+    "status": "completed",
+    "kind": "export",
+    "mode": "gpu",
+    "output": "C:\\Users\\user\\Documents\\GitHub\\Reelet\\exports\\sample-first-edit.mp4",
+    "createdAt": "2026-10-17T06:18:00.599Z",
+    "projectRevision": 29,
+    "progress": 1,
+    "phase": "completed",
+    "message": "Combining picture and audio",
+    "frame": 1920,
+    "totalFrames": 1920,
+    "fps": 24.555642782797634,
+    "width": 1920,
+    "height": 1080,
+    "duration": 64,
+    "frames": 1920,
+    "stats": {
+      "frames": 1920,
+      "peakDecodedBytes": 29491200,
+      "peakDecoders": 2,
+      "peakChromiumWorkingSetBytes": 732667904,
+      "fullFrameReadback": false,
+      "rejectedPaints": 1139,
+      "decodedSourceFrames": 4252,
+      "restarts": 8,
+      "renderMs": 78191.6001,
+      "renderFps": 24.555067264827596,
+      "wallMs": 101957.00020000001,
+      "indexCacheHits": 8,
+      "audioClips": 13,
+      "sourceDecode": "software",
+      "composition": "gpu",
+      "encoder": "NVENC D3D11",
+      "rawFrameCacheBytes": 0
+    },
+    "finishedAt": "2026-10-17T06:19:42.660Z"
+  },
+  "finalMedia": {
+    "bytes": 330913742,
+    "duration": "64.000000",
+    "streams": [
+      {
+        "codec": "h264",
+        "type": "video",
+        "frames": "1920",
+        "width": 1920,
+        "height": 1080,
+        "fps": "30/1",
+        "duration": "64.000000",
+        "colorSpace": "bt709",
+        "colorRange": "tv"
+      },
+      {
+        "codec": "aac",
+        "type": "audio",
+        "frames": "3001",
+        "fps": "0/0",
+        "duration": "64.000000",
+        "sampleRate": "48000"
+      }
+    ]
+  },
+  "audioLevels": {
+    "meanDb": -23.2,
+    "samplePeakDb": -4.4,
+    "measuredOn": "coldExport, same audio edit"
+  },
+  "closingSoftwareGpuSSIM": 0.985199
+}
