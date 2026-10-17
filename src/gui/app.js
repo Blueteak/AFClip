@@ -512,7 +512,14 @@ function edit(build, message, extra = {}) {
       ({ ops, pre = {}, message: note = message } = Array.isArray(plan) ? { ops: plan } : plan);
     }
     if (!ops?.length) return SKIP;
-    await api.command({ command: 'apply', batch: { preconditions: { ...snapshot.revisions, ...pre }, operations: ops } });
+    try {
+      await api.command({ command: 'apply', batch: { preconditions: { ...snapshot.revisions, ...pre }, operations: ops } });
+    } catch (error) {
+      if (error.message.includes('Unsupported object field') && ops.some(op => op.collection === 'clips' && op.value?.volumePoints !== undefined)) {
+        throw new Error('The project engine is older than the volume-point controls. Restart Reelet and its project engine to enable volume points. Saved edits are preserved; session undo history resets.');
+      }
+      throw error;
+    }
     return true;
   }, () => note);
 }
