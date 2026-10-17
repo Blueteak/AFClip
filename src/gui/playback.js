@@ -99,6 +99,11 @@ class TimelinePlayback {
   }
   async receive(event) {
     if (event.sessionId !== this.sessionId) return;
+    if (event.type === 'seek-cache') {
+      if (event.seekProxy && this.native?.setup.media[event.mediaId]) this.native.setup.media[event.mediaId].seekProxy = event.seekProxy;
+      if (event.seekCache && this.native) this.native.setup.seekCache = event.seekCache;
+      return;
+    }
     if (event.type === 'error') { this.rejectReady?.(new Error(event.error.message)); this.fail(new Error(event.error.message)); return; }
     if (event.type === 'ready') {
       if (event.nativeSetup) this.native = new window.NativePreview(event.nativeSetup, document.getElementById('native-preview'), error => this.fail(error));
