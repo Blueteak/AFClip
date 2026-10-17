@@ -1258,8 +1258,8 @@ function clipBlock(c, t) {
   const el = h('div', { class: `clip ${m?.kind || 'missing'} ${selection.has(c.id) ? 'selected' : ''} ${t.locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
     width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(m?.kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
     !hasAudio(m) && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
-    secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
-    secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
+    !hasAudio(m) && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
+    !hasAudio(m) && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
     t.locked ? null : h('i', { class: 'handle l' }), t.locked ? null : h('i', { class: 'handle r' }));
   if (hasAudio(m)) addAudioControls(el, c, t);
   el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(m?.kind)} · ${mediaName(m)}`,
@@ -1273,24 +1273,27 @@ function volumePosition(volume) {
   const db = volume > 0 ? Math.max(-60, 20 * Math.log10(volume)) : -60;
   return (24 - db) / 84 * 100;
 }
+function envelopePaths(c) {
+  const duration = secs(c.duration), fi = secs(c.fadeIn), fo = secs(c.fadeOut), ease = window.ReeletTimeline.easeInOut;
+  const level = volumePosition(c.volume), gain = t => (fi ? ease(t / fi) : 1) * (fo ? ease((duration - t) / fo) : 1);
+  const times = new Set([0, duration]);
+  for (let i = 0; i <= 32; i++) { times.add(Math.min(fi, duration) * i / 32); times.add(duration - Math.min(fo, duration) * i / 32); }
+  const points = [...times].sort((a, b) => a - b).map(t => [t / duration * 1000, 100 - gain(t) * (100 - level)]);
+  const line = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(2)} ${y.toFixed(2)}`).join('');
+  return { line, shade: `${line}L1000 ${level}L0 ${level}Z`, fill: `${line}L1000 100L0 100Z` };
+}
 function paintAudioControls(el, c) {
   const area = el.querySelector('.clip-audio');
   if (!area) return;
-  area.querySelector('.volume-line').style.top = `${volumePosition(c.volume)}%`;
-  area.style.opacity = c.mute ? '.35' : '1';
-  const duration = secs(c.duration);
-  for (const field of ['fadeIn', 'fadeOut']) {
-    const fraction = secs(c[field]) / duration;
-    area.querySelector(`[data-audio="${field}"]`).style.left = `${100 * (field === 'fadeIn' ? fraction : 1 - fraction)}%`;
-    const side = field === 'fadeIn' ? 'in' : 'out';
-    let shade = el.querySelector(`.fade.${side}`);
-    if (!shade) {
-      shade = h('i', { class: `fade ${side}` });
-      el.insertBefore(shade, area);
-    }
-    shade.style.width = `${secs(c[field]) * pps}px`;
-    shade.hidden = fraction === 0;
-  }
+  const duration = secs(c.duration), level = volumePosition(c.volume), paths = envelopePaths(c);
+  const fi = Math.min(1, secs(c.fadeIn) / duration), fo = Math.min(1, secs(c.fadeOut) / duration);
+  area.classList.toggle('muted', !!c.mute);
+  area.querySelector('.env-shade').setAttribute('d', paths.shade);
+  area.querySelector('.env-fill').setAttribute('d', paths.fill);
+  area.querySelector('.env-line').setAttribute('d', paths.line);
+  Object.assign(area.querySelector('.volume-line').style, { top: `${level}%`, left: `${100 * fi}%`, right: `${100 * fo}%` });
+  Object.assign(area.querySelector('[data-audio="fadeIn"]').style, { left: `${100 * fi}%`, top: `${level}%` });
+  Object.assign(area.querySelector('[data-audio="fadeOut"]').style, { left: `${100 * (1 - fo)}%`, top: `${level}%` });
   const canvas = area.querySelector('canvas'), ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!canvas.peaks) return;
@@ -1306,7 +1309,10 @@ function paintAudioControls(el, c) {
 }
 function addAudioControls(el, c, t) {
   const canvas = h('canvas', { width: 2048, height: 64, class: 'clip-waveform' });
-  const area = h('div', { class: 'clip-audio' }, canvas,
+  const envelope = document.createElementNS(SVG, 'svg');
+  envelope.setAttribute('class', 'clip-envelope'); envelope.setAttribute('viewBox', '0 0 1000 100'); envelope.setAttribute('preserveAspectRatio', 'none');
+  for (const name of ['env-fill', 'env-shade', 'env-line']) { const path = document.createElementNS(SVG, 'path'); path.setAttribute('class', name); envelope.append(path); }
+  const area = h('div', { class: 'clip-audio' }, canvas, envelope,
     h('div', { class: 'volume-line', dataset: { audio: 'volume' }, title: 'Drag up/down to adjust volume' }),
     h('div', { class: 'audio-fade in', dataset: { audio: 'fadeIn' }, title: 'Drag to set fade in (Ease In/Out)' }),
     h('div', { class: 'audio-fade out', dataset: { audio: 'fadeOut' }, title: 'Drag to set fade out (Ease In/Out)' }));
@@ -1329,7 +1335,9 @@ function addAudioControls(el, c, t) {
 }
 function beginAudioDrag(e, c, field) {
   playback.pause();
-  const el = document.querySelector(`.clip[data-id="${c.id}"]`);
+  const el = document.querySelector(`.clip[data-id="${c.id}"]`), area = el.querySelector('.clip-audio');
+  area.classList.add('active');
+  area.querySelector(`[data-audio="${field}"]`).classList.add('dragging');
   startDrag({ type: 'audio', c, field, el, x0: e.clientX, y0: e.clientY,
     height: el.querySelector('.clip-audio').getBoundingClientRect().height, changes: null });
   hintItems([{ keys: 'Escape', text: 'cancel' }]);
