@@ -168,7 +168,7 @@ window.NativePreview = class NativePreview {
       })();
       this.seekWork = work;
       work.catch(error => { if (current()) console.warn('Paused original preview unavailable:', error.message); });
-    }, 150);
+    }, 75);
   }
   prefetch(entry, time) {
     entry.prefetchRequest = null;
