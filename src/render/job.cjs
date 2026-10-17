@@ -94,14 +94,37 @@ async function main() {
     }
     emit({ type: 'progress', phase: 'prepare', progress: ++prepared / used.size * .1, message: `Prepared ${prepared}/${used.size} sources` });
   }
-  const audio = config.kind === 'frame' ? null : await audioMix(plan, begin, end);
-  const nativeEncoder = config.mode === 'gpu' && config.kind !== 'frame' ? await require('./native/build.cjs')() : null;
+  const audio = config.kind === 'frame' || end <= begin ? null : await audioMix(plan, begin, end);
+  const nativeEncoder = config.mode === 'gpu' && !['frame', 'preview'].includes(config.kind) ? await require('./native/build.cjs')() : null;
   cancelCheck();
   fs.mkdirSync(path.dirname(config.output), { recursive: true });
   partial = path.join(path.dirname(config.output), `.${path.basename(config.output)}.${config.jobId}.partial${path.extname(config.output)}`);
   const renderConfig = { ...config, project, width, height, begin, end, plan, media, graphics, ffmpeg, nativeEncoder, work, audio: audio?.output,
     decodedBudgetBytes: Math.min(project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024), partial };
-  const renderFile = path.join(work, 'renderer.json'); fs.writeFileSync(renderFile, JSON.stringify(renderConfig));
+  const renderFile = path.join(work, 'renderer.json');
+  if (config.kind === 'preview') {
+    // Electron on Windows closes stdin. Relay Node's control pipe over loopback.
+    const token = require('node:crypto').randomUUID();
+    let socket;
+    const server = require('node:net').createServer(client => {
+      client.setTimeout(5000, () => client.destroy());
+      const reader = require('node:readline').createInterface({ input: client });
+      reader.once('line', line => {
+        reader.close();
+        if (line !== token || socket) { client.destroy(); return; }
+        socket = client; client.setTimeout(0);
+        process.stdin.pipe(client);
+      });
+      client.on('error', () => {});
+    });
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    renderConfig.control = { port: server.address().port, token };
+    fs.writeFileSync(renderFile, JSON.stringify(renderConfig));
+    try { await run('renderer', require('electron'), [path.join(__dirname, 'preview-worker.cjs'), renderFile], false, true); }
+    finally { socket?.destroy(); server.close(); }
+    return;
+  }
+  fs.writeFileSync(renderFile, JSON.stringify(renderConfig));
   await run('renderer', require('electron'), [path.join(__dirname, 'worker.cjs'), renderFile], false, true);
   cancelCheck();
   const stats = JSON.parse(fs.readFileSync(path.join(work, 'stats.json'), 'utf8'));
