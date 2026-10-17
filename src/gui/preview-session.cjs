@@ -38,6 +38,7 @@ module.exports = class PreviewSession {
           if (value.nativeSetup) {
             for (const media of Object.values(value.nativeSetup.media)) {
               if (media.file && ['video', 'image'].includes(media.kind)) media.url = this.registerFile(media.file, randomUUID());
+              if (media.seekProxy) { media.seekProxy.url = this.registerFile(media.seekProxy.file, randomUUID()); delete media.seekProxy.file; }
               delete media.file;
             }
             this.registerGraphics(value.nativeSetup.graphics);
