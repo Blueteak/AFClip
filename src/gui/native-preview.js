@@ -59,7 +59,7 @@ window.NativePreview = class NativePreview {
       if (this.closed || entry.content !== video) return;
       entry.videoTime = metadata.mediaTime;
       if (!entry.still || entry.still.hidden) entry.presentedTime = metadata.mediaTime;
-      if (!this.running) this.cacheFrame(entry, metadata.mediaTime);
+      if (!this.running && !entry.media.seekProxy) this.cacheFrame(entry, metadata.mediaTime);
       if (entry.prefetch && !this.running && metadata.mediaTime >= entry.prefetch.end - 1e-6) {
         video.pause(); entry.prefetch = null;
       }
@@ -265,13 +265,13 @@ window.NativePreview = class NativePreview {
       if (this.cachedFrame(entry, frame)) this.prefetch(entry, frame);
       else entry.prefetchRequest = { time:frame };
     }
-    this.prepare(time); return true;
+    this.prepare(time, forPlayback); return true;
   }
-  prepare(time) {
+  prepare(time, warm = true) {
     for (const entry of this.entries.values()) {
       if (entry.media.kind !== 'video') continue;
       const c = entry.clip;
-      if (c.visibleStart > time && c.visibleStart <= time + 1 && !entry.content) {
+      if (warm && c.visibleStart > time && c.visibleStart <= time + 1 && !entry.content) {
         entry.warming = this.position(entry, Math.max(0, this.sourceTime(entry, c.visibleStart - .5))).catch(this.onError).finally(() => { entry.warming = null; });
       } else if (entry.content && (c.visibleEnd < time - 1 || c.visibleStart > time + 2)) {
         entry.prefetch = null; entry.prefetchRequest = null; cancelAnimationFrame(entry.prefetchTick);

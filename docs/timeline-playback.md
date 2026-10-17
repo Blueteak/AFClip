@@ -145,6 +145,30 @@ All eight shortened ranges reused their existing files with no encodes (10.6 ms 
 
 Artifacts: .cache/seek-perf/background-muted.json, .cache/seek-perf/background-muted/seeks.json, and .cache/seek-perf/reuse-accuracy.json.
 
+
+### Broader seek coverage and final scrub check
+
+The opt-in diagnostic now includes 120 seeded positions across the full timeline, enough distinct frames to exceed the decoded-bitmap cache, plus 120 forward/reverse samples through a dissolve. The first broader run met p95 (21.8 ms) but exposed three 66–70 ms presentation stalls despite source readiness in 5–8 ms. Paused proxy seeks were still warming original-video decoders and copying their frames. Removing that unnecessary work eliminated those long stalls in the next run (120/120 under 25 ms). Playback retains its original-media warmup.
+
+The GUI also rebuilt the monitor, playhead and transport button multiple times per drag sample. Seeking now uses its existing synchronous state notification for the monitor redraw and only changes the transport icon when play/pause state changes.
+
+Final muted run at a 1920×1080 monitor:
+
+| Check | Result |
+| --- | --- |
+| 120 seeded timeline seeks | Median 17.7 ms; p95 20.7 ms; maximum 24.5 ms; 120/120 within 25 ms |
+| Forward / backward / nearby / distant p95 | 19.9 / 18.3 / 22.5 / 19.0 ms; all 48 requests within 25 ms |
+| Cached reversals | 120/120 correct pictures over 2.0001 s |
+| New-frame sweep | 60/60 correct pictures over 1.0002 s |
+| Dissolve reversals | 120/120 correct pictures over 2.0000 s |
+| Release after each scrub | 16.7 / 17.0 / 16.9 ms, exact selected frame |
+
+This verifies the 25 ms p95 and nominal 60 Hz scrub targets for the representative prepared edit, including bitmap eviction and overlapping video. It remains a browser-readiness measurement, not physical scanout or a guarantee across arbitrary hardware, codecs and graphics. Earlier occasional stalls remain documented rather than erased.
+
+Final lifecycle checks verified Play/Pause button state, original-video resume, a forced unavailable-proxy fallback selecting the correct source frame, bounded bitmap eviction, GPU/software switching, edit invalidation, undo and resource release. The existing worker and project-engine boundary is preserved. The background-generation and cache-identity measurements above remain applicable. Unprepared, corrupt or over-budget ranges retain the documented long-GOP bottleneck; reducing that further would require additional source decoding or cache coverage work.
+
+Artifacts: .cache/seek-perf/broad-before.json, .cache/seek-perf/broad-no-warmup.json and .cache/seek-perf/background-muted/seeks.json. Summary and source-frame evidence are retained in seeking-performance.json. Syntax and diff checks passed; no always-run tests were introduced.
+
 ## Current limits
 
 The agreed throughput target is **sustained 60 fps at full 1920×1080**, using a 60 fps version of the representative edit with original footage, titles, dissolves and synchronized audio. The original 24.6 fps result at 540p is not acceptable against this target. Seeking now targets 25 ms at p95 and 60 fps updates during continuous scrubbing; the prepared-cache path meets those targets on this representative edit, with the limits below.

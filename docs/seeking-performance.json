@@ -3,7 +3,7 @@
   "target": {
     "requestToPictureP95Ms": 25,
     "scrubFps": 60,
-    "status": "Met on the representative edit with prepared 540p seek cache; uncovered-source fallback remains above target",
+    "status": "Verified on representative prepared edit: 20.7 ms random-seek p95 and 300/300 scrub pictures at nominal 60 Hz; original-decoder fallback remains above target",
     "scope": "After preview session preparation; report cold, resident, and cached requests separately; exact selected frame on release; latest request wins"
   },
   "original": {
@@ -5915,5 +5915,1681 @@
       }
     },
     "note": "Diagnostic audio output muted; original audio clock retained. One cached reversal missed its next-display deadline."
+  },
+  "finalBroadValidation": {
+    "artifactDirectory": ".cache/seek-perf/background-muted",
+    "definition": "Request to the next animation frame after exact visible source-frame and preview/graphic readiness. Event-driven readiness avoids the old diagnostic polling an extra animation frame. Excludes session preparation; not physical scanout.",
+    "summary": [
+      {
+        "category": "initial",
+        "count": 1,
+        "minMs": 13.699999988079071,
+        "medianMs": 13.699999988079071,
+        "p95Ms": 13.699999988079071,
+        "maxMs": 13.699999988079071,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "frame-forward",
+        "count": 12,
+        "minMs": 7.199999988079071,
+        "medianMs": 16.5,
+        "p95Ms": 19.900000035762787,
+        "maxMs": 19.900000035762787,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "frame-backward",
+        "count": 12,
+        "minMs": 2.099999964237213,
+        "medianMs": 9.700000047683716,
+        "p95Ms": 18.299999952316284,
+        "maxMs": 18.299999952316284,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "cached-reversals-release",
+        "count": 1,
+        "minMs": 16.69999998807907,
+        "medianMs": 16.69999998807907,
+        "p95Ms": 16.69999998807907,
+        "maxMs": 16.69999998807907,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "nearby",
+        "count": 12,
+        "minMs": 2.300000011920929,
+        "medianMs": 14.400000035762787,
+        "p95Ms": 22.5,
+        "maxMs": 22.5,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "distant",
+        "count": 12,
+        "minMs": 1.199999988079071,
+        "medianMs": 7,
+        "p95Ms": 19,
+        "maxMs": 19,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "uncached-sweep-release",
+        "count": 1,
+        "minMs": 17,
+        "medianMs": 17,
+        "p95Ms": 17,
+        "maxMs": 17,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "random-timeline",
+        "count": 120,
+        "minMs": 0.699999988079071,
+        "medianMs": 17.69999998807907,
+        "p95Ms": 20.69999998807907,
+        "maxMs": 24.5,
+        "within25ms": 120,
+        "within50ms": 120
+      },
+      {
+        "category": "dissolve-reversals-release",
+        "count": 1,
+        "minMs": 16.899999976158142,
+        "medianMs": 16.899999976158142,
+        "p95Ms": 16.899999976158142,
+        "maxMs": 16.899999976158142,
+        "within25ms": 1,
+        "within50ms": 1
+      }
+    ],
+    "cache": {
+      "bytes": 267494400,
+      "budget": 268435456,
+      "frames": 129
+    },
+    "seekCache": {
+      "bytes": 228796983,
+      "budget": 268435456,
+      "sources": 8,
+      "hits": 8,
+      "built": 0,
+      "ms": 10.222499999999968,
+      "complete": true
+    },
+    "stage": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "top": 0,
+      "right": 1920,
+      "bottom": 1080,
+      "left": 0
+    },
+    "scrubs": [
+      {
+        "category": "cached-reversals",
+        "requests": 120,
+        "seconds": 2.0001,
+        "correctUpdates": 120,
+        "correctUpdatesPerSecond": 59.99700014999249,
+        "maxNextTickMs": 18.399999976158142,
+        "misses": []
+      },
+      {
+        "category": "uncached-sweep",
+        "requests": 60,
+        "seconds": 1.0001999999999998,
+        "correctUpdates": 60,
+        "correctUpdatesPerSecond": 59.988002399520106,
+        "maxNextTickMs": 17.900000035762787,
+        "misses": []
+      },
+      {
+        "category": "dissolve-reversals",
+        "requests": 120,
+        "seconds": 2,
+        "correctUpdates": 120,
+        "correctUpdatesPerSecond": 60,
+        "maxNextTickMs": 17.900000035762787,
+        "misses": []
+      }
+    ],
+    "randomFrames": [
+      {
+        "time": 51.56666666666667,
+        "readyMs": 4.099999964237213,
+        "presentedMs": 6.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 50.56666666666667,
+            "presented": 50.56666666666667
+          }
+        ]
+      },
+      {
+        "time": 43.4,
+        "readyMs": 5.800000011920929,
+        "presentedMs": 18.400000035762787,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 10.4,
+            "presented": 10.4
+          }
+        ]
+      },
+      {
+        "time": 25.283333333333335,
+        "readyMs": 6.699999988079071,
+        "presentedMs": 21,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 9.283333333333333,
+            "presented": 9.283333333333333
+          }
+        ]
+      },
+      {
+        "time": 8.083333333333334,
+        "readyMs": 4.5,
+        "presentedMs": 13.199999988079071,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 9.083333333333334,
+            "presented": 9.083333333333334
+          },
+          {
+            "clip": "shot_2",
+            "expected": 29.083333333333332,
+            "presented": 29.083333333333332
+          }
+        ]
+      },
+      {
+        "time": 52.46666666666667,
+        "readyMs": 4.899999976158142,
+        "presentedMs": 20.19999998807907,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 51.46666666666667,
+            "presented": 51.46666666666667
+          }
+        ]
+      },
+      {
+        "time": 0.7666666666666667,
+        "readyMs": 4.200000047683716,
+        "presentedMs": 14.200000047683716,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 1.7666666666666666,
+            "presented": 1.7666666666666666
+          }
+        ]
+      },
+      {
+        "time": 24.133333333333333,
+        "readyMs": 5.100000023841858,
+        "presentedMs": 19.30000001192093,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 12.133333333333333,
+            "presented": 12.133333333333333
+          },
+          {
+            "clip": "shot_4",
+            "expected": 8.133333333333333,
+            "presented": 8.133333333333333
+          }
+        ]
+      },
+      {
+        "time": 41.983333333333334,
+        "readyMs": 5.300000011920929,
+        "presentedMs": 10.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 8.983333333333333,
+            "presented": 8.983333333333333
+          }
+        ]
+      },
+      {
+        "time": 42.266666666666666,
+        "readyMs": 4.900000035762787,
+        "presentedMs": 19,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 9.266666666666667,
+            "presented": 9.266666666666667
+          }
+        ]
+      },
+      {
+        "time": 19.766666666666666,
+        "readyMs": 5.100000023841858,
+        "presentedMs": 9.900000035762787,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 7.766666666666667,
+            "presented": 7.766666666666667
+          }
+        ]
+      },
+      {
+        "time": 20.7,
+        "readyMs": 0.6000000238418579,
+        "presentedMs": 0.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 8.7,
+            "presented": 8.7
+          }
+        ]
+      },
+      {
+        "time": 11.2,
+        "readyMs": 5,
+        "presentedMs": 5.300000011920929,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 32.2,
+            "presented": 32.2
+          }
+        ]
+      },
+      {
+        "time": 7.583333333333333,
+        "readyMs": 4.899999976158142,
+        "presentedMs": 11.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 8.583333333333334,
+            "presented": 8.583333333333334
+          },
+          {
+            "clip": "shot_2",
+            "expected": 28.583333333333332,
+            "presented": 28.583333333333332
+          }
+        ]
+      },
+      {
+        "time": 41.15,
+        "readyMs": 7.800000011920929,
+        "presentedMs": 17.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 8.15,
+            "presented": 8.15
+          }
+        ]
+      },
+      {
+        "time": 48.31666666666667,
+        "readyMs": 4.400000035762787,
+        "presentedMs": 8,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 15.316666666666666,
+            "presented": 15.316666666666666
+          },
+          {
+            "clip": "shot_7",
+            "expected": 47.31666666666667,
+            "presented": 47.31666666666667
+          }
+        ]
+      },
+      {
+        "time": 39.13333333333333,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 14.700000047683716,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 10.133333333333333,
+            "presented": 10.133333333333333
+          }
+        ]
+      },
+      {
+        "time": 17.716666666666665,
+        "readyMs": 3.899999976158142,
+        "presentedMs": 6.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 5.716666666666667,
+            "presented": 5.716666666666667
+          }
+        ]
+      },
+      {
+        "time": 50.11666666666667,
+        "readyMs": 4.600000023841858,
+        "presentedMs": 19,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 49.11666666666667,
+            "presented": 49.11666666666667
+          }
+        ]
+      },
+      {
+        "time": 31.25,
+        "readyMs": 4,
+        "presentedMs": 18,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 15.25,
+            "presented": 15.25
+          }
+        ]
+      },
+      {
+        "time": 63.333333333333336,
+        "readyMs": 5.899999976158142,
+        "presentedMs": 19.299999952316284,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 10.333333333333334,
+            "presented": 10.333333333333334
+          }
+        ]
+      },
+      {
+        "time": 54.083333333333336,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 17.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 53.083333333333336,
+            "presented": 53.083333333333336
+          }
+        ]
+      },
+      {
+        "time": 59.36666666666667,
+        "readyMs": 6.099999964237213,
+        "presentedMs": 20.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 6.366666666666666,
+            "presented": 6.366666666666666
+          }
+        ]
+      },
+      {
+        "time": 37.85,
+        "readyMs": 4.399999976158142,
+        "presentedMs": 15.199999988079071,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.85,
+            "presented": 8.85
+          }
+        ]
+      },
+      {
+        "time": 28.883333333333333,
+        "readyMs": 6.699999988079071,
+        "presentedMs": 18.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 12.883333333333333,
+            "presented": 12.883333333333333
+          }
+        ]
+      },
+      {
+        "time": 7.216666666666667,
+        "readyMs": 5.799999952316284,
+        "presentedMs": 17.5,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 8.216666666666667,
+            "presented": 8.216666666666667
+          }
+        ]
+      },
+      {
+        "time": 49.766666666666666,
+        "readyMs": 6.100000023841858,
+        "presentedMs": 22,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 48.766666666666666,
+            "presented": 48.766666666666666
+          }
+        ]
+      },
+      {
+        "time": 2.6333333333333333,
+        "readyMs": 4.399999976158142,
+        "presentedMs": 19.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 3.6333333333333333,
+            "presented": 3.6333333333333333
+          }
+        ]
+      },
+      {
+        "time": 56.7,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 4.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 3.7,
+            "presented": 3.7
+          }
+        ]
+      },
+      {
+        "time": 43.96666666666667,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 19.19999998807907,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 10.966666666666667,
+            "presented": 10.966666666666667
+          }
+        ]
+      },
+      {
+        "time": 7.166666666666667,
+        "readyMs": 7.300000011920929,
+        "presentedMs": 18.80000001192093,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 8.166666666666666,
+            "presented": 8.166666666666666
+          }
+        ]
+      },
+      {
+        "time": 11.3,
+        "readyMs": 4.299999952316284,
+        "presentedMs": 9.799999952316284,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 32.3,
+            "presented": 32.3
+          }
+        ]
+      },
+      {
+        "time": 59.083333333333336,
+        "readyMs": 5.799999952316284,
+        "presentedMs": 24.5,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 6.083333333333333,
+            "presented": 6.083333333333333
+          }
+        ]
+      },
+      {
+        "time": 40.11666666666667,
+        "readyMs": 5,
+        "presentedMs": 6.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 11.116666666666667,
+            "presented": 11.116666666666667
+          },
+          {
+            "clip": "shot_6",
+            "expected": 7.116666666666666,
+            "presented": 7.116666666666666
+          }
+        ]
+      },
+      {
+        "time": 3.933333333333333,
+        "readyMs": 7.699999988079071,
+        "presentedMs": 19.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 4.933333333333334,
+            "presented": 4.933333333333334
+          }
+        ]
+      },
+      {
+        "time": 40.45,
+        "readyMs": 5.800000011920929,
+        "presentedMs": 6.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 11.45,
+            "presented": 11.45
+          },
+          {
+            "clip": "shot_6",
+            "expected": 7.45,
+            "presented": 7.45
+          }
+        ]
+      },
+      {
+        "time": 63.733333333333334,
+        "readyMs": 8.199999988079071,
+        "presentedMs": 24.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 10.733333333333333,
+            "presented": 10.733333333333333
+          }
+        ]
+      },
+      {
+        "time": 57.3,
+        "readyMs": 4.199999988079071,
+        "presentedMs": 4.900000035762787,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 4.3,
+            "presented": 4.3
+          }
+        ]
+      },
+      {
+        "time": 55.55,
+        "readyMs": 6.600000023841858,
+        "presentedMs": 20.30000001192093,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 54.55,
+            "presented": 54.55
+          },
+          {
+            "clip": "shot_8",
+            "expected": 2.55,
+            "presented": 2.55
+          }
+        ]
+      },
+      {
+        "time": 31.816666666666666,
+        "readyMs": 5,
+        "presentedMs": 5.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 15.816666666666666,
+            "presented": 15.816666666666666
+          },
+          {
+            "clip": "shot_5",
+            "expected": 2.816666666666667,
+            "presented": 2.816666666666667
+          }
+        ]
+      },
+      {
+        "time": 19.25,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 18.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 7.25,
+            "presented": 7.25
+          }
+        ]
+      },
+      {
+        "time": 38.7,
+        "readyMs": 6.5,
+        "presentedMs": 18,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 9.7,
+            "presented": 9.7
+          }
+        ]
+      },
+      {
+        "time": 5.483333333333333,
+        "readyMs": 4.900000035762787,
+        "presentedMs": 10.800000011920929,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 6.483333333333333,
+            "presented": 6.483333333333333
+          }
+        ]
+      },
+      {
+        "time": 59.9,
+        "readyMs": 6,
+        "presentedMs": 19.5,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 6.9,
+            "presented": 6.9
+          }
+        ]
+      },
+      {
+        "time": 47.7,
+        "readyMs": 5.899999976158142,
+        "presentedMs": 7.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 14.7,
+            "presented": 14.7
+          },
+          {
+            "clip": "shot_7",
+            "expected": 46.7,
+            "presented": 46.7
+          }
+        ]
+      },
+      {
+        "time": 2.8333333333333335,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 19.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 3.8333333333333335,
+            "presented": 3.8333333333333335
+          }
+        ]
+      },
+      {
+        "time": 37.833333333333336,
+        "readyMs": 5.099999964237213,
+        "presentedMs": 5.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.833333333333334,
+            "presented": 8.833333333333334
+          }
+        ]
+      },
+      {
+        "time": 27.8,
+        "readyMs": 5.300000011920929,
+        "presentedMs": 18.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 11.8,
+            "presented": 11.8
+          }
+        ]
+      },
+      {
+        "time": 60.516666666666666,
+        "readyMs": 5.399999976158142,
+        "presentedMs": 18.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 7.516666666666667,
+            "presented": 7.516666666666667
+          }
+        ]
+      },
+      {
+        "time": 28.85,
+        "readyMs": 4.199999988079071,
+        "presentedMs": 10,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 12.85,
+            "presented": 12.85
+          }
+        ]
+      },
+      {
+        "time": 14.633333333333333,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 19.600000023841858,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 35.63333333333333,
+            "presented": 35.63333333333333
+          }
+        ]
+      },
+      {
+        "time": 46.583333333333336,
+        "readyMs": 4.5,
+        "presentedMs": 9.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 13.583333333333334,
+            "presented": 13.583333333333334
+          }
+        ]
+      },
+      {
+        "time": 41.1,
+        "readyMs": 6.5,
+        "presentedMs": 17.900000035762787,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 8.1,
+            "presented": 8.1
+          }
+        ]
+      },
+      {
+        "time": 23.85,
+        "readyMs": 5.400000035762787,
+        "presentedMs": 18.600000023841858,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 11.85,
+            "presented": 11.85
+          },
+          {
+            "clip": "shot_4",
+            "expected": 7.85,
+            "presented": 7.85
+          }
+        ]
+      },
+      {
+        "time": 62.13333333333333,
+        "readyMs": 4.5,
+        "presentedMs": 12.199999988079071,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 9.133333333333333,
+            "presented": 9.133333333333333
+          }
+        ]
+      },
+      {
+        "time": 50.45,
+        "readyMs": 5.300000011920929,
+        "presentedMs": 20.899999976158142,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 49.45,
+            "presented": 49.45
+          }
+        ]
+      },
+      {
+        "time": 16.116666666666667,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 17.80000001192093,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 37.11666666666667,
+            "presented": 37.11666666666667
+          },
+          {
+            "clip": "shot_3",
+            "expected": 4.116666666666666,
+            "presented": 4.116666666666666
+          }
+        ]
+      },
+      {
+        "time": 26.35,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 19.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 10.35,
+            "presented": 10.35
+          }
+        ]
+      },
+      {
+        "time": 62.15,
+        "readyMs": 4.5,
+        "presentedMs": 12.599999964237213,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 9.15,
+            "presented": 9.15
+          }
+        ]
+      },
+      {
+        "time": 12.85,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 19.400000035762787,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 33.85,
+            "presented": 33.85
+          }
+        ]
+      },
+      {
+        "time": 48.2,
+        "readyMs": 6.399999976158142,
+        "presentedMs": 9.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 15.2,
+            "presented": 15.2
+          },
+          {
+            "clip": "shot_7",
+            "expected": 47.2,
+            "presented": 47.2
+          }
+        ]
+      },
+      {
+        "time": 6.116666666666666,
+        "readyMs": 4.600000023841858,
+        "presentedMs": 19.30000001192093,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 7.116666666666666,
+            "presented": 7.116666666666666
+          }
+        ]
+      },
+      {
+        "time": 36.11666666666667,
+        "readyMs": 4.600000023841858,
+        "presentedMs": 4.900000035762787,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 7.116666666666666,
+            "presented": 7.116666666666666
+          }
+        ]
+      },
+      {
+        "time": 32.6,
+        "readyMs": 4.199999988079071,
+        "presentedMs": 20.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 3.6,
+            "presented": 3.6
+          }
+        ]
+      },
+      {
+        "time": 8.883333333333333,
+        "readyMs": 5,
+        "presentedMs": 18.400000035762787,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 29.883333333333333,
+            "presented": 29.883333333333333
+          }
+        ]
+      },
+      {
+        "time": 4.816666666666666,
+        "readyMs": 4.799999952316284,
+        "presentedMs": 10.199999988079071,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 5.816666666666666,
+            "presented": 5.816666666666666
+          }
+        ]
+      },
+      {
+        "time": 46.53333333333333,
+        "readyMs": 5.699999988079071,
+        "presentedMs": 17.600000023841858,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 13.533333333333333,
+            "presented": 13.533333333333333
+          }
+        ]
+      },
+      {
+        "time": 18.183333333333334,
+        "readyMs": 6.399999976158142,
+        "presentedMs": 6.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 6.183333333333334,
+            "presented": 6.183333333333334
+          }
+        ]
+      },
+      {
+        "time": 0.6166666666666667,
+        "readyMs": 4.399999976158142,
+        "presentedMs": 14.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 1.6166666666666667,
+            "presented": 1.6166666666666667
+          }
+        ]
+      },
+      {
+        "time": 14.666666666666666,
+        "readyMs": 4.399999976158142,
+        "presentedMs": 5.300000011920929,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 35.666666666666664,
+            "presented": 35.666666666666664
+          }
+        ]
+      },
+      {
+        "time": 23.516666666666666,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 20,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 11.516666666666667,
+            "presented": 11.516666666666667
+          },
+          {
+            "clip": "shot_4",
+            "expected": 7.516666666666667,
+            "presented": 7.516666666666667
+          }
+        ]
+      },
+      {
+        "time": 2.1666666666666665,
+        "readyMs": 4.200000047683716,
+        "presentedMs": 6.400000035762787,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 3.1666666666666665,
+            "presented": 3.1666666666666665
+          }
+        ]
+      },
+      {
+        "time": 6.35,
+        "readyMs": 4.5,
+        "presentedMs": 11.700000047683716,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 7.35,
+            "presented": 7.35
+          }
+        ]
+      },
+      {
+        "time": 46.766666666666666,
+        "readyMs": 4.399999976158142,
+        "presentedMs": 19.80000001192093,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 13.766666666666667,
+            "presented": 13.766666666666667
+          }
+        ]
+      },
+      {
+        "time": 56.416666666666664,
+        "readyMs": 5.300000011920929,
+        "presentedMs": 19.5,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 55.416666666666664,
+            "presented": 55.416666666666664
+          },
+          {
+            "clip": "shot_8",
+            "expected": 3.4166666666666665,
+            "presented": 3.4166666666666665
+          }
+        ]
+      },
+      {
+        "time": 10.783333333333333,
+        "readyMs": 5.100000023841858,
+        "presentedMs": 16.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 31.783333333333335,
+            "presented": 31.783333333333335
+          }
+        ]
+      },
+      {
+        "time": 43.71666666666667,
+        "readyMs": 5,
+        "presentedMs": 20.30000001192093,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 10.716666666666667,
+            "presented": 10.716666666666667
+          }
+        ]
+      },
+      {
+        "time": 44.416666666666664,
+        "readyMs": 4.299999952316284,
+        "presentedMs": 14.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 11.416666666666666,
+            "presented": 11.416666666666666
+          }
+        ]
+      },
+      {
+        "time": 35.833333333333336,
+        "readyMs": 5.799999952316284,
+        "presentedMs": 20.299999952316284,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 6.833333333333333,
+            "presented": 6.833333333333333
+          }
+        ]
+      },
+      {
+        "time": 26.35,
+        "readyMs": 0.8999999761581421,
+        "presentedMs": 1,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 10.35,
+            "presented": 10.35
+          }
+        ]
+      },
+      {
+        "time": 33.266666666666666,
+        "readyMs": 3.900000035762787,
+        "presentedMs": 10.300000011920929,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 4.266666666666667,
+            "presented": 4.266666666666667
+          }
+        ]
+      },
+      {
+        "time": 37.983333333333334,
+        "readyMs": 4.5,
+        "presentedMs": 20,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.983333333333333,
+            "presented": 8.983333333333333
+          }
+        ]
+      },
+      {
+        "time": 13.283333333333333,
+        "readyMs": 4.099999964237213,
+        "presentedMs": 14.799999952316284,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 34.28333333333333,
+            "presented": 34.28333333333333
+          }
+        ]
+      },
+      {
+        "time": 37.68333333333333,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 18.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.683333333333334,
+            "presented": 8.683333333333334
+          }
+        ]
+      },
+      {
+        "time": 24.5,
+        "readyMs": 5.200000047683716,
+        "presentedMs": 11,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 8.5,
+            "presented": 8.5
+          }
+        ]
+      },
+      {
+        "time": 6.85,
+        "readyMs": 6.900000035762787,
+        "presentedMs": 18.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 7.85,
+            "presented": 7.85
+          }
+        ]
+      },
+      {
+        "time": 49.11666666666667,
+        "readyMs": 4.5,
+        "presentedMs": 10,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 48.11666666666667,
+            "presented": 48.11666666666667
+          }
+        ]
+      },
+      {
+        "time": 58.75,
+        "readyMs": 5.799999952316284,
+        "presentedMs": 19,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 5.75,
+            "presented": 5.75
+          }
+        ]
+      },
+      {
+        "time": 37.85,
+        "readyMs": 1,
+        "presentedMs": 1,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.85,
+            "presented": 8.85
+          }
+        ]
+      },
+      {
+        "time": 61.25,
+        "readyMs": 4.5,
+        "presentedMs": 9.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 8.25,
+            "presented": 8.25
+          }
+        ]
+      },
+      {
+        "time": 20.3,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 18.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 8.3,
+            "presented": 8.3
+          }
+        ]
+      },
+      {
+        "time": 31.183333333333334,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 11.200000047683716,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 15.183333333333334,
+            "presented": 15.183333333333334
+          }
+        ]
+      },
+      {
+        "time": 18.483333333333334,
+        "readyMs": 4.599999964237213,
+        "presentedMs": 20.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 6.483333333333333,
+            "presented": 6.483333333333333
+          }
+        ]
+      },
+      {
+        "time": 27.8,
+        "readyMs": 1,
+        "presentedMs": 1.199999988079071,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 11.8,
+            "presented": 11.8
+          }
+        ]
+      },
+      {
+        "time": 25.1,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 11.699999988079071,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 9.1,
+            "presented": 9.1
+          }
+        ]
+      },
+      {
+        "time": 27.05,
+        "readyMs": 6.699999988079071,
+        "presentedMs": 18.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 11.05,
+            "presented": 11.05
+          }
+        ]
+      },
+      {
+        "time": 13.816666666666666,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 13.5,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 34.81666666666667,
+            "presented": 34.81666666666667
+          }
+        ]
+      },
+      {
+        "time": 35.56666666666667,
+        "readyMs": 5.199999988079071,
+        "presentedMs": 19.5,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 6.566666666666666,
+            "presented": 6.566666666666666
+          }
+        ]
+      },
+      {
+        "time": 18.366666666666667,
+        "readyMs": 4.299999952316284,
+        "presentedMs": 11.799999952316284,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 6.366666666666666,
+            "presented": 6.366666666666666
+          }
+        ]
+      },
+      {
+        "time": 54.266666666666666,
+        "readyMs": 4.900000035762787,
+        "presentedMs": 19.200000047683716,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 53.266666666666666,
+            "presented": 53.266666666666666
+          }
+        ]
+      },
+      {
+        "time": 62.43333333333333,
+        "readyMs": 4.5,
+        "presentedMs": 9.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_8",
+            "expected": 9.433333333333334,
+            "presented": 9.433333333333334
+          }
+        ]
+      },
+      {
+        "time": 32.6,
+        "readyMs": 1.199999988079071,
+        "presentedMs": 1.300000011920929,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 3.6,
+            "presented": 3.6
+          }
+        ]
+      },
+      {
+        "time": 14.033333333333333,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 5.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 35.03333333333333,
+            "presented": 35.03333333333333
+          }
+        ]
+      },
+      {
+        "time": 24.3,
+        "readyMs": 5.199999988079071,
+        "presentedMs": 20.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 12.3,
+            "presented": 12.3
+          },
+          {
+            "clip": "shot_4",
+            "expected": 8.3,
+            "presented": 8.3
+          }
+        ]
+      },
+      {
+        "time": 21.033333333333335,
+        "readyMs": 5.5,
+        "presentedMs": 21.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 9.033333333333333,
+            "presented": 9.033333333333333
+          }
+        ]
+      },
+      {
+        "time": 1.8,
+        "readyMs": 4.800000011920929,
+        "presentedMs": 14.600000023841858,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 2.8,
+            "presented": 2.8
+          }
+        ]
+      },
+      {
+        "time": 37.78333333333333,
+        "readyMs": 5.199999988079071,
+        "presentedMs": 5.300000011920929,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 8.783333333333333,
+            "presented": 8.783333333333333
+          }
+        ]
+      },
+      {
+        "time": 5.416666666666667,
+        "readyMs": 5.199999988079071,
+        "presentedMs": 19.69999998807907,
+        "frames": [
+          {
+            "clip": "shot_1",
+            "expected": 6.416666666666667,
+            "presented": 6.416666666666667
+          }
+        ]
+      },
+      {
+        "time": 17.233333333333334,
+        "readyMs": 6.899999976158142,
+        "presentedMs": 19,
+        "frames": [
+          {
+            "clip": "shot_3",
+            "expected": 5.233333333333333,
+            "presented": 5.233333333333333
+          }
+        ]
+      },
+      {
+        "time": 52.7,
+        "readyMs": 5.399999976158142,
+        "presentedMs": 19,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 51.7,
+            "presented": 51.7
+          }
+        ]
+      },
+      {
+        "time": 43.45,
+        "readyMs": 4.400000035762787,
+        "presentedMs": 19.5,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 10.45,
+            "presented": 10.45
+          }
+        ]
+      },
+      {
+        "time": 36.95,
+        "readyMs": 4.5,
+        "presentedMs": 20.099999964237213,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 7.95,
+            "presented": 7.95
+          }
+        ]
+      },
+      {
+        "time": 53.9,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 14.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 52.9,
+            "presented": 52.9
+          }
+        ]
+      },
+      {
+        "time": 42.083333333333336,
+        "readyMs": 4.300000011920929,
+        "presentedMs": 6,
+        "frames": [
+          {
+            "clip": "shot_6",
+            "expected": 9.083333333333334,
+            "presented": 9.083333333333334
+          }
+        ]
+      },
+      {
+        "time": 15.383333333333333,
+        "readyMs": 4.5,
+        "presentedMs": 18.5,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 36.38333333333333,
+            "presented": 36.38333333333333
+          }
+        ]
+      },
+      {
+        "time": 16.25,
+        "readyMs": 5.800000011920929,
+        "presentedMs": 19.80000001192093,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 37.25,
+            "presented": 37.25
+          },
+          {
+            "clip": "shot_3",
+            "expected": 4.25,
+            "presented": 4.25
+          }
+        ]
+      },
+      {
+        "time": 8.766666666666667,
+        "readyMs": 4.600000023841858,
+        "presentedMs": 11.100000023841858,
+        "frames": [
+          {
+            "clip": "shot_2",
+            "expected": 29.766666666666666,
+            "presented": 29.766666666666666
+          }
+        ]
+      },
+      {
+        "time": 53.483333333333334,
+        "readyMs": 6.5,
+        "presentedMs": 18.5,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 52.483333333333334,
+            "presented": 52.483333333333334
+          }
+        ]
+      },
+      {
+        "time": 55.483333333333334,
+        "readyMs": 4.699999988079071,
+        "presentedMs": 9,
+        "frames": [
+          {
+            "clip": "shot_7",
+            "expected": 54.483333333333334,
+            "presented": 54.483333333333334
+          }
+        ]
+      },
+      {
+        "time": 28.05,
+        "readyMs": 4.599999964237213,
+        "presentedMs": 13.399999976158142,
+        "frames": [
+          {
+            "clip": "shot_4",
+            "expected": 12.05,
+            "presented": 12.05
+          }
+        ]
+      },
+      {
+        "time": 39.86666666666667,
+        "readyMs": 5.300000011920929,
+        "presentedMs": 19.5,
+        "frames": [
+          {
+            "clip": "shot_5",
+            "expected": 10.866666666666667,
+            "presented": 10.866666666666667
+          },
+          {
+            "clip": "shot_6",
+            "expected": 6.866666666666666,
+            "presented": 6.866666666666666
+          }
+        ]
+      }
+    ]
   }
 }
