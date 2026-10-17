@@ -71,6 +71,24 @@ Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional
 
 Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
 
+## Timeline audio controls
+
+Audio and combined video/audio clips show a waveform below their name. Drag the yellow horizontal line up or down to change clip volume, from silence to +24 dB. Drag the small handles at the top of the waveform left or right to set fade-in and fade-out durations. The inspector remains available for precise values. Fades on combined clips affect both picture and sound, matching the existing clip fade behavior.
+
+Each completed drag commits one shared, undoable edit. Escape or pointer cancellation discards the preview. Locked tracks block the controls, and a concurrent change to the clip rejects the drag's commit. Waveforms reflect volume, mute and Ease In/Out fades; trimming and stretching request the corresponding source section. Preparation runs asynchronously through FFmpeg with bounded peak data and an in-memory cache. Unavailable audio shows a waveform error without blocking editing. The cache is disposable and does not require the library service.
+
+CLI callers use the same existing clip fields through `apply`, with current inspection preconditions:
+
+```json
+{"op":"put","collection":"clips","value":{"id":"CLIP_ID","volume":0.5,"fadeIn":{"num":1,"den":1},"fadeOut":{"num":1,"den":1}}}
+```
+
+This sets approximately -6 dB and one-second Ease In/Out audio fades. Fade lengths use timeline time and clamp when the clip is shortened. Audio fades use a smoothstep curve with a gentle start and finish; picture fades remain linear. The audio fade shading rises with volume to form a hill. Volume automation points and adjustable fade curves remain future work.
+
+Volume, mute, fade edits and audio-only clip moves refresh the mixed preview audio without replacing the video session. Moving audio between tracks or beyond the previous sequence end updates its placement and the mix duration while retaining the video preview. Native video elements, decoded-frame caches and prepared seek proxies stay available; visual fades update composition opacity using the same source frames. The monitor reports **Updating audio** during the remix. Undo and redo use the same path. Visual source, timing and other composition changes still rebuild the preview. GPU and software checks covered session retention, rapid edits, undo, refreshed volume levels and silent muted output; the GPU check also verified video-element/frame-cache identity and fade opacity.
+
+A disposable four-second audio project verified handle gestures, volume dragging, cancellation, undo/redo, external-command updates and locked tracks. Its software export passed full verification with 120 frames; sampled decoded audio gains agreed with the volume/fade envelope within 0.025 absolute gain. A synthetic stereo source verified source-section peaks at 0.2 and 0.8, including opposite-phase channels. These checks did not modify the example project.
+
 ## Render and inspect
 
 ```powershell
@@ -123,7 +141,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: folders, ripple editing, linked audio detach, markers, Content Library integration for reusable selects, waveforms/barcodes, volume automation and fade curves, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: folders, ripple editing, linked audio detach, markers, Content Library integration for reusable selects, video barcodes, volume automation and fade curves, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 

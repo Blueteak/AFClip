@@ -59,6 +59,7 @@ createInterface({ input: control }).on('line', line => {
   try {
     const request = JSON.parse(line);
     if (request.type === 'close') { shutdown(); return; }
+    if (request.type === 'plan') { config.plan = request.plan; return; }
     if (Number.isFinite(request.time) && request.time >= 0 && request.time <= config.plan.duration && Number.isSafeInteger(request.epoch)) {
       latest = request; pump();
     }

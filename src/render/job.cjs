@@ -34,8 +34,9 @@ async function audioMix(plan, begin, end) {
     const source = c.sourceIn + (start - c.start) * c.speed;
     args.push('-ss', String(Math.max(0, source)), '-t', String(length * c.speed), '-i', path.resolve(config.projectDir, c.media.path));
     const terms = [String(c.volume ?? 1)], local = `(t+${start - c.start})`;
-    if (c.fadeIn) terms.push(`max(0,min(1,${local}/${c.fadeIn}))`);
-    if (c.fadeOut) terms.push(`max(0,min(1,(${c.duration}-${local})/${c.fadeOut}))`);
+    const ease = value => { const x = `max(0,min(1,${value}))`; return `(${x})*(${x})*(3-2*(${x}))`; };
+    if (c.fadeIn) terms.push(ease(`${local}/${c.fadeIn}`));
+    if (c.fadeOut) terms.push(ease(`(${c.duration}-${local})/${c.fadeOut}`));
     for (const tr of c.transitions) terms.push(tr.side === 'in' ? `max(0,min(1,(t+${start - tr.start})/${tr.duration}))` : `max(0,min(1,(${tr.end - start}-t)/${tr.duration}))`);
     const label = `a${n}`;
     filters.push(`[${n}:a:0]aresample=48000,asetrate=${Math.round(48000 * c.speed)},aresample=48000,atrim=duration=${length},asetpts=PTS-STARTPTS,volume='${terms.join('*')}':eval=frame,adelay=${Math.round((start - begin) * 48000)}S:all=1[${label}]`);
@@ -53,6 +54,13 @@ async function audioMix(plan, begin, end) {
 async function main() {
   fs.mkdirSync(work, { recursive: true }); cancelCheck();
   const started = performance.now(), project = config.project, plan = compile(project);
+  if (config.kind === 'preview-audio') {
+    const audio = await audioMix(plan, 0, plan.duration);
+    cancelCheck();
+    fs.renameSync(audio.output, config.output);
+    emit({ type: 'complete', output: config.output });
+    return;
+  }
   const width = project.resolution.width, height = project.resolution.height;
   if (width > 4096 || height > 4096) throw new Error('This renderer supports even dimensions up to 4096 pixels per side');
   const begin = config.kind === 'frame' ? seconds(config.frameTime) : config.range ? seconds(config.range.start) : 0;

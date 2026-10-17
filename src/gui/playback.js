@@ -15,12 +15,43 @@ class TimelinePlayback {
   }
   setProject(project, mode) {
     if (this.revision === project.revision && this.projectId === project.id && this.mode === mode) return;
+    // Audio-only placement and envelope edits do not change source pictures.
+    const audioMedia = new Set(project.media.filter(m => m.kind === 'audio').map(m => m.id));
+    const visualClips = project.clips.filter(c => !audioMedia.has(c.mediaId));
+    const visualIds = new Set(visualClips.map(c => c.id));
+    const visualTransitions = project.transitions.filter(t => visualIds.has(t.fromClipId) || visualIds.has(t.toClipId));
+    // An audio clip bordering a visual transition can determine its cut time.
+    const boundaryIds = new Set(visualTransitions.flatMap(t => [t.fromClipId, t.toClipId]));
+    const pictureClips = project.clips.filter(c => visualIds.has(c.id) || boundaryIds.has(c.id));
+    const pictureTracks = new Set(pictureClips.map(c => c.trackId));
+    const pictureMedia = new Set(pictureClips.map(c => c.mediaId));
+    const videoKey = JSON.stringify({ ...project,
+      media: project.media.filter(m => pictureMedia.has(m.id)),
+      tracks: project.tracks.filter(t => pictureTracks.has(t.id)),
+      transitions: visualTransitions,
+      clips: pictureClips.map(c => ({ ...c, volume: 1, mute: false, fadeIn: 0, fadeOut: 0 })),
+    }, (key, value) => {
+      if (key === 'revision' || key === 'relationshipRevisions') return undefined;
+      // Engine patches and undo can reorder keys without changing the picture.
+      return value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value;
+    });
+    const keepVideo = this.prepared && this.sessionId && this.videoKey === videoKey && this.mode === mode;
+    this.videoKey = videoKey;
     this.pause(false); this.generation++; this.epoch++;
-    this.native?.close(); this.native = null;
+    if (!keepVideo) { this.native?.close(); this.native = null; }
     this.rejectReady?.(new Error('Preview replaced')); this.rejectReady = null;
-    this.api.previewClose();
-    this.sessionId = null; this.ready = false; this.opening = null; this.inFlight = false; this.busy = false;
-    this.audio.removeAttribute('src'); this.audio.load();
+    if (!keepVideo) { this.prepared = false; this.api.previewClose(); this.sessionId = null; this.audio.removeAttribute('src'); this.audio.load(); }
+    this.audioDirty = !!keepVideo;
+    if (keepVideo && this.native) {
+      this.native.setup.project = project;
+      this.native.setup.plan = window.ReeletTimeline.compile(project);
+      for (const clip of this.native.setup.plan.clips) {
+        const entry = this.native.entries.get(clip.id);
+        if (entry) entry.clip = clip;
+      }
+    }
+    this.ready = false; this.opening = null; this.inFlight = false; this.busy = false;
     this.revision = project.revision; this.projectId = project.id; this.mode = mode;
     this.fps = project.fps.num / project.fps.den;
     this.duration = Math.max(0, ...project.clips.map(c => c.start.num / c.start.den + c.duration.num / c.duration.den));
@@ -35,8 +66,16 @@ class TimelinePlayback {
     const ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject; });
     // Attach rejection immediately: replacing a project can happen during IPC.
     ready.catch(() => {});
-    const timer = setTimeout(() => this.rejectReady?.(new Error('Preview preparation timed out')), 120000);
+    const timer = setTimeout(() => { if (generation === this.generation) this.rejectReady?.(new Error('Preview preparation timed out')); }, 120000);
     this.opening = (async () => {
+      if (this.audioDirty) {
+        const result = await this.api.previewAudio({ sessionId: this.sessionId, revision: this.revision });
+        if (generation !== this.generation) return;
+        if (result.revision !== this.revision) throw new Error('Project changed while updating audio');
+        this.receive({ type: 'ready', sessionId: this.sessionId, audioUrl: result.audioUrl });
+        await ready;
+        return;
+      }
       const session = await this.api.previewOpen(this.mode);
       if (generation !== this.generation) return;
       if (session.revision !== this.revision) throw new Error('Project changed while opening preview. Seek again to retry.');
@@ -106,14 +145,15 @@ class TimelinePlayback {
     }
     if (event.type === 'error') { this.rejectReady?.(new Error(event.error.message)); this.fail(new Error(event.error.message)); return; }
     if (event.type === 'ready') {
+      this.prepared = true;
       if (event.nativeSetup) this.native = new window.NativePreview(event.nativeSetup, document.getElementById('native-preview'), error => this.fail(error));
       const generation = this.generation;
       this.audio.onloadedmetadata = () => {
         if (generation !== this.generation) return;
-        this.ready = true; this.resolveReady?.(); this.rejectReady = null;
+        this.ready = true; this.audioDirty = false; this.resolveReady?.(); this.rejectReady = null;
       };
       if (event.audioUrl) this.audio.src = event.audioUrl;
-      else { this.ready = true; this.resolveReady?.(); this.rejectReady = null; }
+      else { this.ready = true; this.audioDirty = false; this.resolveReady?.(); this.rejectReady = null; }
       return;
     }
     if (event.type !== 'frame' || event.epoch !== this.epoch) return;
