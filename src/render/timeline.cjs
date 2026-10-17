@@ -1,10 +1,22 @@
 const seconds = value => typeof value === 'number' ? value : value ? value.num / value.den : 0;
 const clamp = x => Math.max(0, Math.min(1, x));
 const easeInOut = value => { const x = clamp(value); return x * x * (3 - 2 * x); };
-// Points live in source time so edits to placement, trim, split and speed retain
-// the envelope on the same sounds. Hold the first/last value outside the points.
-function automationGain(clip, local) {
+// A lone point gets temporary unity-gain anchors at the clip boundaries. They
+// are derived, never saved, so deleting/adding points needs no special cleanup.
+function automationPoints(clip) {
   const points = clip.volumePoints || [];
+  if (points.length !== 1) return points;
+  const start = seconds(clip.sourceIn), end = start + seconds(clip.duration) * (clip.speed == null ? 1 : seconds(clip.speed));
+  const at = seconds(points[0].time);
+  const anchors = [];
+  if (at !== start) anchors.push({ time: start, value: 1, implicit: true });
+  if (at !== end) anchors.push({ time: end, value: 1, implicit: true });
+  return [...points, ...anchors].sort((a, b) => seconds(a.time) - seconds(b.time));
+}
+// Explicit points live in source time. Hold the first/last effective value
+// outside the envelope, including transition handles beyond the clip edges.
+function automationGain(clip, local) {
+  const points = automationPoints(clip);
   if (!points.length) return 1;
   const source = seconds(clip.sourceIn) + local * (clip.speed == null ? 1 : seconds(clip.speed));
   let lo = 0, hi = points.length - 1;
@@ -68,5 +80,5 @@ function at(plan, time) {
       opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
-if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationGain, audioGain, automationExpression };
-else window.ReeletTimeline = { seconds, compile, at, easeInOut, automationGain, audioGain };
+if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain, automationExpression };
+else window.ReeletTimeline = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain };
