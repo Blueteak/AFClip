@@ -3,3 +3,5 @@ body{grid-template-rows:44px 1fr 28px}button{transition:background .12s}button:n
 .asset-grid{grid-auto-rows:142px}.asset-card{min-height:142px}
 
 .metadata,.source-details{white-space:pre-line}
+
+.checkbox-label{flex-direction:row;align-items:center}.checkbox-label input{width:auto}

@@ -48,19 +48,21 @@ IDs and revisions come from `inspect`, `search` and `overview`. Tag assignments 
 | --- | --- |
 | Inspection | `overview`, `inspect --id`, `search`, `original --id`, `frames --id`, `preview --id` |
 | Search | `--q`, `--folder`, `--kind audio\|video`, `--tag`, `--collection`, `--minDuration`, `--maxDuration`, `--offset`, `--limit`, `--assetsOnly`, `--deleted` |
-| Registration | `import PATH [--folder ID --limit N]`; JSON also accepts `paths: [...]`. `register` is the project Inbox intake operation. |
+| Registration | `import PATH [--folder ID --limit N --hierarchy]`; JSON also accepts `paths: [...]`. Directory enumeration runs as a background scan job. `--wait` waits for discovery; source verification remains separate visible work. `register` is the project Inbox intake operation. |
+| Source folders | `source-folders`; `source-folder-save --path PATH --folder ID [--hierarchy --watched]`; update with `--id --revision`; `source-folder-remove --id --revision`; `rescan [--id MAPPING_ID] [--wait]`. Watching scans every 15 seconds while the service runs. |
+| Review artifacts | `artifact --id ID --type frame\|contact-sheet\|excerpt [--time SEC --frame N --start SEC --end SEC --width PX --count N --columns N] [--wait]`. Returns a cached path, authenticated URL and job IDs. Excerpts are limited to 60 seconds. |
 | Organization | `folder-create --name --parent`; `folder-update --id --revision --name --parent`; `folder-delete --id --revision`; `move` / `promote --id --revision --folder` |
 | Collections | `collection-create --name`; `collection-update --id --revision [--name --members ID,ID]`; `collection-delete --id --revision` |
 | Annotation | `annotate --id --revision [--name --notes --tags]`; `range-save --assetId --revision [--id] --name` and frame/sample bounds; `range-delete --id --revision` |
 | Vocabulary | `tag-create --name`; `tag-rename --id --revision --name`; `tag-merge --id --revision --target --targetRevision`; `tag-delete --id --revision --confirm clear-assignments` |
 | Source lifecycle | `rescan`; `replace --id --revision --path --confirm reset-annotations`; `remove` / `restore --id --revision`; `purge --id --revision --confirm purge-catalog-record` |
 | History | `history`, `undo`, `redo`, `checkpoint --name`, `checkpoints`, `checkpoint-restore --id --confirm discard-later-edits` |
-| Background work | `prepare [--ids ID,ID --folder ID] [--wait]`, `jobs`, `cancel --id JOB_ID` |
+| Background work | `prepare [--ids ID,ID --folder ID] [--wait]`, `jobs [--id JOB_ID]`, `cancel --id JOB_ID` |
 | Cache | `cache`, `cache-budget --bytes N`, `cache-clear` |
 | Project references | `references`, `retain` / `withdraw --id --projectId`, JSON `sync-project` with `projectId`, `projectPath`, `assetIds` |
 | Service | `endpoint`, `gui [--id ASSET_ID]`, `close` |
 
-Mutation batches are atomic. Existing targets require revisions; a conflicting operation rejects the whole batch. Unrelated objects do not share a global edit precondition.
+Mutation batches are atomic. Existing targets require revisions; a conflicting operation rejects the whole batch. Tag revisions also cover their assignment sets, and asset revisions cover their named ranges. Inspect again after changing those relationships. Unrelated objects do not share a global edit precondition.
 
 ```json
 {
@@ -75,9 +77,9 @@ Mutation batches are atomic. Existing targets require revisions; a conflicting o
 }
 ```
 
-Search results expose `nextOffset` and `complete`. A page marked incomplete is not the entire result set. Events carry the catalog revision; reconnecting clients refresh their view. History retains the most recent 100 operations and 10 checkpoints. Catalog purge is separate from recoverable trash and removes the asset's annotations from retained history/checkpoints, leaving a tombstone for consumers. No library operation deletes original files.
+Search uses a disposable SQLite projection and trigram full-text index maintained in the same transaction as the catalog. Keyword matches use stable registration order; unfiltered browsing uses name order. Search results expose `nextOffset` and `complete`. A page marked incomplete is not the entire result set. Events carry the catalog revision; reconnecting clients refresh their view. History retains the most recent 100 operations and 10 checkpoints. Catalog purge is separate from recoverable trash and removes the asset's annotations from retained history/checkpoints, leaving a tombstone for consumers. No library operation deletes original files.
 
-Cache eviction conservatively protects all artifacts while a job or recent preview reader is active. The configured budget is enforced when readers release those artifacts, rather than interrupting playback to reclaim space. Missing artifacts can be prepared again. Metadata-only edits do not regenerate them.
+Cache eviction protects sources used by active streams, preparation jobs and recently selected previews. The GUI renews its selected preview lease every 20 seconds. Unused source artifacts remain eligible for eviction while another source is playing. Shared index entries are conservatively protected while any reader is active. Missing artifacts can be prepared again. Metadata-only edits do not regenerate them.
 
 ## Reelet integration
 
@@ -90,7 +92,7 @@ node src/cli.ts library-sync PROJECT_DIR
 node src/cli.ts library-import PROJECT_DIR ASSET_OR_RANGE_ID
 ```
 
-The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
+The read-only browser also allows temporary In/Out marks, which are inserted without creating library annotations. CLI callers use `library-import PROJECT ASSET --selection '{"revision":N,"sourceId":"SOURCE_ID","startSample":0,"endSample":22050}'`, or `startFrame`/`endFrame` for prepared video. The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
 
 ## Local verification, 2026-10-17
 
@@ -111,8 +113,18 @@ Playback was checked separately from catalog search. The imported clips are 720p
 
 Across 60 deterministic prepared seeks through the library playhead control, requested-frame presentation including the next animation frame measured **16.6 ms median / 16.9 ms p95 / 17.0 ms maximum**. This is a small, prepared-source check, not a guarantee for every codec, drive or uncached source. Machine: Core Ultra 9 285K, RTX 5080, 64 GB RAM; Electron 44.8 / Chromium 152. No unrelated render workload was active.
 
-## Remaining scope
+## Follow-up verification
 
-This delivers the audio/video import, organization, annotation and preview MVP. The overview remains the full design contract. Watched source-folder discovery/mappings, directory-to-logical-hierarchy seeding, contact sheets and bounded analysis excerpts are not implemented yet. Native original-file drag-out is implemented, but cross-application Windows drop acceptance and structured native range drag-out still need validation/work; use **Add to Reelet** for range-aware insertion.
+Source-folder mappings, automatic discovery, hierarchy seeding, inspection frames, contact sheets and bounded excerpts are implemented in both interfaces. A scratch GUI session saved a watched mapping and generated a 12-frame contact sheet. A rescan discovered a duplicate location while preserving the asset's notes. Temporarily disconnecting its scratch folder left the item searchable and unavailable, with notes intact.
 
-The 100,000-asset / one-million-range target has not been benchmarked. Search currently uses SQLite JSON predicates and paginated inspection; this is not a claim that the target-scale 50 ms acceptance criterion is met. Concurrent object edits are revision-checked, while broad vocabulary changes operate on their current assignments inside one transaction. Fine-grained relationship preconditions for every bulk operation remain follow-up work. Cache budgeting is conservative around active readers, and preparation cost for long sources has not been profiled.
+A stale tag deletion was rejected after its assignments changed; deletion with the current revision and undo both worked. Cache clearing reclaimed 2,014,123 unused bytes while protecting 1,395,681 bytes belonging to the selected source, with annotations unchanged. A queued preparation was cancelled. A temporary 0..22050-sample audio selection retained its 44.1 kHz boundaries when inserted into a 24 fps project. That project exported successfully with its library service stopped and its original available.
+
+The opt-in `node benchmarks/windows/library-search.ts .temp/library-scale` benchmark builds **100,000 synthetic assets and one million ranges** in a scratch catalog. On the same development machine, tested service queries returned their first 60 results in 0.3–22.3 ms warm and 1.9–21.9 ms on newly opened SQLite connections. A common-keyword query initially took 278 ms; streaming indexed matches removed that full-result sorting cost. GUI input-to-result-card mutation measured 7.6–15.6 ms across four queries. Rapidly replacing the query displayed only the latest match. Pagination and exhaustive versus incomplete result status were checked.
+
+These measurements do not include a flushed Windows disk cache, first-paint timing, disconnected-drive filesystem delays or concurrent hashing. The synthetic records have no playable media. Playback measurements above use actual media and the shared native preview separately. Contact-sheet and two-second excerpt generation in the scratch catalog each took roughly 0.15 seconds; long-source preparation has not been profiled.
+
+## Current limitations
+
+Drag asset/range cards into Reelet for structured identity and range context. **Drag original** uses Electron's native file handoff for generic Windows destinations; dragging a selected range this way hands over its whole original. **Add to Reelet** provides the explicit insertion route. Native cross-application drop acceptance remains unverified because the desktop automation tool rejected a destination outside the source window bounds. The structured card-drop handler also still needs a physical desktop drag check.
+
+The library is an MVP, not a claim that every acceptance condition in the full overview has been measured. Full disk-cold search, search under large concurrent ingestion, long-source preparation cost and cross-application desktop drag acceptance remain follow-up validation. Images, cloud sync, managed copies, semantic search and permanent modified-media exports remain outside this release.
