@@ -1590,6 +1590,12 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------- Events and startup
+window.reeletPrepareReload = () => {
+  if (!connected || drag || modal || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId ||
+      document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
+  rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
+  return true;
+};
 api.onEvent(async event => {
   try {
     if (event.type === 'disconnected') { playback.pause(false); setConnected(false, event.value?.message); syncChrome(); say('Project connection closed. Reopen the project to reconnect.', 'error'); return; }

@@ -189,6 +189,9 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
+  if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
+    previewGeneration++; previewSession.close(); previewFiles.clear(); previewGraphics.graphics = {};
+  });
   watchEvents();
   if (option('--capture')) captureTimer = setTimeout(() => capture().catch(console.error), 45000);
 }).catch(error => { console.error(error.stack || error.message); if (!args.includes('--quit-after-capture')) dialog.showErrorBox('Reelet could not open the project', error.message); app.exit(1); });

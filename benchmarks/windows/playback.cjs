@@ -30,6 +30,7 @@ if (!process.versions.electron) {
   // Exercise the real audio clock without sending diagnostic audio to speakers.
   app.on('browser-window-created', (_event, window) => window.webContents.setAudioMuted(true));
   const output = path.resolve(process.argv[3]), seconds = Number(process.argv[4]);
+  app.setPath('userData', path.join(output, 'profile'));
   const measureSeeking = process.argv.includes('--seek');
   const { width, height } = JSON.parse(fs.readFileSync(path.join(output, 'project/project.json'))).resolution;
   if (!(seconds > 0 && seconds <= 600)) throw new Error('Measurement length must be between 0 and 600 seconds');

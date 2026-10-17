@@ -48,12 +48,15 @@ window.NativePreview = class NativePreview {
     if (entry.content) return entry.loaded;
     const video = document.createElement('video');
     video.muted = true; video.preload = 'auto'; video.playsInline = true;
+    video.style.visibility = entry.still && !entry.still.hidden ? 'hidden' : '';
+    video.style.objectFit = entry.clip.transform?.fit === 'fill' ? 'cover' : 'contain';
     entry.content = video; entry.layer.append(video);
     entry.loaded = new Promise((resolve, reject) => {
+      entry.releaseVideo = resolve;
       video.addEventListener('loadeddata', resolve, { once: true });
       video.addEventListener('error', () => reject(new Error(`Cannot preview ${entry.clip.media.name || entry.clip.mediaId}: ${video.error?.message || 'unsupported video'}. Use software rendering for this source.`)), { once: true });
     });
-    entry.loaded.catch(error => { if (!this.closed && entry.content === video) this.onError(error); });
+    entry.loaded.catch(error => { if (!this.closed && entry.content === video && !entry.refining) this.onError(error); });
     video.src = entry.media.url;
     const presented = (_now, metadata) => {
       if (this.closed || entry.content !== video) return;
@@ -141,6 +144,32 @@ window.NativePreview = class NativePreview {
     if (entry.still && !entry.still.hidden) { entry.still.hidden = true; entry.still.width = entry.still.height = 0; }
     if (entry.content) entry.content.style.visibility = '';
   }
+  refinePaused(time, generation) {
+    const epoch = this.refinementEpoch;
+    const current = () => !this.closed && !this.running && generation === this.generation && epoch === this.refinementEpoch;
+    // Leave the fast scrub picture visible while originals decode. Waiting for
+    // idle avoids starting long-GOP decodes on every pointer movement.
+    this.refinementTimer = setTimeout(() => {
+      const prior = this.seekWork;
+      const work = (async () => {
+        await prior?.catch(() => {});
+        if (!current()) return;
+        await Promise.all(window.ReeletTimeline.at(this.setup.plan, time).filter(i => i.kind === 'video').map(async item => {
+          const entry = this.entries.get(item.clipId);
+          if (!entry.still || entry.still.hidden) return;
+          entry.prefetch = null; entry.prefetchRequest = null; cancelAnimationFrame(entry.prefetchTick);
+          entry.refining = true;
+          try { await this.position(entry, item.sourceTime); }
+          finally { entry.refining = false; }
+          if (!current()) return;
+          this.hideStill(entry);
+          entry.presentedTime = entry.videoTime;
+        }));
+      })();
+      this.seekWork = work;
+      work.catch(error => { if (current()) console.warn('Paused original preview unavailable:', error.message); });
+    }, 150);
+  }
   prefetch(entry, time) {
     entry.prefetchRequest = null;
     if (this.closed || this.running || !entry.content || !this.cachedFrame(entry, time)) return;
@@ -180,10 +209,11 @@ window.NativePreview = class NativePreview {
     video.pause(); video.playbackRate = entry.clip.speed;
     if (Math.abs(video.currentTime - target) < .0001 && video.readyState >= 2 && !video.seeking) return;
     await new Promise((resolve, reject) => {
-      const finish = error => { clearTimeout(timer); video.removeEventListener('seeked', done); error ? reject(error) : resolve(); };
+      const finish = error => { clearTimeout(timer); video.removeEventListener('seeked', done); video.removeEventListener('emptied', done); error ? reject(error) : resolve(); };
       const done = () => finish();
       const timer = setTimeout(() => finish(new Error('Video seek timed out')), 10000);
       video.addEventListener('seeked', done, { once: true });
+      video.addEventListener('emptied', done, { once: true });
       if (!video.seeking || Math.abs(video.currentTime - target) >= .0001) video.currentTime = Math.max(0, target);
     });
   }
@@ -234,6 +264,11 @@ window.NativePreview = class NativePreview {
       const entry = this.entries.get(item.clipId); if (!entry) return;
       if (item.kind === 'video') {
         entry.requestedFrame = this.frameTime(entry, item.sourceTime);
+        // Pausing an already-presented original must not downgrade it to JPEG.
+        if (!forPlayback && entry.content?.paused && !entry.content.seeking && entry.content.readyState >= 2 &&
+            Math.abs(entry.videoTime - entry.requestedFrame) < 1e-6) {
+          this.hideStill(entry); entry.presentedTime = entry.videoTime; return;
+        }
         if (!forPlayback && this.cachedFrame(entry, item.sourceTime, true)) return;
         if (!forPlayback && this.proxyFrame(entry, item.sourceTime)) {
           try {
@@ -265,7 +300,9 @@ window.NativePreview = class NativePreview {
       if (this.cachedFrame(entry, frame)) this.prefetch(entry, frame);
       else entry.prefetchRequest = { time:frame };
     }
-    this.prepare(time, forPlayback); return true;
+    this.prepare(time, forPlayback);
+    if (!forPlayback) this.refinePaused(time, generation);
+    return true;
   }
   prepare(time, warm = true) {
     for (const entry of this.entries.values()) {
@@ -276,6 +313,7 @@ window.NativePreview = class NativePreview {
       } else if (entry.content && (c.visibleEnd < time - 1 || c.visibleStart > time + 2)) {
         entry.prefetch = null; entry.prefetchRequest = null; cancelAnimationFrame(entry.prefetchTick);
         entry.content.pause(); entry.content.cancelVideoFrameCallback(entry.videoCallback);
+        entry.releaseVideo?.();
         entry.content.removeAttribute('src'); entry.content.load(); entry.content.remove(); entry.content = null;
       }
     }
@@ -323,6 +361,7 @@ window.NativePreview = class NativePreview {
     this.prepare(time);
   }
   pause(preservePrefetch = false) {
+    clearTimeout(this.refinementTimer); this.refinementEpoch = (this.refinementEpoch || 0) + 1;
     this.running = false; this.lastTick = null;
     for (const e of this.entries.values()) {
       e.graphicNext = null;
@@ -336,7 +375,7 @@ window.NativePreview = class NativePreview {
     this.proxyAbort?.abort();
     window.removeEventListener('message', this.message);
     for (const p of this.pending.values()) { clearTimeout(p.timer); p.resolve(); } this.pending.clear();
-    for (const e of this.entries.values()) if (e.media.kind === 'video' && e.content) { e.content.cancelVideoFrameCallback(e.videoCallback); e.content.removeAttribute('src'); e.content.load(); }
+    for (const e of this.entries.values()) if (e.media.kind === 'video' && e.content) { e.releaseVideo?.(); e.content.cancelVideoFrameCallback(e.videoCallback); e.content.removeAttribute('src'); e.content.load(); }
     for (const frame of this.frames.values()) frame.bitmap.close(); this.frames.clear(); this.frameBytes = 0;
     if (this.frameCanvas) this.frameCanvas.width = this.frameCanvas.height = 0;
     this.host.replaceChildren();

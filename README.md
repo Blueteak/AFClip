@@ -30,7 +30,11 @@ The GUI is a keyboard-first dark editor modeled on Premiere and Resolve conventi
 
 Exports use fast container and timestamp verification by default. Choose **Thorough** verification in the Export dialog or pass `--verify full` to also decode and count the output frames.
 
-The playback target is sustained **1080p60**; seeking targets 25 ms at p95 with 60 fps updates during scrubbing. The prepared seek cache now meets those targets on the representative Windows edit: 20.7 ms p95 across 120 randomized seeks and 300/300 correct scrub updates at 60 Hz. Scrub pictures use bounded 540p proxies built in the background; playback and full-resolution inspection use originals. Unprepared ranges use slower original decoding. GPU preview presents native Chromium video layers directly, removing the previous 540p JPEG transfer path. The representative Windows edit now measures 60 fps steady-state playback, with an opening startup interval still present. See the [playback notes](docs/timeline-playback.md) for measurements and limits, or run `node benchmarks/windows/playback.cjs` to measure a disposable 1080p60 copy of the example edit.
+The playback target is sustained **1080p60**; seeking targets 25 ms at p95 with 60 fps updates during scrubbing. The prepared seek cache now meets those targets on the representative Windows edit: 20.7 ms p95 across 120 randomized seeks and 300/300 correct scrub updates at 60 Hz. Scrubbing uses bounded 540p proxies built in the background. After 150 ms idle, paused video refines to the original source resolution; playback and full-resolution inspection also use originals. Unprepared ranges use slower original decoding. GPU preview presents native Chromium video layers directly, removing the previous 540p JPEG transfer path. The representative Windows edit now measures 60 fps steady-state playback, with an opening startup interval still present. See the [playback notes](docs/timeline-playback.md) for measurements and limits, or run `node benchmarks/windows/playback.cjs` to measure a disposable 1080p60 copy of the example edit.
+
+## Development reload
+
+Run `npm run dev -- examples/vellum-first-edit` to reload GUI JavaScript, HTML, CSS and the shared timeline evaluator after source changes. The watcher waits until playback, dragging, text editing and pending GUI edits have stopped. It preserves saved project state and the playhead, then rebuilds the preview. Main-process, preload and worker changes still require restarting the editor. Normal `npm start` does not watch files.
 
 ## Rendering experiments
 
