@@ -7,11 +7,13 @@ const { performance } = require('node:perf_hooks');
 const { createHash } = require('node:crypto');
 const config = JSON.parse(fs.readFileSync(process.argv[2]));
 const mode = process.argv[3];
+const encoderName = config.encoder || (mode === 'gpu' ? 'h264_nvenc' : 'libx264');
+const nvenc = encoderName === 'h264_nvenc';
 if (mode === 'software') app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
 app.setPath('userData', path.join(config.out, `frames-profile-${mode}`));
-const result = { mode, checks: [], sources: [] };
+const result = { mode, encoder: encoderName, checks: [], sources: [] };
 const save = () => fs.writeFileSync(path.join(config.out, `frames-${mode}.json`), JSON.stringify(result, null, 2));
 function stats(xs) { const s = [...xs].sort((a, b) => a - b); return { n: s.length, median: s[Math.floor(s.length / 2)], p95: s[Math.min(s.length - 1, Math.ceil(s.length * .95) - 1)], max: s.at(-1) }; }
 function check(name, pass, details) { result.checks.push({ name, pass, details }); save(); }
@@ -49,7 +51,7 @@ async function main() {
   }
   // Ignore the test-only token when comparing composition hashes.
   function contentHash(bytes) { const copy = Buffer.from(bytes); for (let y = 1072; y < 1080; y++) copy.fill(0, (y * 1920 + 1912) * 4, (y * 1920 + 1920) * 4); return hash(copy); }
-  for (const id of Object.keys(config.frames)) {
+  for (const id of (config.exportOnly ? [] : Object.keys(config.frames))) {
     const times = [], hashes = [];
     for (const t of (id === 'vfr' ? [.3, .333333333333, .366666666667, .4, 1, 2, 3] : [2.8, .1, 4.2, 1.3, 3.6, .5, 2.1, 4.8, .9, 3.1])) {
       const start = performance.now(), frame = await render(t, { source: id, single: true, noGraphics: id === 'vfr' }); times.push(performance.now() - start);
@@ -64,13 +66,15 @@ async function main() {
     const frame = await render(1, { source: id, single: true }); fs.writeFileSync(path.join(config.out, `${mode}-${id}.png`), frame.image.toPNG());
   }
   const repeated = [];
-  for (const t of [1.25, 3.75, .2, 1.25, 2.5, 3.75]) repeated.push(contentHash((await render(t)).bytes));
-  check('Arbitrary seeks reproduce exact composition', repeated[0] === repeated[3] && repeated[1] === repeated[5], repeated);
+  if (!config.exportOnly) {
+    for (const t of [1.25, 3.75, .2, 1.25, 2.5, 3.75]) repeated.push(contentHash((await render(t)).bytes));
+    check('Arbitrary seeks reproduce exact composition', repeated[0] === repeated[3] && repeated[1] === repeated[5], repeated);
+  }
   result.exports = [];
   for (const id of Object.keys(config.mixes)) {
     const prefix = id === 'fixture' ? mode : `${mode}-${id}`;
     const output = path.join(config.out, `composed-${prefix}.mp4`);
-    const args = ['-hide_banner', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgra', '-s', '1920x1080', '-r', '30', '-i', 'pipe:0', '-i', config.mixes[id].file, '-c:v', mode === 'gpu' ? 'h264_nvenc' : 'libx264', '-preset', mode === 'gpu' ? 'p4' : 'fast', ...(mode === 'gpu' ? ['-cq', '18'] : ['-crf', '18']), '-vf', 'scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'aac', '-b:a', '192k', '-t', '5', output];
+    const args = ['-hide_banner', '-y', '-f', 'rawvideo', '-pix_fmt', 'bgra', '-s', '1920x1080', '-r', '30', '-i', 'pipe:0', '-i', config.mixes[id].file, '-c:v', encoderName, '-preset', nvenc ? 'p4' : 'fast', ...(nvenc ? (config.encoder ? ['-rc', 'constqp', '-qp', '16', '-bf', '0'] : ['-cq', '18']) : ['-crf', '18']), '-vf', 'scale=in_range=full:out_range=tv:out_color_matrix=bt709,format=yuv420p', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'aac', '-b:a', '192k', '-t', '5', output];
     encoder = spawn(config.ffmpeg, args, { windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'] });
     encoder.stdin.on('error', () => {});
     const log = fs.createWriteStream(path.join(config.out, `encode-${prefix}.log`)); log.write(JSON.stringify(args) + '\n'); encoder.stderr.pipe(log);

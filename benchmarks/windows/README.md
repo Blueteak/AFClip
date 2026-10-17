@@ -4,6 +4,10 @@ This is a measurement tool, not the Reelet editor or its shared project engine. 
 
 The [follow-up solution experiment](../../docs/windows-rendering-solutions.md) adds `npm run bench:solutions`: shared FFmpeg RGB decoding, canvas composition, paint-event readiness, complete gameplay exports and direct NV12 input for Intel QSV. Run the baseline first to create its inputs. The solution runner tests its own path while preserving the original benchmark for comparison.
 
+The [GPU export experiment](../../docs/windows-gpu-export.md) adds `npm run bench:gpu`. It uses Electron shared textures, a local C++ D3D11/NVENC helper, and GPU BT.709 conversion. It runs three samples each of shared-texture export, GPU bitmap capture, CPU composition with x264, and CPU composition with NVENC. Windows x64, an NVIDIA GPU, Visual Studio C++ Build Tools and the Windows SDK are required. The runner builds the helper under `.cache/` and downloads a checksum-pinned NVENC API header there. It installs no drivers or system tools.
+
+Run the baseline once to create fixtures and select source media, then `npm run bench:gpu`. The GPU runner prepares fresh decoded caches through `bench:solutions`, verifies that suite, and retains logs, MP4s and JSON under `.cache/windows-gpu/`. It deletes generated RGBA caches after success. Set `REELET_KEEP_FRAMES=1` to retain them, then pass that solution run directory to `npm run bench:gpu -- <directory>` to reuse them. `REELET_GPU_REPEATS` defaults to 3. Failed hardware paths remain explicit failures rather than silently switching encoders.
+
 ## Run
 
 Use Windows, Node.js 22.12 or newer, and npm:
