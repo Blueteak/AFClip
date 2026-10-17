@@ -70,6 +70,8 @@ The existing macOS benchmark is useful experimental tooling, but does not valida
 
 The [Windows rendering measurements](docs/windows-benchmark-results.md) now exercise FFmpeg and offscreen Electron with local gameplay footage. They establish an experimental baseline and record failed color/fallback assumptions. They do not complete the independent project-engine and GUI/CLI prototype below.
 
+The [follow-up rendering experiment](docs/windows-rendering-solutions.md) resolves the sampled color/fallback issues with shared FFmpeg RGB decoding, canvas composition and paint-event readiness. It also demonstrates working QSV encoding through system-memory NV12 input. The temporary whole-clip frame cache must become bounded decoding before this is an editor pipeline.
+
 ### Functional checks
 
 - CLI starts the project engine; Electron attaches; both use the same editing operations and receive committed state changes.

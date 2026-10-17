@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: black; }
+canvas { position: absolute; width: 100%; height: 100%; object-fit: contain; }
+#title { position: absolute; left: 7%; top: 72%; color: white; font: bold 64px Arial; padding: 20px 28px; background: #18202ddd; border-left: 8px solid #7ce8c5; }
+#badge { position: absolute; left: 10%; top: 80%; color: #111; background: #7ce8c5; padding: 15px 25px; font: bold 28px Arial; }
+#token { position: absolute; right: 0; bottom: 0; width: 8px; height: 8px; }
+</style>
+<canvas id="a"></canvas><canvas id="b"></canvas><div id="title">REELET / WINDOWS PROTOTYPE</div><div id="badge">HTML + CSS / EXPLICIT TIME</div><div id="token"></div>
+<script>
+const a = document.querySelector('#a'), b = document.querySelector('#b');
+const title = document.querySelector('#title'), badge = document.querySelector('#badge');
+async function source(image, id, frame) {
+  const key = `${id}/${frame}`;
+  if (image.dataset.frame !== key) { window.frameSource.draw(image.id, id, frame); image.dataset.frame = key; }
+}
+async function render(t, token, options = {}) {
+  const id = options.source || 'fixture';
+  await Promise.all([source(a, id, Math.round((options.single ? t : Math.min(t, 89 / 30)) * 30)), ...(options.single ? [] : [source(b, id, Math.round(Math.max(3, Math.min(t + 1, 179 / 30)) * 30))])]);
+  b.style.opacity = options.single ? '0' : String(Math.max(0, Math.min(1, t - 2)));
+  title.style.display = badge.style.display = options.noGraphics ? 'none' : 'block';
+  title.style.transform = `translateX(${Math.sin(t * 2) * 90}px)`;
+  badge.style.transform = `translateX(${Math.cos(t * 3) * 50}px) rotate(${Math.sin(t) * 4}deg)`;
+  document.querySelector('#token').style.backgroundColor = `rgb(${token & 255},${(token >> 8) & 255},${(token >> 16) & 255})`;
+  // The trusted adapter finishes pixel writes before the readiness token can paint.
+  document.body.getBoundingClientRect();
+}
+</script>

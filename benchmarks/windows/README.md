@@ -2,6 +2,8 @@
 
 This is a measurement tool, not the Reelet editor or its shared project engine. It exercises the provisional FFmpeg/Electron pipeline described in the [technical overview](../../Reelet-Technical-Overview.md). See [the measured results](../../docs/windows-benchmark-results.md) for findings and untested requirements.
 
+The [follow-up solution experiment](../../docs/windows-rendering-solutions.md) adds `npm run bench:solutions`: shared FFmpeg RGB decoding, canvas composition, paint-event readiness, complete gameplay exports and direct NV12 input for Intel QSV. Run the baseline first to create its inputs. The solution runner tests its own path while preserving the original benchmark for comparison.
+
 ## Run
 
 Use Windows, Node.js 22.12 or newer, and npm:

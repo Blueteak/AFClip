@@ -1,5 +1,7 @@
 # Windows rendering measurements
 
+Follow-up: [tested rendering fixes](windows-rendering-solutions.md) resolve the sampled color mismatch, enable original-media software HEVC rendering, and demonstrate working Intel QSV encoding. This document preserves the original baseline.
+
 Run on October 16, 2026, Pacific time. The repository contained design documents but no runnable editor or checked-in benchmark. This work adds the [Windows experiment runner](../benchmarks/windows/README.md) and tests its rendering path with local gameplay footage.
 
 The renderer is not ready for architecture acceptance. The simple composed export is slower than real time, GPU/software color conversion differs, native software HEVC preview fails, and Intel QSV cannot initialize with the tested binary and driver. The shared project engine and GUI/CLI workflow do not exist yet.
