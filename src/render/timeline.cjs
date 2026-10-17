@@ -33,4 +33,5 @@ function at(plan, time) {
       opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
-module.exports = { seconds, compile, at };
+if (typeof module !== 'undefined') module.exports = { seconds, compile, at };
+else window.ReeletTimeline = { seconds, compile, at };

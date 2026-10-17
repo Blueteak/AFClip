@@ -102,6 +102,18 @@ async function main() {
   const renderConfig = { ...config, project, width, height, begin, end, plan, media, graphics, ffmpeg, nativeEncoder, work, audio: audio?.output,
     decodedBudgetBytes: Math.min(project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024), partial };
   const renderFile = path.join(work, 'renderer.json');
+  if (config.kind === 'preview' && config.nativePreview) {
+    emit({ type: 'ready', audio: audio?.output, nativeSetup: {
+      project, plan, media, graphics, width, height,
+    } });
+    // Keep accepted graphics and mixed audio alive until the editor closes this snapshot.
+    await new Promise(resolve => {
+      const reader = require('node:readline').createInterface({ input: process.stdin });
+      reader.on('line', line => { try { if (JSON.parse(line).type === 'close') { reader.close(); resolve(); } } catch {} });
+      reader.on('close', resolve);
+    });
+    return;
+  }
   if (config.kind === 'preview') {
     // Electron on Windows closes stdin. Relay Node's control pipe over loopback.
     const token = require('node:crypto').randomUUID();

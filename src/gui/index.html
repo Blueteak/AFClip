@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: reelet-media:; media-src reelet-media:; connect-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: reelet-media:; media-src reelet-media:; frame-src reelet-graphic:; connect-src 'none'">
   <title>Reelet</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -111,6 +111,7 @@
       <div id="stage" class="stage">
         <div id="stage-busy" class="stage-busy" hidden></div>
         <img id="preview" alt="Composited project frame" hidden>
+        <div id="native-preview" hidden></div>
         <video id="export-video" hidden></video>
         <div id="stage-empty" class="stage-empty"></div>
       </div>
@@ -168,6 +169,8 @@
   <div id="drag-readout" class="drag-readout" hidden></div>
   <div id="layer" class="layer"></div>
   <div id="toasts" class="toasts"></div>
+  <script src="../render/timeline.cjs"></script>
+  <script src="native-preview.js"></script>
   <script src="playback.js"></script>
   <script src="app.js"></script>
 </body>

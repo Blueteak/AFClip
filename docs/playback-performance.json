@@ -1,0 +1,304 @@
+{
+  "date": "2026-10-17",
+  "target": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 60,
+    "status": "not met",
+    "seekTarget": "deferred"
+  },
+  "workload": "Disposable 60 fps copy of the 64-second Vellum edit, original 1440p60 HEVC, seven dissolves, two HTML graphics, mixed stereo audio",
+  "artifactDirectory": ".cache/playback/2026-10-17T16-22-57-073Z",
+  "stage": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080,
+    "top": 0,
+    "right": 1920,
+    "bottom": 1080,
+    "left": 0
+  },
+  "devicePixelRatio": 1,
+  "stats": {
+    "ticks": 3622,
+    "sourceFrames": 3858,
+    "maxTickMs": 97.39999997615814,
+    "resyncs": 0
+  },
+  "byClip": [
+    {
+      "clip": "shot_1",
+      "callbacks": 419,
+      "seconds": 8.575899999999999,
+      "callbackFps": 48.74123998647372,
+      "presentedFps": 56.204013572919465,
+      "p95GapMs": 35.69999999999982,
+      "maxGapMs": 70.80000000000018
+    },
+    {
+      "clip": "shot_2",
+      "callbacks": 498,
+      "seconds": 8.963100000000003,
+      "callbackFps": 55.449565440528374,
+      "presentedFps": 55.78427106692995,
+      "p95GapMs": 18.100000000002183,
+      "maxGapMs": 52.100000000000364
+    },
+    {
+      "clip": "shot_3",
+      "callbacks": 507,
+      "seconds": 8.9676,
+      "callbackFps": 56.425353494803524,
+      "presentedFps": 56.536866051117364,
+      "p95GapMs": 18.100000000002183,
+      "maxGapMs": 53.70000000000073
+    },
+    {
+      "clip": "shot_4",
+      "callbacks": 504,
+      "seconds": 8.973199999999997,
+      "callbackFps": 56.055810636116455,
+      "presentedFps": 56.278696563099025,
+      "p95GapMs": 18.200000000000728,
+      "maxGapMs": 51.79999999999927
+    },
+    {
+      "clip": "shot_5",
+      "callbacks": 501,
+      "seconds": 8.964400000000001,
+      "callbackFps": 55.77618133952076,
+      "presentedFps": 55.999286064878845,
+      "p95GapMs": 18.19999999999709,
+      "maxGapMs": 89.40000000000146
+    },
+    {
+      "clip": "shot_6",
+      "callbacks": 489,
+      "seconds": 8.957,
+      "callbackFps": 54.48252763201965,
+      "presentedFps": 56.60377358490566,
+      "p95GapMs": 18.5,
+      "maxGapMs": 36.099999999998545
+    },
+    {
+      "clip": "shot_7",
+      "callbacks": 445,
+      "seconds": 8.955299999999996,
+      "callbackFps": 49.57957857358215,
+      "presentedFps": 56.61451877659043,
+      "p95GapMs": 35.299999999995634,
+      "maxGapMs": 53.599999999998545
+    },
+    {
+      "clip": "shot_8",
+      "callbacks": 479,
+      "seconds": 8.445200000000005,
+      "callbackFps": 56.60019892956943,
+      "presentedFps": 56.60019892956943,
+      "p95GapMs": 18.099999999998545,
+      "maxGapMs": 52.200000000004366
+    }
+  ],
+  "decoderProperties": [
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    },
+    {
+      "name": "kVideoDecoderName",
+      "value": "D3D11VideoDecoder"
+    },
+    {
+      "name": "kResolution",
+      "value": "2560x1440"
+    },
+    {
+      "name": "kIsPlatformVideoDecoder",
+      "value": "true"
+    }
+  ],
+  "gpu": [
+    {
+      "active": true,
+      "deviceId": 11266,
+      "deviceString": "NVIDIA GeForce RTX 5080",
+      "driverVendor": "NVIDIA",
+      "driverVersion": "32.0.16.1714",
+      "gpuPreference": 3,
+      "revision": 161,
+      "subSysId": -1981738941,
+      "vendorId": 4318
+    },
+    {
+      "active": false,
+      "deviceId": 32103,
+      "deviceString": "Intel(R) Graphics",
+      "driverVersion": "32.0.101.6314",
+      "gpuPreference": 2,
+      "revision": 6,
+      "subSysId": -1997598653,
+      "vendorId": 32902
+    },
+    {
+      "active": false,
+      "deviceId": 140,
+      "deviceString": "Microsoft Basic Render Driver",
+      "driverVersion": "10.0.26100.9711",
+      "gpuPreference": 0,
+      "revision": 0,
+      "subSysId": 0,
+      "vendorId": 5140
+    },
+    {
+      "active": false,
+      "deviceId": 44317,
+      "driverVersion": "32.0.100.3104",
+      "gpuPreference": 0,
+      "revision": 0,
+      "subSysId": 0,
+      "vendorId": 32902
+    }
+  ],
+  "displays": [
+    {
+      "bounds": {
+        "x": 3840,
+        "y": 431,
+        "width": 1920,
+        "height": 1080
+      },
+      "frequency": 60
+    },
+    {
+      "bounds": {
+        "x": -1920,
+        "y": 431,
+        "width": 1920,
+        "height": 1080
+      },
+      "frequency": 60
+    },
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 3840,
+        "height": 2160
+      },
+      "frequency": 60
+    }
+  ],
+  "versions": {
+    "electron": "44.8.0",
+    "chrome": "152.0.7977.167"
+  },
+  "decodeControl": {
+    "source": "4P_Fantasy_3.mp4",
+    "width": 2560,
+    "height": 1440,
+    "frames": 720,
+    "wallSeconds": 1.702,
+    "fps": 423.03,
+    "decoder": "FFmpeg D3D11VA",
+    "output": "null; no composition or presentation",
+    "proves": "Decode throughput only, not end-to-end playback"
+  },
+  "visualCheck": {
+    "time": 2,
+    "ssim": 0.993816,
+    "reference": "Full-resolution software export frame",
+    "nativeSourcePresentationTimes": {
+      "at2": 3,
+      "at8": [
+        9,
+        29
+      ],
+      "at60": 7
+    },
+    "rapidSeeks": "8, 1, 60, 2 settled at 2 seconds"
+  },
+  "controls": {
+    "nativeVideoOnly": "A video-only Electron control also missed 60 fps. Frame-rate-limit/vsync switches did not fix it and are not enabled in the application."
+  }
+}

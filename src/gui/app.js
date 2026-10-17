@@ -109,9 +109,11 @@ const playback = new window.TimelinePlayback(api, {
   frame: event => {
     if (monitorView !== 'frame') return;
     const firstPreview = !shown;
-    $('preview').src = event.image;
-    shown = { f: Math.round(event.time * fps()), revision: event.revision, live: true };
-    drawMonitor(); if (firstPreview) api.ready();
+    const sameNativeView = shown?.native && event.native && playback.playing;
+    if (event.image) $('preview').src = event.image;
+    shown = { f: Math.floor(event.time * fps() + 1e-7), revision: event.revision, live: true, native: !!event.native };
+    if (!sameNativeView) drawMonitor();
+    if (firstPreview) api.ready();
   },
   state: () => { drawMonitor(); syncPlayButton(); },
   error: error => report(error, 'Preview stopped'),
@@ -986,7 +988,8 @@ function drawMonitor() {
   state.tip = monitorView === 'export' ? null : busy ? { title: 'Rendering exact frame', desc: frameJobId ? 'Full-resolution frame from original media.' : 'Preview uses the same composition and timing as export.' } : stale ? { action: 'renderFrame', desc: 'The image shows an earlier frame or project state. Render to update it.' } : null;
   $('stage').classList.toggle('stale', stale && monitorView === 'frame');
   $('stage-busy').hidden = !busy;
-  $('preview').hidden = monitorView !== 'frame' || !shown;
+  $('preview').hidden = monitorView !== 'frame' || !shown || shown.native;
+  $('native-preview').hidden = monitorView !== 'frame' || !shown?.native;
   const empty = $('stage-empty');
   empty.hidden = monitorView !== 'frame' || !!shown;
   if (!empty.hidden) empty.replaceChildren(icon(clips().length ? 'render' : 'layers'), h('div', {}, clips().length ? h('span', {}, 'Press ', kbd('Space'), ' to play the timeline') : 'Drag media onto the timeline to start your edit'));

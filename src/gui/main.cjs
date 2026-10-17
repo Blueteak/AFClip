@@ -6,15 +6,18 @@ const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } },
+  { scheme: 'reelet-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const args = process.argv.slice(2);
 const projectDir = path.resolve(args[0] || '.');
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
 let window, endpoint, streamController, captureTimer, captured = false;
 let previewSession, previewGeneration = 0;
 const previewFiles = new Map();
+const previewGraphics = { graphics: {} };
 const files = new Map();
 const outputs = new Set();
+app.commandLine.appendSwitch('force-color-profile', 'srgb');
 
 async function request(route, payload) {
   const response = await fetch(endpoint.url + route, {
@@ -80,6 +83,7 @@ async function capture() {
 }
 
 app.whenReady().then(async () => {
+  require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
   const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', projectDir], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   const reply = JSON.parse(result.stdout.trim());
   if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
@@ -103,7 +107,7 @@ app.whenReady().then(async () => {
       else { start = Number(match[1]); if (match[2]) end = Math.min(end, Number(match[2])); }
       if (start > end || start >= stat.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } });
     }
-    const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.png': 'image/png' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
     const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1),
       ...(range ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}) };
     const stream = req.method === 'HEAD' ? null : require('node:stream').Readable.toWeb(require('node:fs').createReadStream(file, { start, end }));
@@ -121,15 +125,17 @@ app.whenReady().then(async () => {
   window.webContents.on('console-message', (_event, details) => { if (details.level === 'error' || details.level === 3) console.error('GUI:', details.message); });
   previewSession = new (require('./preview-session.cjs'))(projectDir,
     value => { if (!window.isDestroyed()) window.webContents.send('reelet:preview', value); },
-    (file, id) => { previewFiles.clear(); previewFiles.set(id, file); return `reelet-media://${id}/audio.wav`; });
+    (file, id) => { previewFiles.set(id, file); return `reelet-media://${id}/asset`; },
+    graphics => { previewGraphics.graphics = structuredClone(graphics); });
   handle('preview-open', async mode => {
     if (!['gpu', 'software'].includes(mode)) throw new Error('Invalid preview mode');
     const generation = ++previewGeneration;
+    previewFiles.clear(); previewGraphics.graphics = {};
     const state = await request('/inspect');
     if (generation !== previewGeneration) return { id: null, revision: state.project.revision };
     return previewSession.open(state.project, mode);
   });
-  handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewSession.close(); });
+  handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewGraphics.graphics = {}; previewSession.close(); });
   ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
   handle('command', payload => {

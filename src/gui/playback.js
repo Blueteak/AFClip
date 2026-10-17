@@ -16,6 +16,7 @@ class TimelinePlayback {
   setProject(project, mode) {
     if (this.revision === project.revision && this.projectId === project.id && this.mode === mode) return;
     this.pause(false); this.generation++; this.epoch++;
+    this.native?.close(); this.native = null;
     this.rejectReady?.(new Error('Preview replaced')); this.rejectReady = null;
     this.api.previewClose();
     this.sessionId = null; this.ready = false; this.opening = null; this.inFlight = false; this.busy = false;
@@ -46,6 +47,7 @@ class TimelinePlayback {
   }
   async seek(time, resume = this.wantsPlay) {
     this.audio.pause(); this.playing = false; cancelAnimationFrame(this.tickId);
+    this.native?.pause();
     const epoch = ++this.epoch, generation = this.generation;
     this.wantsPlay = resume;
     this.time = Math.max(0, Math.min(time, Math.max(0, Math.ceil(this.duration * this.fps - 1e-8) - 1) / this.fps));
@@ -66,6 +68,7 @@ class TimelinePlayback {
     const wasRunning = this.playing;
     if (wasRunning) this.time = Math.floor(this.audio.currentTime * this.fps + 1e-7) / this.fps;
     this.audio.pause(); this.playing = false; this.wantsPlay = false; this.busy = false; this.epoch++;
+    this.native?.pause();
     cancelAnimationFrame(this.tickId); this.notify();
     if (wasRunning) this.callbacks.time?.(this.time);
     if (render && this.duration) this.seek(this.time, false);
@@ -73,12 +76,22 @@ class TimelinePlayback {
   request(time, force = false) {
     if (!this.ready || (!force && this.inFlight)) return;
     this.inFlight = true;
+    if (this.native) {
+      const epoch = this.epoch, sessionId = this.sessionId;
+      this.native.seek(time).then(current => { if (current) this.receive({ type: 'frame', native: true, time, epoch, sessionId, revision: this.revision }); }).catch(error => { if (sessionId === this.sessionId && epoch === this.epoch) this.fail(error); });
+      return;
+    }
     this.api.previewFrame({ sessionId: this.sessionId, epoch: this.epoch, time });
   }
   tick() {
     if (!this.playing) return;
     this.time = this.audio.currentTime;
     this.callbacks.time?.(this.time);
+    if (this.native) {
+      this.native.update(this.time);
+      this.callbacks.frame?.({ native: true, time: this.time, revision: this.revision });
+      this.tickId = requestAnimationFrame(() => this.tick()); return;
+    }
     const frame = Math.min(Math.floor(this.time * this.fps + 1e-7), Math.ceil(this.duration * this.fps - 1e-8) - 1);
     if (frame !== this.lastRequestedFrame) {
       if (!this.inFlight) { this.lastRequestedFrame = frame; this.request(frame / this.fps); }
@@ -89,6 +102,7 @@ class TimelinePlayback {
     if (event.sessionId !== this.sessionId) return;
     if (event.type === 'error') { this.rejectReady?.(new Error(event.error.message)); this.fail(new Error(event.error.message)); return; }
     if (event.type === 'ready') {
+      if (event.nativeSetup) this.native = new window.NativePreview(event.nativeSetup, document.getElementById('native-preview'), error => this.fail(error));
       const generation = this.generation;
       this.audio.onloadedmetadata = () => {
         if (generation !== this.generation) return;
@@ -114,6 +128,7 @@ class TimelinePlayback {
   fail(error) {
     this.generation++; this.rejectReady?.(error); this.rejectReady = null; this.opening = null;
     this.pause(false); this.busy = false; this.ready = false; this.inFlight = false;
+    this.native?.close(); this.native = null;
     this.api.previewClose(); this.sessionId = null; this.audio.removeAttribute('src'); this.audio.load();
     this.notify(); this.callbacks.error?.(error);
   }

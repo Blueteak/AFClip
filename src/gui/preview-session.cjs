@@ -4,8 +4,8 @@ const { spawn } = require('node:child_process');
 const { randomUUID } = require('node:crypto');
 
 module.exports = class PreviewSession {
-  constructor(projectDir, send, registerFile) {
-    Object.assign(this, { projectDir, send, registerFile });
+  constructor(projectDir, send, registerFile, registerGraphics) {
+    Object.assign(this, { projectDir, send, registerFile, registerGraphics });
   }
   async open(project, mode) {
     this.close();
@@ -15,7 +15,7 @@ module.exports = class PreviewSession {
     await fs.mkdir(root, { recursive: true });
     if (this.current !== session) { this.clean(session); return { id, revision: project.revision }; }
     const config = path.join(root, 'config.json');
-    await fs.writeFile(config, JSON.stringify({ projectDir: this.projectDir, project, kind: 'preview', mode,
+    await fs.writeFile(config, JSON.stringify({ projectDir: this.projectDir, project, kind: 'preview', mode, nativePreview: mode === 'gpu',
       output: path.join(root, 'unused.png'), jobId: id, cancelFile: session.cancelFile }));
     if (this.current !== session) { this.clean(session); return { id, revision: project.revision }; }
     const child = spawn(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], {
@@ -33,7 +33,16 @@ module.exports = class PreviewSession {
         const line = buffer.slice(0, end); buffer = buffer.slice(end + 1);
         try {
           const value = JSON.parse(line);
+          if (this.current !== session) continue;
           if (value.type === 'ready' && value.audio) value.audioUrl = this.registerFile(value.audio, id);
+          if (value.nativeSetup) {
+            for (const media of Object.values(value.nativeSetup.media)) {
+              if (media.file && ['video', 'image'].includes(media.kind)) media.url = this.registerFile(media.file, randomUUID());
+              delete media.file;
+            }
+            this.registerGraphics(value.nativeSetup.graphics);
+            for (const graphic of Object.values(value.nativeSetup.graphics)) delete graphic.root;
+          }
           if (value.type === 'error') terminal = true;
           send(value);
         } catch { /* Ignore non-protocol diagnostic lines. */ }
