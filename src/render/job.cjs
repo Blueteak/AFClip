@@ -103,18 +103,30 @@ async function main() {
     decodedBudgetBytes: Math.min(project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024), partial };
   const renderFile = path.join(work, 'renderer.json');
   if (config.kind === 'preview' && config.nativePreview) {
-    const seekCache = await require('./seek-cache.cjs')({ media, plan, directory:path.join(config.projectDir,'cache','seek-preview'),
-      budget:Math.min(project.cacheLimitBytes || 256*1024*1024,512*1024*1024), ffmpeg, ffprobe, run,
-      progress:id => emit({type:'progress',phase:'prepare',message:`Preparing seek frames for ${id}`}) });
+    const prepareSeekCache = require('./seek-cache.cjs');
+    const seekOptions = { media, plan, directory:path.join(config.projectDir,'cache','seek-preview'),
+      budget:Math.min(project.cacheLimitBytes || 256*1024*1024,512*1024*1024), ffmpeg, ffprobe, run };
+    const seekCache = await prepareSeekCache({ ...seekOptions, reuseOnly:true });
+    seekCache.complete = seekCache.hits === seekCache.sources;
     emit({ type: 'ready', audio: audio?.output, nativeSetup: {
       project, plan, media, graphics, width, height, seekCache,
     } });
+    // Preview is usable immediately with originals. Publish each completed range
+    // without replacing the session, changing the playhead, or interrupting play.
+    const background = seekCache.complete ? Promise.resolve() : prepareSeekCache({ ...seekOptions,
+      onProxy:(mediaId,seekProxy) => emit({type:'seek-cache',mediaId,seekProxy}),
+    }).then(stats => emit({type:'seek-cache',seekCache:{...stats,complete:true}})).catch(error => {
+      if (error.code !== 'CANCELLED') emit({type:'seek-cache',seekCache:{complete:true,error:error.message}});
+    });
     // Keep accepted graphics and mixed audio alive until the editor closes this snapshot.
     await new Promise(resolve => {
       const reader = require('node:readline').createInterface({ input: process.stdin });
       reader.on('line', line => { try { if (JSON.parse(line).type === 'close') { reader.close(); resolve(); } } catch {} });
       reader.on('close', resolve);
     });
+    cancelled = true;
+    for (const child of children) kill(child);
+    await background;
     return;
   }
   if (config.kind === 'preview') {

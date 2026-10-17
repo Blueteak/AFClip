@@ -115,7 +115,7 @@ Final 1080p60 monitor measurement, cache format 2:
 
 Cached forward/backward reversals delivered 120/120 correct pictures over 2.0002 seconds (59.994 updates/sec). A sweep through frames not yet decoded in memory delivered 60/60 over 1.0001 seconds (59.994 updates/sec). Exact release took 16.9 and 16.0 ms respectively. Earlier development runs occasionally missed one sweep deadline; this is a measured result, not a guarantee for every machine or project. The small isolated samples make each category's p95 its maximum.
 
-All eight source ranges took **30.49 seconds** to prepare and **218.2 MiB** on disk; reopening reused them in **6–7 ms**. End-of-run decoded bitmaps occupied **172.0 MiB**, within the separate 256 MiB limit. These costs are excluded from interaction latency. Large ranges, gaps between uses of one source, or late trims can increase preparation work because encoding currently decodes from the source beginning. Over-budget ranges remain on the slower original path. The native long-GOP decoder remains the unresolved bottleneck there; its baseline distant seeks took 183–394 ms.
+All eight source ranges took **30.49 seconds** to prepare and **218.2 MiB** on disk; reopening reused them in **6–7 ms**. End-of-run decoded bitmaps occupied **172.0 MiB**, within the separate 256 MiB limit. These costs are excluded from interaction latency. This initial implementation decoded from the source beginning; the background-generation follow-up below removes that cost. Over-budget ranges remain on the slower original path. The native long-GOP decoder remains the unresolved bottleneck there; its baseline distant seeks took 183–394 ms.
 
 The diagnostic now wakes on readiness events and waits for the next animation frame, removing an extra animation-frame polling delay from the earlier baseline method. This measurement improvement must not be attributed to the cache. Results estimate browser request-to-picture readiness, **not physical display scanout**. Run the same opt-in --seek benchmark for isolated requests, continuous drags, release, cache size and preparation telemetry.
 
@@ -123,12 +123,34 @@ Manual checks covered a 90-frame VFR source with 33/100 ms intervals: independen
 
 Artifacts: .cache/playback/2026-10-17T17-58-31-209Z/seeks.json (final format), .cache/playback/2026-10-17T17-54-03-057Z/results.json (playback), .cache/seek-perf/vfr-check.json (packet identity). Committed measurements below retain the baseline alongside the new result.
 
+
+### Background generation and invalidation follow-up
+
+Preview no longer waits for seek-media encoding. It loads reusable cache indexes, reports ready, and generates missing ranges in the existing worker. Each finished source attaches to the live preview without moving the playhead or restarting playback. Until then, original decoding supplies the picture. Closing or replacing a session cancels its background subprocesses; stale updates are rejected by session ID.
+
+Cache invalidation follows source identity and coverage:
+
+- Title, transform, volume, layout and project-frame-rate changes reuse source packets if the required source range is still covered.
+- A shorter trim reuses a containing range. Extending beyond that range, changing source-in beyond coverage, or adding transition handles beyond coverage rebuilds that source range. Incremental extension is not implemented.
+- Source path, file size, modification time or cache encoding version changes invalidate that source. This is a metadata fingerprint, not a full content hash.
+- Every project edit still replaces the preview snapshot and its decoded bitmap cache. Disk packets survive when valid; audio/graphics are prepared for the new snapshot. Unneeded range files remain eligible for eviction.
+
+Accurate FFmpeg input seeking now starts decoding at the preceding keyframe rather than frame zero. Source selection still uses the original PTS index, with microsecond rounding downward at the seek boundary. Filter and JPEG encoder thread counts are bounded; leaving decoder threading automatic was substantially faster than restricting it to two threads.
+
+On the same representative edit, with source indexes already cached but **no seek media**, first picture appeared in **1.03 seconds** after diagnostic startup, the first seek range arrived at **2.75 seconds**, and all eight ranges finished in **17.07 seconds** of background work while playback continued. That is **44% less generation time** than the initial 30.49-second blocking build. Disk use stayed at 218.2 MiB. This does not remove initial audio/index preparation or guarantee 25 ms for a range still being generated.
+
+A subsequent muted seek run measured p95 **20.3 / 18.3 / 22.5 / 20.6 ms** for forward / backward / nearby / distant requests. All 48 isolated requests met 25 ms. Cached reversals delivered 119/120 pictures at the next display tick; the new-frame sweep delivered 60/60. Releases took 16.2 and 17.1 ms. Occasional missed display deadlines remain, even though the isolated latency target is met.
+
+All eight shortened ranges reused their existing files with no encodes (10.6 ms lookup). Independently decoded frames at source times 46.5, 51 and 55.5 seconds matched the seek packets byte-for-byte after the input-seeking change; the VFR packet check also passed. Playback diagnostics now mute the WebContents audio output from window creation while retaining the real audio clock. Normal GUI playback remains audible; CLI edits do not open a player.
+
+Artifacts: .cache/seek-perf/background-muted.json, .cache/seek-perf/background-muted/seeks.json, and .cache/seek-perf/reuse-accuracy.json.
+
 ## Current limits
 
 The agreed throughput target is **sustained 60 fps at full 1920×1080**, using a 60 fps version of the representative edit with original footage, titles, dissolves and synchronized audio. The original 24.6 fps result at 540p is not acceptable against this target. Seeking now targets 25 ms at p95 and 60 fps updates during continuous scrubbing; the prepared-cache path meets those targets on this representative edit, with the limits below.
 
 Run `node benchmarks/windows/playback.cjs` for a visible full-size measurement. It creates a disposable 1080p60 copy of the example project, leaves the original project unchanged, runs the production GUI with a 1920×1080 monitor at device-pixel ratio 1, and records per-source `requestVideoFrameCallback` timestamps, Chromium presented-frame counts, dropped-frame counters, decoder identity and display/GPU information. A project path, measurement length in seconds, and output height can be supplied as positional arguments. For example, `node benchmarks/windows/playback.cjs examples/vellum-first-edit 64 1440` measures 2560×1440. Supported heights are 1080, 1440 and 2160. Artifacts go under `.cache/playback/`. The benchmark requires a display that fits the requested viewport at device-pixel ratio 1. This is an opt-in diagnostic, not an always-run test suite.
 
-The session prepares the whole timeline's audio and source indexes before its first preview. Edits rebuild that session, so a large edit or uncached source can take longer to become ready. Uncovered long-GOP footage still has expensive seeks. Native preview prepares upcoming clips one second ahead and pre-rolls them for half a second when source handles permit. Seek-cache preparation currently runs before session readiness; long sources and large edits can make that expensive.
+The session prepares the whole timeline's audio and source indexes before its first preview. Edits rebuild that session, so a large edit or uncached source can take longer to become ready. Uncovered long-GOP footage still has expensive seeks. Native preview prepares upcoming clips one second ahead and pre-rolls them for half a second when source handles permit. Seek-cache generation runs in the background; uncovered ranges use original decoding until their cache arrives. Source indexing, audio mixing and graphics preparation still precede readiness.
 
 Picture delivery can drop below the project frame rate, especially with software decoding or multiple overlapping sources. Audio remains the playback clock. The measurements above do not constitute an audition or a physical audiovisual latency measurement. Broken sources or graphics stop the preview session with an error while the editor remains usable.

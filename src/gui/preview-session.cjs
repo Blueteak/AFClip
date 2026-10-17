@@ -35,6 +35,7 @@ module.exports = class PreviewSession {
           const value = JSON.parse(line);
           if (this.current !== session) continue;
           if (value.type === 'ready' && value.audio) value.audioUrl = this.registerFile(value.audio, id);
+          if (value.seekProxy) { value.seekProxy.url = this.registerFile(value.seekProxy.file, randomUUID()); delete value.seekProxy.file; }
           if (value.nativeSetup) {
             for (const media of Object.values(value.nativeSetup.media)) {
               if (media.file && ['video', 'image'].includes(media.kind)) media.url = this.registerFile(media.file, randomUUID());

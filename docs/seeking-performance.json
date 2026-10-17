@@ -5623,5 +5623,297 @@
         }
       ]
     }
+  },
+  "backgroundFollowup": {
+    "artifactDirectory": ".cache/seek-perf/background-muted",
+    "firstPictureMs": 1025.9376,
+    "background": {
+      "readiness": {
+        "ready": true,
+        "time": 21.966666666666665,
+        "cache": {
+          "bytes": 0,
+          "budget": 268435456,
+          "sources": 8,
+          "hits": 0,
+          "built": 0,
+          "ms": 2.320600000000013,
+          "complete": false
+        }
+      },
+      "updates": [
+        {
+          "ms": 1027.9948,
+          "count": 0,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": false,
+          "time": 2
+        },
+        {
+          "ms": 2746.801,
+          "count": 1,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 3.478924
+        },
+        {
+          "ms": 5072.268300000001,
+          "count": 2,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 5.810799
+        },
+        {
+          "ms": 7142.5904,
+          "count": 3,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 7.878323
+        },
+        {
+          "ms": 9405.9544,
+          "count": 4,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 10.144256
+        },
+        {
+          "ms": 11515.2823,
+          "count": 5,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 12.245242
+        },
+        {
+          "ms": 13802.554100000001,
+          "count": 6,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 14.545321
+        },
+        {
+          "ms": 15828.301000000001,
+          "count": 7,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 16.561331
+        },
+        {
+          "ms": 17859.7422,
+          "count": 8,
+          "cache": {
+            "bytes": 0,
+            "budget": 268435456,
+            "sources": 8,
+            "hits": 0,
+            "built": 0,
+            "ms": 2.320600000000013,
+            "complete": false
+          },
+          "playing": true,
+          "time": 18.594258
+        }
+      ],
+      "final": {
+        "count": 8,
+        "cache": {
+          "bytes": 228796983,
+          "budget": 268435456,
+          "sources": 8,
+          "hits": 0,
+          "built": 8,
+          "ms": 17074.751600000003,
+          "complete": true
+        },
+        "playing": true,
+        "time": 18.662219
+      }
+    },
+    "summary": [
+      {
+        "category": "initial",
+        "count": 1,
+        "minMs": 9.700000047683716,
+        "medianMs": 9.700000047683716,
+        "p95Ms": 9.700000047683716,
+        "maxMs": 9.700000047683716,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "frame-forward",
+        "count": 12,
+        "minMs": 9.100000023841858,
+        "medianMs": 18.399999976158142,
+        "p95Ms": 20.30000001192093,
+        "maxMs": 20.30000001192093,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "frame-backward",
+        "count": 12,
+        "minMs": 2.300000011920929,
+        "medianMs": 3.300000011920929,
+        "p95Ms": 18.30000001192093,
+        "maxMs": 18.30000001192093,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "cached-reversals-release",
+        "count": 1,
+        "minMs": 16.200000047683716,
+        "medianMs": 16.200000047683716,
+        "p95Ms": 16.200000047683716,
+        "maxMs": 16.200000047683716,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "nearby",
+        "count": 12,
+        "minMs": 2.300000011920929,
+        "medianMs": 14.5,
+        "p95Ms": 22.5,
+        "maxMs": 22.5,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "distant",
+        "count": 12,
+        "minMs": 1.199999988079071,
+        "medianMs": 11.5,
+        "p95Ms": 20.600000023841858,
+        "maxMs": 20.600000023841858,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "uncached-sweep-release",
+        "count": 1,
+        "minMs": 17.099999964237213,
+        "medianMs": 17.099999964237213,
+        "p95Ms": 17.099999964237213,
+        "maxMs": 17.099999964237213,
+        "within25ms": 1,
+        "within50ms": 1
+      }
+    ],
+    "scrubs": [
+      {
+        "category": "cached-reversals",
+        "requests": 120,
+        "seconds": 2.0002,
+        "correctUpdates": 119,
+        "correctUpdatesPerSecond": 59.49405059494051
+      },
+      {
+        "category": "uncached-sweep",
+        "requests": 60,
+        "seconds": 1.0001000000000004,
+        "correctUpdates": 60,
+        "correctUpdatesPerSecond": 59.99400059993999
+      }
+    ],
+    "validation": {
+      "reuse": {
+        "bytes": 228796983,
+        "budget": 268435456,
+        "sources": 8,
+        "hits": 8,
+        "built": 0,
+        "ms": 12.413200000000003
+      },
+      "trims": {
+        "bytes": 228796983,
+        "budget": 268435456,
+        "sources": 8,
+        "hits": 8,
+        "built": 0,
+        "ms": 10.555700000000002
+      },
+      "trimFilesUnchanged": true,
+      "lateSource": {
+        "file": "D:\\Recordings\\Vellum_TrailerCap_November\\Boss_Reaper_1.mp4",
+        "frames": [
+          2790,
+          3060,
+          3330
+        ],
+        "pts": [
+          46.5,
+          51,
+          55.5
+        ],
+        "exactBytes": true
+      }
+    },
+    "note": "Diagnostic audio output muted; original audio clock retained. One cached reversal missed its next-display deadline."
   }
 }

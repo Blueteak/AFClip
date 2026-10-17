@@ -27,6 +27,8 @@ if (!process.versions.electron) {
   });
 } else {
   const { app, BrowserWindow, screen } = require('electron');
+  // Exercise the real audio clock without sending diagnostic audio to speakers.
+  app.on('browser-window-created', (_event, window) => window.webContents.setAudioMuted(true));
   const output = path.resolve(process.argv[3]), seconds = Number(process.argv[4]);
   const measureSeeking = process.argv.includes('--seek');
   const { width, height } = JSON.parse(fs.readFileSync(path.join(output, 'project/project.json'))).resolution;
@@ -35,6 +37,7 @@ if (!process.versions.electron) {
   process.argv = [process.argv[0], path.join(root, 'src/gui/main.cjs'), path.join(output, 'project')];
   require('../../src/gui/main.cjs');
   (async () => {
+    const openedAt = performance.now();
     await app.whenReady(); let win;
     for (let i = 0; i < 100; i++) { win = BrowserWindow.getAllWindows()[0]; if (win && !win.webContents.isLoading()) break; await sleep(100); }
     if (!win) throw new Error('Editor did not open');
@@ -48,6 +51,7 @@ if (!process.versions.electron) {
       if (ready) break; await sleep(500);
     }
     if (!ready) throw new Error('Native preview did not become ready');
+    const previewReadyMs = performance.now() - openedAt;
     const display = screen.getAllDisplays().find(d => d.workArea.width >= width && d.workArea.height >= height + 40);
     if (!display) throw new Error('No display can fit the requested viewport at device-pixel ratio 1');
     win.setContentSize(Math.min(width + 240, display.workArea.width), Math.min(height + 220, display.workArea.height - 40));
@@ -58,7 +62,15 @@ if (!process.versions.electron) {
       void 0;
     `);
     if (measureSeeking) {
+      // Prepared-cache interaction numbers stay separate from usable-preview
+      // readiness and background generation. Playback measurements never wait.
+      for (let i = 0; i < 1200; i++) {
+        if (await win.webContents.executeJavaScript('playback.native.setup.seekCache?.complete')) break;
+        if (i === 1199) throw new Error('Background seek cache did not finish');
+        await sleep(100);
+      }
       const result = await win.webContents.executeJavaScript(fs.readFileSync(path.join(__dirname, 'seek.js'), 'utf8'));
+      result.previewReadyMs = previewReadyMs;
       result.versions = process.versions; result.gpu = await app.getGPUInfo('complete');
       fs.writeFileSync(path.join(output, 'seeks.json'), JSON.stringify(result, null, 2));
       console.log(JSON.stringify(result.summary, null, 2));
