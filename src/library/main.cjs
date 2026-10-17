@@ -29,7 +29,7 @@ app.whenReady().then(async()=>{
   window.webContents.on('will-navigate',(e,next)=>{if(new URL(next).origin!==url.origin)e.preventDefault();});
   await window.loadURL(url.toString());window.show();window.focus();
   if(dev)require('../gui/dev-reload.cjs')(window,undefined,{files:[
-    ...['index.html','app.js','review-tools.js','styles.css'].map(name=>path.join(__dirname,'gui',name)),
+    ...['index.html','app.js','review-tools.js','annotation-timeline.js','styles.css'].map(name=>path.join(__dirname,'gui',name)),
     path.join(__dirname,'../gui/styles.css'),path.join(__dirname,'../gui/native-preview.js'),path.join(__dirname,'../render/timeline.cjs'),
   ]});
 }).catch(e=>{console.error(e);dialog.showErrorBox('Content Library',e.message);app.exit(1);});
