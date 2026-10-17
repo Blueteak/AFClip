@@ -13,7 +13,7 @@ These overviews supersede the earlier design brief.
 
 ## Implementation status
 
-The editor is not implemented yet. Existing local media benchmarks are experiments, not the application.
+The editor is not implemented yet. The [Windows rendering benchmark](benchmarks/windows/README.md) is runnable experimental tooling, not the application. [Measured Windows results](docs/windows-benchmark-results.md) record rendering checks, performance and remaining prototype work.
 
 The planned architecture uses an independent TypeScript/Node.js project engine, an Electron GUI and separate rendering workers. Chromium composition and bundled FFmpeg tools are provisional choices. GPU acceleration should be used where available, with software fallbacks.
 

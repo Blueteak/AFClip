@@ -1,0 +1,1795 @@
+{
+  "startedAt": "2026-10-17T04:46:22.176Z",
+  "renderRerunAt": "2026-10-17T04:50:03.670Z",
+  "finishedAt": "2026-10-17T04:50:56.040Z",
+  "artifactDirectory": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z",
+  "machine": {
+    "gpu": [
+      {
+        "Name": "Intel(R) Graphics",
+        "DriverVersion": "32.0.101.6314"
+      },
+      {
+        "Name": "NVIDIA GeForce RTX 5080",
+        "DriverVersion": "32.0.16.1714"
+      }
+    ],
+    "cpu": {
+      "Name": "Intel(R) Core(TM) Ultra 9 285K",
+      "NumberOfCores": 24,
+      "NumberOfLogicalProcessors": 24
+    },
+    "os": {
+      "Caption": "Microsoft Windows 11 Pro",
+      "Version": "10.0.26200",
+      "TotalVisibleMemorySize": 66449292
+    }
+  },
+  "versions": {
+    "node": "v24.12.0",
+    "electron": "44.8.0",
+    "ffmpeg": "ffmpeg version 6.1.1-essentials_build-www.gyan.dev Copyright (c) 2000-2023 the FFmpeg developers\r",
+    "ffprobe": "ffprobe version 4.0.2 Copyright (c) 2007-2018 the FFmpeg developers\r"
+  },
+  "notes": [
+    "Three serial samples per FFmpeg case; process startup and disk I/O included; no cache flushing.",
+    "Generated fixtures establish timing correctness. Gameplay sources are local and never uploaded.",
+    "No agreed performance targets exist. Measurements do not constitute prototype acceptance.",
+    "Electron capture uses CPU BGRA readback and pipe transfer, not shared GPU textures."
+  ],
+  "checkCounts": {
+    "pass": 26,
+    "fail": 1
+  },
+  "sources": [
+    {
+      "index": 0,
+      "file": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\timing-1080p60.mp4",
+      "bytes": 12131064,
+      "duration": 6,
+      "streams": [
+        {
+          "type": "video",
+          "codec": "h264",
+          "width": 1920,
+          "height": 1080,
+          "pixelFormat": "yuv420p",
+          "frameRate": "60/1",
+          "colorSpace": "bt709",
+          "colorTransfer": "bt709"
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "frameRate": "0/0",
+          "sampleRate": "48000",
+          "channels": 1
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "file": "/path/to/media/source",
+      "bytes": 3779376,
+      "duration": 12,
+      "streams": [
+        {
+          "type": "video",
+          "codec": "h264",
+          "width": 1920,
+          "height": 1080,
+          "pixelFormat": "yuv420p",
+          "frameRate": "48/1",
+          "colorSpace": "bt709",
+          "colorTransfer": "bt709"
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "frameRate": "0/0",
+          "sampleRate": "48000",
+          "channels": 2
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "file": "/path/to/media/source",
+      "bytes": 75675736,
+      "duration": 15.317,
+      "streams": [
+        {
+          "type": "video",
+          "codec": "hevc",
+          "width": 2560,
+          "height": 1440,
+          "pixelFormat": "yuv420p",
+          "frameRate": "60/1",
+          "colorSpace": "bt709",
+          "colorTransfer": "bt709"
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "frameRate": "0/0",
+          "sampleRate": "48000",
+          "channels": 2
+        }
+      ]
+    }
+  ],
+  "experiments": [
+    {
+      "name": "source0-decode-software",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 175.13400000000001,
+          "realtime": 34.259481311452944,
+          "log": "003-source0-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 178.0084999999999,
+          "realtime": 33.706255600153945,
+          "log": "004-source0-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 174.3470000000002,
+          "realtime": 34.4141281467418,
+          "log": "005-source0-decode-software.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 175.13400000000001,
+        "p95": 178.0084999999999,
+        "max": 178.0084999999999
+      }
+    },
+    {
+      "name": "source0-decode-d3d11va-download",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 746.9546999999993,
+          "realtime": 8.032615632514268,
+          "log": "006-source0-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 742.3166000000001,
+          "realtime": 8.082804560749414,
+          "log": "007-source0-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 749.1104999999998,
+          "realtime": 8.009499266129632,
+          "log": "008-source0-decode-d3d11va-download.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 746.9546999999993,
+        "p95": 749.1104999999998,
+        "max": 749.1104999999998
+      }
+    },
+    {
+      "name": "source0-x264",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 874.5052999999998,
+          "realtime": 6.861021882886246,
+          "log": "009-source0-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 884.0931,
+          "realtime": 6.786615572500226,
+          "log": "010-source0-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 887.0851999999995,
+          "realtime": 6.76372461179603,
+          "log": "011-source0-x264.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 884.0931,
+        "p95": 887.0851999999995,
+        "max": 887.0851999999995
+      }
+    },
+    {
+      "name": "source0-nvenc",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 904.1761000000006,
+          "realtime": 6.635875467179454,
+          "log": "012-source0-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 908.0785999999989,
+          "realtime": 6.607357556933956,
+          "log": "013-source0-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 899.1903000000002,
+          "realtime": 6.672669845304157,
+          "log": "014-source0-nvenc.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 904.1761000000006,
+        "p95": 908.0785999999989,
+        "max": 908.0785999999989
+      }
+    },
+    {
+      "name": "source1-decode-software",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 148.42640000000029,
+          "realtime": 40.424075501393204,
+          "log": "015-source1-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 145.54759999999987,
+          "realtime": 41.22362718450874,
+          "log": "016-source1-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 148.72549999999865,
+          "realtime": 40.342779146817826,
+          "log": "017-source1-decode-software.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 148.42640000000029,
+        "p95": 148.72549999999865,
+        "max": 148.72549999999865
+      }
+    },
+    {
+      "name": "source1-decode-d3d11va-download",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 674.6753000000008,
+          "realtime": 8.893166831511385,
+          "log": "018-source1-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 663.9534999999996,
+          "realtime": 9.036777424925093,
+          "log": "019-source1-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 684.1777999999995,
+          "realtime": 8.769650228347082,
+          "log": "020-source1-decode-d3d11va-download.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 674.6753000000008,
+        "p95": 684.1777999999995,
+        "max": 684.1777999999995
+      }
+    },
+    {
+      "name": "source1-x264",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 781.7973999999995,
+          "realtime": 7.674622606828833,
+          "log": "021-source1-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 764.4998999999989,
+          "realtime": 7.848267867660949,
+          "log": "022-source1-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 755.6208999999999,
+          "realtime": 7.940489734998067,
+          "log": "023-source1-x264.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 764.4998999999989,
+        "p95": 781.7973999999995,
+        "max": 781.7973999999995
+      }
+    },
+    {
+      "name": "source1-nvenc",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 767.8005000000012,
+          "realtime": 7.814529946255558,
+          "log": "024-source1-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 758.4467000000004,
+          "realtime": 7.910905275215775,
+          "log": "025-source1-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 751.2553000000007,
+          "realtime": 7.986632506952024,
+          "log": "026-source1-nvenc.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 758.4467000000004,
+        "p95": 767.8005000000012,
+        "max": 767.8005000000012
+      }
+    },
+    {
+      "name": "source2-decode-software",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 555.8804999999993,
+          "realtime": 10.793686772606716,
+          "log": "027-source2-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 553.1563999999998,
+          "realtime": 10.846841869677368,
+          "log": "028-source2-decode-software.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 549.7656999999999,
+          "realtime": 10.913740162400092,
+          "log": "029-source2-decode-software.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 553.1563999999998,
+        "p95": 555.8804999999993,
+        "max": 555.8804999999993
+      }
+    },
+    {
+      "name": "source2-decode-d3d11va-download",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 1141.8824999999997,
+          "realtime": 5.254481087152138,
+          "log": "030-source2-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 1121.0015999999996,
+          "realtime": 5.352356321346912,
+          "log": "031-source2-decode-d3d11va-download.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 1110.8366999999998,
+          "realtime": 5.401333967449942,
+          "log": "032-source2-decode-d3d11va-download.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 1121.0015999999996,
+        "p95": 1141.8824999999997,
+        "max": 1141.8824999999997
+      }
+    },
+    {
+      "name": "source2-x264",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 2030.5449000000008,
+          "realtime": 2.9548718671525056,
+          "log": "033-source2-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 2055.7585,
+          "realtime": 2.9186307632924784,
+          "log": "034-source2-x264.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 2090.3689000000013,
+          "realtime": 2.8703067673844536,
+          "log": "035-source2-x264.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 2055.7585,
+        "p95": 2090.3689000000013,
+        "max": 2090.3689000000013
+      }
+    },
+    {
+      "name": "source2-nvenc",
+      "status": "measured",
+      "samples": [
+        {
+          "code": 0,
+          "wallMs": 1377.6743999999999,
+          "realtime": 4.355165487578198,
+          "log": "036-source2-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 1372.892899999999,
+          "realtime": 4.370333621799635,
+          "log": "037-source2-nvenc.log"
+        },
+        {
+          "code": 0,
+          "wallMs": 1379.998599999999,
+          "realtime": 4.347830497799059,
+          "log": "038-source2-nvenc.log"
+        }
+      ],
+      "wallMs": {
+        "n": 3,
+        "median": 1377.6743999999999,
+        "p95": 1379.998599999999,
+        "max": 1379.998599999999
+      }
+    },
+    {
+      "name": "intel-qsv",
+      "status": "unavailable-or-failed",
+      "samples": [
+        {
+          "code": 2981409195,
+          "wallMs": 514.4058999999979,
+          "realtime": 11.66394086848542,
+          "log": "039-intel-qsv.log"
+        }
+      ],
+      "wallMs": {
+        "n": 1,
+        "median": 514.4058999999979,
+        "p95": 514.4058999999979,
+        "max": 514.4058999999979
+      }
+    },
+    {
+      "name": "intel-qsv-explicit-adapter",
+      "status": "unavailable-or-failed",
+      "samples": [
+        {
+          "code": 2981409195,
+          "wallMs": 522.8502999999982,
+          "realtime": 11.475560021673546,
+          "log": "040-intel-qsv-explicit-adapter.log"
+        }
+      ],
+      "wallMs": {
+        "n": 1,
+        "median": 522.8502999999982,
+        "p95": 522.8502999999982,
+        "max": 522.8502999999982
+      }
+    }
+  ],
+  "checks": [
+    {
+      "name": "VFR fixture has nonuniform timestamps",
+      "status": "pass",
+      "details": {
+        "frames": 90,
+        "intervalsMs": [
+          33,
+          100
+        ]
+      }
+    },
+    {
+      "name": "Chromium gpu experiment completed",
+      "status": "pass",
+      "details": {
+        "log": "078-electron-gpu.log"
+      }
+    },
+    {
+      "name": "gpu: export frame count and audio track",
+      "status": "pass",
+      "details": {
+        "frames": 150
+      }
+    },
+    {
+      "name": "gpu: exported frame 0 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.999634,
+        "threshold": 0.98,
+        "log": "079-ssim-gpu-0.log"
+      }
+    },
+    {
+      "name": "gpu: exported frame 30 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.999363,
+        "threshold": 0.98,
+        "log": "080-ssim-gpu-30.log"
+      }
+    },
+    {
+      "name": "gpu: exported frame 75 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.998838,
+        "threshold": 0.98,
+        "log": "081-ssim-gpu-75.log"
+      }
+    },
+    {
+      "name": "gpu: exported frame 120 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.999354,
+        "threshold": 0.98,
+        "log": "082-ssim-gpu-120.log"
+      }
+    },
+    {
+      "name": "gpu: SDR color patches survive capture and encode",
+      "status": "pass",
+      "details": {
+        "tolerance8bit": 5,
+        "patches": [
+          {
+            "x": 160,
+            "y": 200,
+            "before": [
+              253,
+              0,
+              0
+            ],
+            "after": [
+              251,
+              0,
+              0
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 480,
+            "y": 200,
+            "before": [
+              0,
+              254,
+              0
+            ],
+            "after": [
+              0,
+              252,
+              0
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 800,
+            "y": 200,
+            "before": [
+              252,
+              253,
+              0
+            ],
+            "after": [
+              251,
+              251,
+              0
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 1120,
+            "y": 200,
+            "before": [
+              0,
+              0,
+              252
+            ],
+            "after": [
+              0,
+              0,
+              250
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 1440,
+            "y": 200,
+            "before": [
+              253,
+              0,
+              252
+            ],
+            "after": [
+              253,
+              0,
+              251
+            ],
+            "maxError": 1
+          },
+          {
+            "x": 1760,
+            "y": 200,
+            "before": [
+              0,
+              255,
+              253
+            ],
+            "after": [
+              0,
+              253,
+              250
+            ],
+            "maxError": 3
+          }
+        ]
+      }
+    },
+    {
+      "name": "gpu: composed flash and audio sync",
+      "status": "pass",
+      "details": {
+        "toleranceMs": 33.333333333333336,
+        "sync": [
+          {
+            "second": 1,
+            "audioTime": 1.0000416666666667,
+            "videoTime": 1,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 2,
+            "audioTime": 2.0000416666666667,
+            "videoTime": 2,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 3,
+            "audioTime": 3.0000416666666667,
+            "videoTime": 3,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 4,
+            "audioTime": 4.000041666666666,
+            "videoTime": 4,
+            "offsetMs": 0.0416666666662735,
+            "pulseFound": true,
+            "flashFound": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Chromium software experiment completed",
+      "status": "pass",
+      "details": {
+        "log": "087-electron-software.log"
+      }
+    },
+    {
+      "name": "software: export frame count and audio track",
+      "status": "pass",
+      "details": {
+        "frames": 150
+      }
+    },
+    {
+      "name": "software: exported frame 0 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.999189,
+        "threshold": 0.98,
+        "log": "088-ssim-software-0.log"
+      }
+    },
+    {
+      "name": "software: exported frame 30 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.998127,
+        "threshold": 0.98,
+        "log": "089-ssim-software-30.log"
+      }
+    },
+    {
+      "name": "software: exported frame 75 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.997593,
+        "threshold": 0.98,
+        "log": "090-ssim-software-75.log"
+      }
+    },
+    {
+      "name": "software: exported frame 120 matches capture",
+      "status": "pass",
+      "details": {
+        "ssim": 0.998706,
+        "threshold": 0.98,
+        "log": "091-ssim-software-120.log"
+      }
+    },
+    {
+      "name": "software: SDR color patches survive capture and encode",
+      "status": "pass",
+      "details": {
+        "tolerance8bit": 5,
+        "patches": [
+          {
+            "x": 160,
+            "y": 200,
+            "before": [
+              253,
+              0,
+              2
+            ],
+            "after": [
+              251,
+              0,
+              0
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 480,
+            "y": 200,
+            "before": [
+              0,
+              255,
+              10
+            ],
+            "after": [
+              0,
+              253,
+              8
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 800,
+            "y": 200,
+            "before": [
+              252,
+              253,
+              10
+            ],
+            "after": [
+              251,
+              252,
+              8
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 1120,
+            "y": 200,
+            "before": [
+              0,
+              0,
+              239
+            ],
+            "after": [
+              0,
+              0,
+              238
+            ],
+            "maxError": 1
+          },
+          {
+            "x": 1440,
+            "y": 200,
+            "before": [
+              254,
+              0,
+              242
+            ],
+            "after": [
+              252,
+              0,
+              242
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 1760,
+            "y": 200,
+            "before": [
+              0,
+              255,
+              250
+            ],
+            "after": [
+              0,
+              254,
+              248
+            ],
+            "maxError": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "software: composed flash and audio sync",
+      "status": "pass",
+      "details": {
+        "toleranceMs": 33.333333333333336,
+        "sync": [
+          {
+            "second": 1,
+            "audioTime": 1.0000416666666667,
+            "videoTime": 1,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 2,
+            "audioTime": 2.0000416666666667,
+            "videoTime": 2,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 3,
+            "audioTime": 3.0000416666666667,
+            "videoTime": 3,
+            "offsetMs": 0.04166666666671759,
+            "pulseFound": true,
+            "flashFound": true
+          },
+          {
+            "second": 4,
+            "audioTime": 4.000041666666666,
+            "videoTime": 4,
+            "offsetMs": 0.0416666666662735,
+            "pulseFound": true,
+            "flashFound": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "Hardware/software SDR preview patches agree",
+      "status": "fail",
+      "details": {
+        "tolerance8bit": 5,
+        "comparisons": [
+          {
+            "x": 160,
+            "y": 200,
+            "gpu": [
+              253,
+              0,
+              0
+            ],
+            "software": [
+              253,
+              0,
+              2
+            ],
+            "maxError": 2
+          },
+          {
+            "x": 480,
+            "y": 200,
+            "gpu": [
+              0,
+              254,
+              0
+            ],
+            "software": [
+              0,
+              255,
+              10
+            ],
+            "maxError": 10
+          },
+          {
+            "x": 800,
+            "y": 200,
+            "gpu": [
+              252,
+              253,
+              0
+            ],
+            "software": [
+              252,
+              253,
+              10
+            ],
+            "maxError": 10
+          },
+          {
+            "x": 1120,
+            "y": 200,
+            "gpu": [
+              0,
+              0,
+              252
+            ],
+            "software": [
+              0,
+              0,
+              239
+            ],
+            "maxError": 13
+          },
+          {
+            "x": 1440,
+            "y": 200,
+            "gpu": [
+              253,
+              0,
+              252
+            ],
+            "software": [
+              254,
+              0,
+              242
+            ],
+            "maxError": 10
+          },
+          {
+            "x": 1760,
+            "y": 200,
+            "gpu": [
+              0,
+              255,
+              253
+            ],
+            "software": [
+              0,
+              255,
+              250
+            ],
+            "maxError": 3
+          }
+        ]
+      }
+    }
+  ],
+  "chromium": [
+    {
+      "mode": "gpu",
+      "exitCode": 0,
+      "controllerEventLoopDelayMs": {
+        "mean": 15.562686622123238,
+        "p95": 16.089087,
+        "max": 16.637951
+      },
+      "versions": {
+        "node": "24.22.0",
+        "acorn": "8.18.0",
+        "ada": "4.0.0",
+        "amaro": "1.1.11",
+        "ares": "1.34.8",
+        "brotli": "1.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.3",
+        "merve": "1.2.2",
+        "modules": "149",
+        "napi": "10",
+        "nbytes": "0.1.4",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.70.0",
+        "nghttp3": "",
+        "ngtcp2": "",
+        "openssl": "0.0.0",
+        "simdjson": "4.6.11",
+        "simdutf": "7.7.0",
+        "sqlite": "3.53.4",
+        "tz": "2026d",
+        "undici": "7.29.1",
+        "unicode": "17.0",
+        "uv": "1.52.1",
+        "uvwasi": "0.0.23",
+        "v8": "15.2.124.43-electron.0",
+        "zlib": "1.3.2.1-motley",
+        "zstd": "1.6.0",
+        "electron": "44.8.0",
+        "chrome": "152.0.7977.167"
+      },
+      "gpuFeatures": {
+        "2d_canvas": "enabled",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "enabled",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "enabled_on",
+        "rasterization": "enabled",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "enabled",
+        "video_encode": "enabled",
+        "webgl": "enabled",
+        "webgpu": "enabled",
+        "webnn": "disabled_off"
+      },
+      "decoders": [
+        {
+          "name": "D3D11VideoDecoder",
+          "platform": "true",
+          "resolution": "1920x1080"
+        },
+        {
+          "name": "D3D11VideoDecoder",
+          "platform": "true",
+          "resolution": "2560x1440"
+        },
+        {
+          "name": "FFmpegVideoDecoder",
+          "platform": "false",
+          "resolution": "320x180"
+        }
+      ],
+      "sources": [
+        {
+          "file": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\timing-1080p60.mp4",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 32.794599999999946,
+            "p95": 60.17290000000003,
+            "max": 60.17290000000003
+          },
+          "seekSamplesMs": [
+            60.17290000000003,
+            24.94780000000003,
+            37.91059999999999,
+            31.111199999999997,
+            31.506399999999985,
+            32.794599999999946,
+            28.809900000000084,
+            46.21989999999994,
+            46.40980000000002,
+            31.312000000000012
+          ],
+          "preview": {
+            "elapsedMs": 3000.699999988079,
+            "mediaTime": 2.960037,
+            "totalFrames": 179,
+            "droppedFrames": 0,
+            "rafMs": {
+              "n": 360,
+              "median": 8.300000000000182,
+              "p95": 8.400000000000091,
+              "max": 8.5
+            }
+          },
+          "status": "measured"
+        },
+        {
+          "file": "/path/to/media/source",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 105.13650000000052,
+            "p95": 170.44900000000007,
+            "max": 170.44900000000007
+          },
+          "seekSamplesMs": [
+            118.19949999999972,
+            25.72920000000022,
+            170.44900000000007,
+            72.16449999999986,
+            134.6777000000002,
+            41.90530000000035,
+            78.24159999999938,
+            160.3136999999997,
+            42.89459999999963,
+            105.13650000000052
+          ],
+          "preview": {
+            "elapsedMs": 3001.699999988079,
+            "mediaTime": 2.960049,
+            "totalFrames": 143,
+            "droppedFrames": 0,
+            "rafMs": {
+              "n": 360,
+              "median": 8.300000000000182,
+              "p95": 8.400000000000546,
+              "max": 8.5
+            }
+          },
+          "status": "measured"
+        },
+        {
+          "file": "/path/to/media/source",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 95.51269999999931,
+            "p95": 278.4432999999999,
+            "max": 278.4432999999999
+          },
+          "seekSamplesMs": [
+            278.4432999999999,
+            29.588599999999133,
+            27.699900000001435,
+            95.51269999999931,
+            254.0012999999999,
+            43.3166999999994,
+            123.37670000000071,
+            47.4461999999985,
+            62.13220000000001,
+            188.5589
+          ],
+          "preview": {
+            "elapsedMs": 3001,
+            "mediaTime": 2.959524,
+            "totalFrames": 179,
+            "droppedFrames": 0,
+            "rafMs": {
+              "n": 360,
+              "median": 8.300000000001091,
+              "p95": 8.400000000001455,
+              "max": 8.5
+            }
+          },
+          "status": "measured"
+        }
+      ],
+      "export": {
+        "output": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\composed-gpu.mp4",
+        "wallMs": 7207.105600000001,
+        "fps": 20.812793418761615,
+        "realtime": 0.6937597806253872,
+        "bytesTransferred": 1244160000,
+        "timings": {
+          "renderMs": {
+            "n": 150,
+            "median": 22.124500000001717,
+            "p95": 37.56450000000041,
+            "max": 47.19959999999992
+          },
+          "captureMs": {
+            "n": 150,
+            "median": 15.302100000000792,
+            "p95": 31.919700000002194,
+            "max": 36.14429999999993
+          },
+          "bitmapMs": {
+            "n": 150,
+            "median": 3.9808000000011816,
+            "p95": 4.27100000000064,
+            "max": 8.612200000001394
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.3310999999994237,
+            "p95": 1.485500000002503,
+            "max": 3.414699999999357
+          }
+        }
+      },
+      "checks": [
+        {
+          "name": "VFR seek selects frame by actual presentation timestamp",
+          "pass": true,
+          "details": [
+            {
+              "time": 0.01,
+              "expected": 0,
+              "observed": 0,
+              "rgba": [
+                20,
+                20,
+                20,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.32,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.35,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.39,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.41,
+              "expected": 10,
+              "observed": 10,
+              "rgba": [
+                40,
+                40,
+                40,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 1.08,
+              "expected": 28,
+              "observed": 28,
+              "rgba": [
+                76,
+                76,
+                76,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 2.23,
+              "expected": 56,
+              "observed": 56,
+              "rgba": [
+                132,
+                132,
+                132,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 3.1,
+              "expected": 79,
+              "observed": 79,
+              "rgba": [
+                178,
+                178,
+                178,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.35,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            }
+          ]
+        },
+        {
+          "name": "Arbitrary seek produces identical composition pixels",
+          "pass": true,
+          "details": [
+            {
+              "time": 1.25,
+              "hash": "c05987f4f90089b7afe0ce24aed1998dcd57efe915759643eea126f85551e76e"
+            },
+            {
+              "time": 3.75,
+              "hash": "ecd70a6b6eeb3a2d4e929908a3a4ef28fd8a2f24ccd845309c0fe242bd9ad212"
+            },
+            {
+              "time": 0.2,
+              "hash": "7e4a5b025c38eef9914310f81d73aead80d6279a0e177ec5050e475efec4c855"
+            },
+            {
+              "time": 1.25,
+              "hash": "c05987f4f90089b7afe0ce24aed1998dcd57efe915759643eea126f85551e76e"
+            },
+            {
+              "time": 2.5,
+              "hash": "82e1db7eed2dbecbb568a7ec6ba71d0f673bc0645ff14e141e5d0806399533e0"
+            },
+            {
+              "time": 3.75,
+              "hash": "ecd70a6b6eeb3a2d4e929908a3a4ef28fd8a2f24ccd845309c0fe242bd9ad212"
+            }
+          ]
+        },
+        {
+          "name": "Capture has requested pixel dimensions",
+          "pass": true,
+          "details": {
+            "width": 1920,
+            "height": 1080
+          }
+        },
+        {
+          "name": "Renderer crash leaves controller alive and reload recovers pixels",
+          "pass": true,
+          "details": {
+            "reason": "crashed",
+            "exitCode": 2
+          }
+        }
+      ]
+    },
+    {
+      "mode": "software",
+      "exitCode": 0,
+      "controllerEventLoopDelayMs": {
+        "mean": 15.557192815229563,
+        "p95": 16.113663,
+        "max": 21.970943
+      },
+      "versions": {
+        "node": "24.22.0",
+        "acorn": "8.18.0",
+        "ada": "4.0.0",
+        "amaro": "1.1.11",
+        "ares": "1.34.8",
+        "brotli": "1.2.0",
+        "cldr": "48.0",
+        "icu": "78.2",
+        "llhttp": "9.4.3",
+        "merve": "1.2.2",
+        "modules": "149",
+        "napi": "10",
+        "nbytes": "0.1.4",
+        "ncrypto": "0.0.1",
+        "nghttp2": "1.70.0",
+        "nghttp3": "",
+        "ngtcp2": "",
+        "openssl": "0.0.0",
+        "simdjson": "4.6.11",
+        "simdutf": "7.7.0",
+        "sqlite": "3.53.4",
+        "tz": "2026d",
+        "undici": "7.29.1",
+        "unicode": "17.0",
+        "uv": "1.52.1",
+        "uvwasi": "0.0.23",
+        "v8": "15.2.124.43-electron.0",
+        "zlib": "1.3.2.1-motley",
+        "zstd": "1.6.0",
+        "electron": "44.8.0",
+        "chrome": "152.0.7977.167"
+      },
+      "gpuFeatures": {
+        "2d_canvas": "unavailable_software",
+        "direct_rendering_display_compositor": "disabled_off_ok",
+        "gpu_compositing": "disabled_software",
+        "multiple_raster_threads": "enabled_on",
+        "opengl": "disabled_off",
+        "rasterization": "disabled_software",
+        "raw_draw": "disabled_off_ok",
+        "skia_graphite": "disabled_off",
+        "trees_in_viz": "disabled_off",
+        "video_decode": "disabled_software",
+        "video_encode": "disabled_software",
+        "webgl": "unavailable_software",
+        "webgpu": "unavailable_software",
+        "webnn": "unavailable_software"
+      },
+      "decoders": [
+        {
+          "name": "FFmpegVideoDecoder",
+          "platform": "false",
+          "resolution": "1920x1080"
+        },
+        {
+          "name": "FFmpegVideoDecoder",
+          "platform": "false",
+          "resolution": "320x180"
+        }
+      ],
+      "sources": [
+        {
+          "file": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\timing-1080p60.mp4",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 58.391700000000014,
+            "p95": 85.52979999999991,
+            "max": 85.52979999999991
+          },
+          "seekSamplesMs": [
+            74.72790000000003,
+            39.32529999999997,
+            41.05340000000001,
+            42.65750000000003,
+            65.69060000000002,
+            58.391700000000014,
+            41.4864,
+            76.60860000000002,
+            85.52979999999991,
+            38.677599999999984
+          ],
+          "preview": {
+            "elapsedMs": 3001.4000000059605,
+            "mediaTime": 2.960032,
+            "totalFrames": 179,
+            "droppedFrames": 0,
+            "rafMs": {
+              "n": 357,
+              "median": 8.300000000000182,
+              "p95": 8.400000000000091,
+              "max": 25
+            }
+          },
+          "status": "measured"
+        },
+        {
+          "file": "/path/to/media/source",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 137.07290000000012,
+            "p95": 207.79759999999987,
+            "max": 207.79759999999987
+          },
+          "seekSamplesMs": [
+            137.07290000000012,
+            41.14559999999938,
+            191.16010000000006,
+            74.48720000000048,
+            158.64980000000014,
+            50.00540000000001,
+            100.2464,
+            207.79759999999987,
+            59.21680000000015,
+            141.94440000000031
+          ],
+          "preview": {
+            "elapsedMs": 3001.300000011921,
+            "mediaTime": 2.961025,
+            "totalFrames": 142,
+            "droppedFrames": 3,
+            "rafMs": {
+              "n": 349,
+              "median": 8.300000000000182,
+              "p95": 8.400000000000546,
+              "max": 41.69999999999982
+            }
+          },
+          "status": "measured"
+        },
+        {
+          "file": "/path/to/media/source",
+          "seekAndCaptureMs": {
+            "n": 10,
+            "median": 24.63000000000102,
+            "p95": 26.794400000000678,
+            "max": 26.794400000000678
+          },
+          "seekSamplesMs": [
+            20.669200000000274,
+            24.893700000000536,
+            26.794400000000678,
+            23.084999999999127,
+            24.673000000000684,
+            17.235000000000582,
+            24.63000000000102,
+            16.936800000001313,
+            25.185100000000602,
+            24.41690000000017
+          ],
+          "preview": {
+            "elapsedMs": 3000.2999999821186,
+            "mediaTime": 2.959267,
+            "totalFrames": 0,
+            "droppedFrames": 0,
+            "rafMs": {
+              "n": 345,
+              "median": 8.300000000001091,
+              "p95": 8.400000000001455,
+              "max": 58.30000000000109
+            }
+          },
+          "status": "failed",
+          "error": "Playback clock advanced but no decoded video frames were counted. Do not treat this as successful software fallback.",
+          "fallback": {
+            "proxy": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\software-proxy-2.mp4",
+            "generationMs": 1042.8273000000008,
+            "exitCode": 0,
+            "preview": {
+              "elapsedMs": 3001.4000000059605,
+              "mediaTime": 2.960034,
+              "totalFrames": 179,
+              "droppedFrames": 6,
+              "rafMs": {
+                "n": 346,
+                "median": 8.300000000001091,
+                "p95": 8.400000000001455,
+                "max": 75
+              }
+            }
+          }
+        }
+      ],
+      "export": {
+        "output": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\composed-software.mp4",
+        "wallMs": 10623.529599999998,
+        "fps": 14.119601078722464,
+        "realtime": 0.4706533692907488,
+        "bytesTransferred": 1244160000,
+        "timings": {
+          "renderMs": {
+            "n": 150,
+            "median": 51.85900000000038,
+            "p95": 85.51150000000052,
+            "max": 110.64669999999751
+          },
+          "captureMs": {
+            "n": 150,
+            "median": 13.476200000000972,
+            "p95": 21.97439999999915,
+            "max": 28.195999999999913
+          },
+          "bitmapMs": {
+            "n": 150,
+            "median": 4.020799999998417,
+            "p95": 4.468700000001263,
+            "max": 8.96820000000298
+          },
+          "pipeMs": {
+            "n": 150,
+            "median": 1.3179999999993015,
+            "p95": 1.501299999999901,
+            "max": 7.921900000001187
+          }
+        }
+      },
+      "checks": [
+        {
+          "name": "Software proxy fallback for source 2",
+          "pass": true,
+          "details": {
+            "proxy": ".cache/windows-benchmark/2026-10-17T04-46-22-175Z\\software-proxy-2.mp4",
+            "generationMs": 1042.8273000000008,
+            "exitCode": 0,
+            "preview": {
+              "elapsedMs": 3001.4000000059605,
+              "mediaTime": 2.960034,
+              "totalFrames": 179,
+              "droppedFrames": 6,
+              "rafMs": {
+                "n": 346,
+                "median": 8.300000000001091,
+                "p95": 8.400000000001455,
+                "max": 75
+              }
+            }
+          }
+        },
+        {
+          "name": "VFR seek selects frame by actual presentation timestamp",
+          "pass": true,
+          "details": [
+            {
+              "time": 0.01,
+              "expected": 0,
+              "observed": 0,
+              "rgba": [
+                20,
+                20,
+                20,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.32,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.35,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.39,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.41,
+              "expected": 10,
+              "observed": 10,
+              "rgba": [
+                40,
+                40,
+                40,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 1.08,
+              "expected": 28,
+              "observed": 28,
+              "rgba": [
+                76,
+                76,
+                76,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 2.23,
+              "expected": 56,
+              "observed": 56,
+              "rgba": [
+                132,
+                132,
+                132,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 3.1,
+              "expected": 79,
+              "observed": 79,
+              "rgba": [
+                178,
+                178,
+                178,
+                255
+              ],
+              "pass": true
+            },
+            {
+              "time": 0.35,
+              "expected": 9,
+              "observed": 9,
+              "rgba": [
+                38,
+                38,
+                38,
+                255
+              ],
+              "pass": true
+            }
+          ]
+        },
+        {
+          "name": "Arbitrary seek produces identical composition pixels",
+          "pass": true,
+          "details": [
+            {
+              "time": 1.25,
+              "hash": "669d3cdfee0fa1b1b0f2a6b095a4b2d649e39e9ff332592987cb941ac81d4923"
+            },
+            {
+              "time": 3.75,
+              "hash": "1cf7a2714fa89601b8d0f7bbebee0face20121f493e5014112599c324d34f9c0"
+            },
+            {
+              "time": 0.2,
+              "hash": "c3734c715e743d4a912433868b2d7c183e363694e478551dd26223b40b40de5a"
+            },
+            {
+              "time": 1.25,
+              "hash": "669d3cdfee0fa1b1b0f2a6b095a4b2d649e39e9ff332592987cb941ac81d4923"
+            },
+            {
+              "time": 2.5,
+              "hash": "56c524493f2bb359a8cd7d400cbec2c2295d5f9f942e13d9878159987fef34a2"
+            },
+            {
+              "time": 3.75,
+              "hash": "1cf7a2714fa89601b8d0f7bbebee0face20121f493e5014112599c324d34f9c0"
+            }
+          ]
+        },
+        {
+          "name": "Capture has requested pixel dimensions",
+          "pass": true,
+          "details": {
+            "width": 1920,
+            "height": 1080
+          }
+        },
+        {
+          "name": "Renderer crash leaves controller alive and reload recovers pixels",
+          "pass": true,
+          "details": {
+            "reason": "crashed",
+            "exitCode": 2
+          }
+        }
+      ]
+    }
+  ]
+}
