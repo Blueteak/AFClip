@@ -2,7 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
 
-const VERSION = 2;
+const VERSION = 3;
 const DEFAULT_LIMIT = 64 * 1024 * 1024;
 const cacheName = /^[a-f0-9]{64}(?:\.json|\.\d+\.[a-f0-9-]{36}\.tmp)$/;
 
@@ -25,6 +25,32 @@ function decodeFrameTimestamps(probe) {
   });
   if (!valid(pts)) throw new Error('Decoded frame index contains missing or unordered timestamps');
   return pts;
+}
+
+// MOV/MP4 AVC and HEVC samples carry presentation timestamps for compressed
+// pictures. Sort by PTS, never DTS: B frames arrive in a different decode order.
+// Ambiguous timing/container layouts keep the decoded-frame fallback.
+function packetFrameTimestamps(probe) {
+  const stream = probe.streams?.[0], packets = probe.packets;
+  if (!stream || probe.streams?.length !== 1 || !probe.format?.format_name?.split(',').includes('mov')) return null;
+  const tags = { h264: ['avc1', 'avc3'], hevc: ['hev1', 'hvc1'] };
+  if (!tags[stream.codec_name]?.includes(stream.codec_tag_string)) return null;
+  if (stream.field_order && !['progressive', 'unknown'].includes(stream.field_order)) return null;
+  const [num, den] = String(stream.time_base || '').split('/').map(Number);
+  const count = Number(stream.nb_frames);
+  if (!Number.isSafeInteger(num) || !Number.isSafeInteger(den) || num <= 0 || den <= 0 ||
+      !Number.isSafeInteger(count) || count <= 0 || !Array.isArray(packets) || packets.length !== count) return null;
+  if (!Number.isSafeInteger(stream.start_pts)) return null;
+  for (let i = 0; i < packets.length; i++) {
+    const p = packets[i];
+    if (!Number.isSafeInteger(p.pts) || !Number.isSafeInteger(p.dts) ||
+        !/^[_K]+$/.test(p.flags || '') || (i && p.dts <= packets[i - 1].dts)) return null;
+  }
+  if (!packets[0].flags.includes('K')) return null;
+  const ticks = packets.map(p => p.pts).sort((a, b) => a - b);
+  if (ticks[0] !== stream.start_pts || ticks.some((t, i) => i && t <= ticks[i - 1])) return null;
+  const pts = ticks.map(t => t * num / den);
+  return valid(pts) ? pts : null;
 }
 
 async function identity(file) {
@@ -52,8 +78,8 @@ async function prune(cacheDir, limit) {
 }
 
 // probe() belongs to the worker so its existing subprocess cancellation still applies.
-// It must return decoded presentation timestamps, not packet DTS or assumed CFR times.
-async function getFrameIndex({ file, cacheDir, probe, maxBytes = DEFAULT_LIMIT }) {
+// Both probes return presentation times, never packet DTS or assumed CFR times.
+async function getFrameIndex({ file, cacheDir, probe, packetProbe, maxBytes = DEFAULT_LIMIT }) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new Error('Invalid frame-index cache limit');
   const before = await identity(file), fingerprint = JSON.stringify(before);
   const key = createHash('sha256').update(fingerprint).digest('hex');
@@ -67,7 +93,7 @@ async function getFrameIndex({ file, cacheDir, probe, maxBytes = DEFAULT_LIMIT }
           const now = new Date();
           await fs.utimes(cacheFile, now, now).catch(() => {});
           await prune(cacheDir, maxBytes).catch(() => {});
-          return { pts: cached.pts, cacheHit: true, key };
+          return { pts: cached.pts, cacheHit: true, key, method: cached.method || 'decoded' };
         }
       }
     } catch { /* Missing, corrupt, or unavailable cache is regenerated from the source. */ }
@@ -76,14 +102,16 @@ async function getFrameIndex({ file, cacheDir, probe, maxBytes = DEFAULT_LIMIT }
   // to cache. The directory need not exist on a project's first render.
   await prune(cacheDir, maxBytes).catch(() => {});
 
-  const pts = await probe();
+  let pts = packetProbe ? packetFrameTimestamps(await packetProbe()) : null;
+  const method = pts ? 'packet' : 'decoded';
+  if (!pts) pts = await probe();
   if (!valid(pts)) throw new Error(`Missing or unordered decoded presentation timestamps: ${file}`);
   if (JSON.stringify(await identity(file)) !== fingerprint) {
     throw Object.assign(new Error(`Source changed while indexing: ${file}`), { code: 'SOURCE_CHANGED' });
   }
 
   if (maxBytes) {
-    const contents = JSON.stringify({ fingerprint, pts });
+    const contents = JSON.stringify({ fingerprint, pts, method });
     const bytes = Buffer.byteLength(contents);
     if (bytes <= maxBytes) {
       let temporary;
@@ -100,7 +128,7 @@ async function getFrameIndex({ file, cacheDir, probe, maxBytes = DEFAULT_LIMIT }
       finally { if (temporary) await fs.rm(temporary, { force: true }).catch(() => {}); }
     }
   }
-  return { pts, cacheHit: false, key };
+  return { pts, cacheHit: false, key, method };
 }
 
-module.exports = { getFrameIndex, decodeFrameTimestamps };
+module.exports = { getFrameIndex, decodeFrameTimestamps, packetFrameTimestamps };

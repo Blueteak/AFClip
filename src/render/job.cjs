@@ -57,7 +57,7 @@ async function main() {
   const begin = config.kind === 'frame' ? seconds(config.frameTime) : config.range ? seconds(config.range.start) : 0;
   const end = config.kind === 'frame' ? begin : config.range ? seconds(config.range.end) : plan.duration;
   const used = new Set(plan.clips.filter(c => config.kind === 'frame' ? begin >= c.visibleStart && begin < c.visibleEnd : c.visibleEnd > begin && c.visibleStart < end).map(c => c.mediaId));
-  const media = {}, graphics = {}; let prepared = 0, indexCacheHits = 0;
+  const media = {}, graphics = {}, indexing = []; let prepared = 0, indexCacheHits = 0;
   emit({ type: 'progress', phase: 'prepare', progress: 0, message: 'Inspecting source timestamps and graphics' });
   for (const m of project.media) {
     if (!used.has(m.id)) { media[m.id] = { kind: m.kind }; continue; }
@@ -77,10 +77,13 @@ async function main() {
       graphics[m.id] = { root: snapshot, url: `reelet-graphic://${m.id}/index.html`, width: m.metadata.logicalWidth || 1920, height: m.metadata.logicalHeight || 1080 };
     } else if (m.kind === 'video' || m.kind === 'image') {
       if (m.kind === 'video' && (m.metadata.colorSpace !== 'bt709' || m.metadata.colorTransfer !== 'bt709' || m.metadata.colorRange === 'pc')) throw new Error(`This SDR renderer needs tagged limited-range BT.709 video: ${file}`);
-      const indexed = m.kind === 'image' ? { pts: [0], cacheHit: false } : await getFrameIndex({
+      const indexStarted = performance.now();
+      const indexed = m.kind === 'image' ? { pts: [0], cacheHit: false, method: 'image' } : await getFrameIndex({
         file, cacheDir: path.join(config.projectDir, 'cache', 'frame-index'),
+        packetProbe: async () => JSON.parse((await run(`packets-${m.id}`, ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_packets', '-show_entries', 'packet=pts,dts,flags:stream=codec_name,codec_tag_string,time_base,nb_frames,field_order,start_pts:format=format_name', '-of', 'json', file], true)).toString()),
         probe: async () => decodeFrameTimestamps(JSON.parse((await run(`index-${m.id}`, ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_frames', '-show_entries', 'frame=best_effort_timestamp:stream=time_base', '-of', 'json', file], true)).toString()))
       });
+      indexing.push({ mediaId: m.id, method: indexed.method, cacheHit: indexed.cacheHit, frames: indexed.pts.length, ms: performance.now() - indexStarted });
       const index = indexed.pts; if (indexed.cacheHit) indexCacheHits++;
       if (!index.length || index.some(x => !Number.isFinite(x))) throw new Error(`Missing presentation timestamps: ${file}`);
       const stream = m.metadata.streams?.find(s => s.codec_type === 'video');
@@ -111,7 +114,7 @@ async function main() {
   cancelCheck(); fs.renameSync(partial, config.output); partial = null;
   const wallMs = performance.now() - started;
   emit({ type: 'complete', output: config.output, kind: config.kind, width, height, frameTime: config.frameTime, duration: end - begin, frames: stats.frames,
-    stats: { ...stats, wallMs, indexCacheHits, audioClips: audio?.clips || 0, sourceDecode: 'software', composition: config.mode, encoder: config.kind === 'frame' ? 'png' : config.mode === 'gpu' ? 'NVENC D3D11' : 'libx264', rawFrameCacheBytes: 0 } });
+    stats: { ...stats, wallMs, indexCacheHits, indexMs: indexing.reduce((sum, entry) => sum + entry.ms, 0), indexing, audioClips: audio?.clips || 0, sourceDecode: 'software', composition: config.mode, encoder: config.kind === 'frame' ? 'png' : config.mode === 'gpu' ? 'NVENC D3D11' : 'libx264', rawFrameCacheBytes: 0 } });
 }
 function cleanIntermediates() {
   // All targets are fixed children of this job's resolved render directory.
