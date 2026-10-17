@@ -19,7 +19,7 @@ function button(text, fn, title) { const element = document.createElement('butto
 function isLocked() { return pending || !!snapshot?.renderLock; }
 function controls() {
   const locked = isLocked();
-  $('playhead').disabled = locked; $('render-mode').disabled = locked;
+  $('playhead').disabled = locked; $('render-mode').disabled = locked; $('full-verification').disabled = locked;
   for (const id of ['export', 'import', 'add-track', 'render-frame', 'first-preview', 'previous-frame', 'next-frame']) $(id).disabled = locked;
   $('undo').disabled = locked || !snapshot?.history?.undo;
   $('redo').disabled = locked || !snapshot?.history?.redo;
@@ -200,7 +200,7 @@ $('undo').onclick = () => perform(async () => { await api.command({ command: 'un
 $('redo').onclick = () => perform(async () => { await api.command({ command: 'redo' }); dirty = false; }, 'Redid the last edit');
 $('import').onclick = () => perform(() => api.importMedia(), 'Media imported');
 $('add-track').onclick = addTrack;
-$('export').onclick = () => startRender({ kind: 'export', mode: $('render-mode').value });
+$('export').onclick = () => startRender({ kind: 'export', mode: $('render-mode').value, verification: $('full-verification').checked ? 'full' : 'quick' });
 $('first-preview').onclick = renderFrame; $('render-frame').onclick = renderFrame;
 $('previous-frame').onclick = () => setPlayhead(playhead - 1 / fps(), true); $('next-frame').onclick = () => setPlayhead(playhead + 1 / fps(), true);
 $('playhead').oninput = event => setPlayhead(Number(event.target.value)); $('playhead').onchange = renderFrame;

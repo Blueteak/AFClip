@@ -1,0 +1,182 @@
+{
+  "recordedAt": "2026-10-17T06:39:58.833Z",
+  "projectRevision": 29,
+  "comparison": {
+    "quick": {
+      "mode": "quick",
+      "videoPackets": 1920,
+      "audioPackets": 3001,
+      "decodedFrames": null,
+      "ms": 138.60860000000002
+    },
+    "full": {
+      "mode": "full",
+      "videoPackets": 1920,
+      "audioPackets": 3001,
+      "decodedFrames": 1920,
+      "ms": 21551.2405
+    },
+    "short": {
+      "mode": "quick",
+      "videoPackets": 90,
+      "audioPackets": 142,
+      "decodedFrames": null,
+      "ms": 41.32470000000103
+    }
+  },
+  "rejectedMetadataMutations": {
+    "missingFrame": true,
+    "wrongTimestamp": true,
+    "missingAudio": true,
+    "shortAudio": true,
+    "wrongDimensions": true,
+    "videoDiscard": true,
+    "audioGap": true
+  },
+  "fractionalFps": {
+    "fps": "30000/1001",
+    "durationSeconds": 0.3003,
+    "mode": "quick",
+    "videoPackets": 9,
+    "audioPackets": 16,
+    "decodedFrames": null,
+    "ms": 26.1832
+  },
+  "quickExport": {
+    "id": "job_71573d99e7d34ac09eae27451c82a11a",
+    "status": "completed",
+    "frames": 1920,
+    "duration": 64,
+    "peakDecodedBytes": 29491200,
+    "peakDecoders": 2,
+    "peakChromiumWorkingSetBytes": 736014336,
+    "fullFrameReadback": false,
+    "rejectedPaints": 1139,
+    "decodedSourceFrames": 4252,
+    "restarts": 8,
+    "renderMs": 84699.2627,
+    "renderFps": 22.66843817520031,
+    "wallMs": 87161.9021,
+    "verification": {
+      "mode": "quick",
+      "videoPackets": 1920,
+      "audioPackets": 3001,
+      "decodedFrames": null,
+      "ms": 135.79099999999744
+    },
+    "indexCacheHits": 8,
+    "indexMs": 16.5972,
+    "indexing": [
+      {
+        "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 2236,
+        "ms": 4.232499999999998
+      },
+      {
+        "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 2629,
+        "ms": 2.2280000000000015
+      },
+      {
+        "mediaId": "media_e964316100f549dfabdde2221d08cfb4",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 1873,
+        "ms": 1.8824999999999967
+      },
+      {
+        "mediaId": "media_643c32a1e3184dd69a5b8fa2fb74da61",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 1393,
+        "ms": 1.7895000000000039
+      },
+      {
+        "mediaId": "media_f9a5cfeb8a1a4077b7c936b1c54a5188",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 919,
+        "ms": 1.5441999999999965
+      },
+      {
+        "mediaId": "media_980b1f433fbc4f43afe028bd223c4ae6",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 2089,
+        "ms": 1.6357
+      },
+      {
+        "mediaId": "media_9236869f90714997a59baedf8b16bdb2",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 4630,
+        "ms": 1.8935999999999993
+      },
+      {
+        "mediaId": "media_9ee988a024bb4a2ea82b8ca17865bbe5",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 757,
+        "ms": 1.3912000000000049
+      }
+    ],
+    "audioClips": 13,
+    "sourceDecode": "software",
+    "composition": "gpu",
+    "encoder": "NVENC D3D11",
+    "rawFrameCacheBytes": 0
+  },
+  "fullSoftwareExport": {
+    "id": "job_5531f80b43ea4fecb7963793fe3bc73f",
+    "status": "completed",
+    "frames": 90,
+    "duration": 3,
+    "peakDecodedBytes": 14745600,
+    "peakDecoders": 1,
+    "peakChromiumWorkingSetBytes": 802299904,
+    "fullFrameReadback": true,
+    "rejectedPaints": 181,
+    "decodedSourceFrames": 179,
+    "restarts": 1,
+    "renderMs": 4743.5115,
+    "renderFps": 18.97328592963251,
+    "wallMs": 5735.9432,
+    "verification": {
+      "mode": "full",
+      "videoPackets": 90,
+      "audioPackets": 142,
+      "decodedFrames": 90,
+      "ms": 451.35599999999977
+    },
+    "indexCacheHits": 1,
+    "indexMs": 3.772100000000002,
+    "indexing": [
+      {
+        "mediaId": "media_9ee988a024bb4a2ea82b8ca17865bbe5",
+        "method": "packet",
+        "cacheHit": true,
+        "frames": 757,
+        "ms": 3.772100000000002
+      }
+    ],
+    "audioClips": 3,
+    "sourceDecode": "software",
+    "composition": "software",
+    "encoder": "libx264",
+    "rawFrameCacheBytes": 0
+  },
+  "hashes": {
+    "previous": "460b75dad2e2f0775c7c57f17d23914050987c7367be9f1182170f2062c0e5af",
+    "quick": "460b75dad2e2f0775c7c57f17d23914050987c7367be9f1182170f2062c0e5af"
+  },
+  "notes": [
+    "Single runs on the same Windows PC; OS filesystem cache was not flushed.",
+    "Metadata rejection checks mutate parsed ffprobe data, not MP4 payloads.",
+    "Quick verification checks packet structure and timing without decoding payloads.",
+    "GUI checkbox inspected in exports/verification-control.png."
+  ]
+}
