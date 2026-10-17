@@ -71,6 +71,26 @@ Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional
 
 Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
 
+## Ripple delete
+
+Mark In and Out with I and O, then press Shift+Delete or choose **Edit > Ripple delete In/Out range**. Out includes its frame, matching range export. Right-click an empty section of a track and choose **Ripple delete gap across all tracks** to remove that gap. The gap must have a later clip on that track; trailing empty space is not a gap. Both routes cut across every track, including disabled tracks, and close the removed time in one shared undoable edit. Affected locked tracks reject the whole operation; locked tracks entirely before the range do not block it.
+
+```powershell
+node src/cli.ts ripple-delete .cache/my-edit --start 3 --end 5
+```
+
+CLI ranges are half-open: this removes 3 seconds up to, but not including, 5 seconds. Both boundaries must land on the project frame grid. Use `--revision N` to require an inspected project revision; without it the CLI reads the revision immediately before submitting. Concurrent project changes reject the entire edit.
+
+The same action works through `apply` as the only operation in a batch:
+
+```json
+{"preconditions":{"project":12},"operations":[{"op":"ripple-delete","start":{"num":3,"den":1},"end":{"num":5,"den":1}}]}
+```
+
+Clips inside the range are removed. Spanning clips become adjacent pieces that retain the surviving source sections, speed, transforms and source-timed volume points. Newly cut edges have no clip fade; existing outer fades clamp to the remaining piece. Later clips shift earlier by the range length. Source offsets remain exact even at fractional speeds. Dissolves intersecting the removed time are removed; unaffected dissolves retain their settings and follow surviving pieces. This action does not create a transition at the new cut. Timeline markers remain unimplemented.
+
+A disposable edit checked CLI and GUI range deletion, gap deletion, source offsets at half speed, disabled tracks, dissolve preservation, shared undo/redo, and atomic rejection for locked tracks or stale revisions. Its 9.3-second software export passed full verification with 279 frames.
+
 ## Timeline audio controls
 
 Audio and combined video/audio clips show a waveform below their name. Drag the yellow horizontal line up or down to change clip volume, from silence to +24 dB. Drag the small handles at the top of the waveform left or right to set fade-in and fade-out durations. The inspector remains available for precise values. Fades on combined clips affect both picture and sound, matching the existing clip fade behavior.
@@ -151,7 +171,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: folders, ripple editing, linked audio detach, markers, Content Library integration for reusable selects, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: folders, linked audio detach, markers, Content Library integration for reusable selects, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 

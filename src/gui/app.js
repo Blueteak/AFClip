@@ -268,6 +268,7 @@ action('redo', { menu: 'Edit', group: 1, label: 'Redo', icon: 'redo', keys: ['Ct
 action('copy', { menu: 'Edit', group: 2, label: 'Copy', icon: 'copy', keys: ['Ctrl+C'], enabled: () => selection.size > 0, run: copySelection });
 action('paste', { menu: 'Edit', group: 2, label: 'Paste at playhead', icon: 'paste', keys: ['Ctrl+V'], enabled: () => editable() && !!clipboard, run: paste });
 action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys: ['Delete', 'Backspace'], desc: 'Remove the selection and leave a gap.', enabled: () => editable() && hasSelection(), run: deleteSelection });
+action('rippleDelete', { menu: 'Edit', group: 2, label: 'Ripple delete In/Out range', icon: 'trash', keys: ['Shift+Delete'], desc: 'Remove the marked range across all tracks and close the gap. Out includes its frame. Affected locked tracks block the edit.', enabled: () => editable() && inF != null && outF != null && outF >= inF, run: () => rippleDelete(inF, outF + 1) });
 action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().map(c => c.id)) });
 action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl+Shift+A'], enabled: hasSelection, run: () => select([]) });
 
@@ -613,6 +614,27 @@ function deletePoint(point) {
     if (lockedRefusal([c]) !== false) return null;
     return { ops: [put('clips', { id: c.id, volumePoints: points.filter(p => !sameTime(p.time, point.time)) })], message: 'Removed volume point' };
   });
+}
+function rippleDelete(start, end, revision = project().revision) {
+  return perform(async () => {
+    try {
+      return await api.command({ command: 'apply', batch: { preconditions: { project: revision }, operations: [{ op: 'ripple-delete', start: fromF(start), end: fromF(end) }] } });
+    } catch (error) {
+      if (error.message.includes('Expected put or remove')) throw new Error('Restart Reelet and its project engine to enable ripple delete. Saved edits are preserved; session undo history resets.');
+      throw error;
+    }
+  }, `Ripple deleted ${shortTc(end - start)} across all tracks`).then(result => {
+    if (!result) return;
+    select([]); setMarks(null, null); seek(Math.min(start, lastFrame()), true);
+  });
+}
+function gapAt(trackId, frame) {
+  const list = clipsOn(trackId), t = secs(fromF(frame));
+  if (list.some(c => secs(c.start) <= t && secs(endOf(c)) > t)) return null;
+  const before = Math.max(0, ...list.filter(c => secs(endOf(c)) <= t).map(c => secs(endOf(c))));
+  const after = Math.min(Infinity, ...list.filter(c => secs(c.start) > t).map(c => secs(c.start)));
+  const start = Math.ceil(before * fps() - 1e-8), end = Math.floor(after * fps() + 1e-8);
+  return Number.isFinite(end) && end > start ? { start, end } : null;
 }
 function deleteSelection() {
   if (selPoint && selection.size === 1 && selection.has(selPoint.clipId)) return deletePoint(selPoint);
@@ -1255,7 +1277,12 @@ function trackRow(t, width) {
       tip: { title: t.locked ? 'Unlock track' : 'Lock track', desc: 'Locked tracks reject every GUI and CLI edit, including agent batches.' } }, icon(t.locked ? 'lock' : 'unlock')));
   const lane = h('div', { class: `lane ${tool === 'razor' ? 'razor' : ''}`, style: { width: `${width}px` }, dataset: { track: t.id } });
   lane.tip = { title: 'Track', hint: tool === 'razor' ? [{ text: 'Click a clip to split it' }] : [{ keys: '#Click', text: 'move playhead' }, { keys: '#Drag', text: 'box select' }, { keys: '#Right-click', text: 'paste / add track' }] };
-  lane.oncontextmenu = e => { if (!e.target.closest('.clip, .xfade')) contextMenu(e, [{ action: 'paste' }, { action: 'addTrack' }, '-', { action: 'selectAll' }]); };
+  lane.oncontextmenu = e => {
+    if (e.target.closest('.clip, .xfade')) return;
+    const gap = gapAt(t.id, laneFrame(e.clientX)), revision = project().revision;
+    contextMenu(e, [{ label: 'Ripple delete gap across all tracks', icon: 'trash', disabled: !editable() || !gap,
+      run: () => gap && rippleDelete(gap.start, gap.end, revision) }, '-', { action: 'paste' }, { action: 'addTrack' }, '-', { action: 'selectAll' }]);
+  };
   for (const c of clipsOn(t.id)) lane.append(clipBlock(c, t));
   for (const tr of transitions().filter(x => x.trackId === t.id)) {
     const b = clipById(tr.toClipId); if (!b) continue;
