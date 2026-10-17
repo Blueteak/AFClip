@@ -153,11 +153,11 @@ app.whenReady().then(async () => {
     const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
     const ep = JSON.parse(result.stdout).result;
     const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
-    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), ep.gui+(id?'&asset='+encodeURIComponent(id):''), '--project', projectDir], { windowsHide:true, detached:true, stdio:'ignore', env });
+    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, ep.gui+(id?'&asset='+encodeURIComponent(id):'')], { windowsHide:true, detached:true, stdio:'ignore', env });
     child.unref(); return {opened:true};
   });
   handle('command', payload => {
-    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('import', async kind => {

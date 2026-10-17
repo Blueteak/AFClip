@@ -1469,6 +1469,14 @@ $('tl-scroll').addEventListener('wheel', e => {
   zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - $('tl-scroll').getBoundingClientRect().left - HEAD_W);
 }, { passive: false });
 
+// Structured library drops resolve IDs through the service, never trust a dragged path.
+document.addEventListener('dragover', e => {if(e.dataTransfer.types.includes('application/x-reelet-library')&&editable()){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
+document.addEventListener('drop', async e => {
+  const raw=e.dataTransfer.getData('application/x-reelet-library');if(!raw)return;e.preventDefault();
+  try{const data=JSON.parse(raw);await window.reelet.command({command:'library-import',id:data.rangeId||data.assetId,libraryId:data.libraryId,sourceId:data.sourceId});}
+  catch(error){console.error(error);alert(error.message);}
+});
+
 // Dropping media from the bin
 let dragMedia = null, dropGhost = null;
 function clearDropGhost() { dropGhost?.remove(); dropGhost = null; for (const el of document.querySelectorAll('.drop-target')) el.classList.remove('drop-target'); }
