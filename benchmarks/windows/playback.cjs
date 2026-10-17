@@ -1,5 +1,5 @@
 // Opt-in, visible playback measurement. Uses a disposable 60 fps project copy.
-// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds] [1080|1440|2160]
+// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds] [1080|1440|2160] [--seek]
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
@@ -19,7 +19,7 @@ if (!process.versions.electron) {
   fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify(project, null, 2));
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
   console.log(`Playback artifacts: ${output}`);
-  const child = spawn(require('electron'), [__filename, '--measure', output, process.argv[3] || '64'], { env, windowsHide: true, stdio: 'inherit' });
+  const child = spawn(require('electron'), [__filename, '--measure', output, process.argv[3] || '64', ...(process.argv.includes('--seek') ? ['--seek'] : [])], { env, windowsHide: true, stdio: 'inherit' });
   child.on('error', error => { console.error(error); process.exitCode = 1; });
   child.on('exit', code => {
     try { execFileSync(process.execPath, [path.join(root, 'src/cli.ts'), 'close', projectDir], { windowsHide: true, stdio: 'ignore', timeout: 10000 }); } catch {}
@@ -28,6 +28,7 @@ if (!process.versions.electron) {
 } else {
   const { app, BrowserWindow, screen } = require('electron');
   const output = path.resolve(process.argv[3]), seconds = Number(process.argv[4]);
+  const measureSeeking = process.argv.includes('--seek');
   const { width, height } = JSON.parse(fs.readFileSync(path.join(output, 'project/project.json'))).resolution;
   if (!(seconds > 0 && seconds <= 600)) throw new Error('Measurement length must be between 0 and 600 seconds');
   app.commandLine.appendSwitch('force-device-scale-factor', '1');
@@ -54,6 +55,17 @@ if (!process.versions.electron) {
     await win.webContents.executeJavaScript(`
       Object.assign(document.getElementById('stage').style, { position:'fixed', left:'0', top:'0', width:'${width}px', height:'${height}px', margin:'0', zIndex:'999' });
       playback.native.fit();
+      void 0;
+    `);
+    if (measureSeeking) {
+      const result = await win.webContents.executeJavaScript(fs.readFileSync(path.join(__dirname, 'seek.js'), 'utf8'));
+      result.versions = process.versions; result.gpu = await app.getGPUInfo('complete');
+      fs.writeFileSync(path.join(output, 'seeks.json'), JSON.stringify(result, null, 2));
+      console.log(JSON.stringify(result.summary, null, 2));
+      await win.webContents.executeJavaScript('playback.pause(false); reelet.previewClose()');
+      await sleep(300); app.exit(0); return;
+    }
+    await win.webContents.executeJavaScript(`
       window.playbackSamples = []; window.qualitySamples = [];
       const observeVideo = entry => {
         const video = entry.content; if (!video || video.benchmarkObserved) return;

@@ -78,9 +78,28 @@ Thirty whole-GPU `nvidia-smi` samples during the first run averaged **4% GPU uti
 
 1440p has **77.8% more output pixels than 1080p**, and sustained playback remains at 60 fps. There is resolution/composition headroom on this PC. Both measurements already decode the same original 1440p sources, so this is not an increase in decode workload. The remaining misses are concentrated at shot startup rather than sustained saturation. A 60 Hz presentation measurement cannot establish maximum fps or how many additional effects or layers fit. [Recorded runs and utilization](playback-1440p-performance.json) preserve both results.
 
+## Seeking and scrubbing, October 17, 2026
+
+The current target is **25 ms request-to-picture latency at the 95th percentile**, plus **60 fps picture updates during continuous scrubbing**. These are separate requirements: a 25 ms serial seek loop can produce only 40 updates per second. New pointer positions must supersede old requests without accumulating a queue. Releasing the pointer must settle on the exact selected frame. Measure cold, resident and cached requests separately after preview-session preparation; report preparation time separately rather than counting it as a seek.
+
+The first native-path diagnostic at 1080p60 measured the following isolated requests. Each category has 12 samples. The endpoint waits for the requested source presentation timestamp on every visible video, preview/graphic readiness, and one further animation frame. It is conservative browser-side presentation evidence, not physical scanout timing. The small sample set is exploratory.
+
+| Request | Original footage median / p95 | Intraframe control median / p95 |
+| --- | --- | --- |
+| Forward frame step | 170 / 177 ms | 38 / 46 ms |
+| Backward frame step | 173 / 248 ms | 37 / 44 ms |
+| Nearby seek | 63 / 312 ms | 36 / 43 ms |
+| Distant seek, original sources | 325 / 394 ms | Not compared |
+
+Distant requests took 183–394 ms, improved against the earlier 390–766 ms compositor measurements. Frame stepping regressed against the earlier 23 ms adjacent-step sample. Most of the native request time was spent in video positioning, with graphics acknowledgements typically taking only a few milliseconds. The control replaced only the first source with full-resolution 1440p60 H.264 containing an independently decodable frame at every timestamp; the player code stayed the same. Its 12 seconds took 3.72 seconds to encode and occupied about 553 MiB. This is a diagnostic encoding, not a production cache preset. It establishes a major codec-dependent cost but does **not** meet the 25 ms target.
+
+Google's [RAIL guidance](https://web.dev/articles/rail) treats dragging as animation, with roughly 16.7 ms between frames at 60 Hz and a suggested 10 ms application work budget. Its 50 ms response-processing guideline explicitly excludes dragging. [Puget's Premiere benchmark](https://www.pugetsystems.com/pugetbench/creators/premiere-pro/) measures processing through export/Null Encoder workflows rather than publishing click-to-picture seek latency. These sources do not establish a Premiere or Resolve 25 ms seek guarantee. [Adobe proxies](https://helpx.adobe.com/uk/premiere/desktop/organize-media/ingest-proxy-workflow/create-proxies.html) and [Apple optimized media](https://support.apple.com/en-az/guide/final-cut-pro/verb8e5f6fd/12.4/mac/26.6) support using editing-friendly media to improve responsiveness.
+
+The next tracer bullet is a bounded decoded-frame cache plus efficient seek media, measured during continuous forward/backward drags, reversals and release. Original media must remain authoritative for export and exact frame selection. Do not claim fluid scrubbing from isolated seek medians. [Raw measurements and control details](seeking-performance.json) preserve the baseline. Run `node benchmarks/windows/playback.cjs /path/to/project 64 1080 --seek` for the opt-in isolated-seek diagnostic.
+
 ## Current limits
 
-The agreed throughput target is **sustained 60 fps at full 1920×1080**, using a 60 fps version of the representative edit with original footage, titles, dissolves and synchronized audio. The original 24.6 fps result at 540p is not acceptable against this target. Seek-latency targets are deferred.
+The agreed throughput target is **sustained 60 fps at full 1920×1080**, using a 60 fps version of the representative edit with original footage, titles, dissolves and synchronized audio. The original 24.6 fps result at 540p is not acceptable against this target. Seeking now targets 25 ms at p95 and 60 fps updates during continuous scrubbing; those targets are not yet met.
 
 Run `node benchmarks/windows/playback.cjs` for a visible full-size measurement. It creates a disposable 1080p60 copy of the example project, leaves the original project unchanged, runs the production GUI with a 1920×1080 monitor at device-pixel ratio 1, and records per-source `requestVideoFrameCallback` timestamps, Chromium presented-frame counts, dropped-frame counters, decoder identity and display/GPU information. A project path, measurement length in seconds, and output height can be supplied as positional arguments. For example, `node benchmarks/windows/playback.cjs /path/to/project 64 1440` measures 2560×1440. Supported heights are 1080, 1440 and 2160. Artifacts go under `.cache/playback/`. The benchmark requires a display that fits the requested viewport at device-pixel ratio 1. This is an opt-in diagnostic, not an always-run test suite.
 
