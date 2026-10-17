@@ -54,7 +54,7 @@ if (!process.versions.electron) {
         video.benchmarkObserved = true;
         const record = (now, metadata) => {
           if (entry.content !== video) return;
-          if (playback.playing && !entry.layer.hidden) playbackSamples.push({ clip:entry.clip.id, wall:now, audio:playback.audio.currentTime, source:metadata.mediaTime, presented:metadata.presentedFrames, expected:metadata.expectedDisplayTime, decodeSeconds:metadata.processingDuration });
+          if (playback.playing && playback.audio.currentTime >= entry.clip.visibleStart && playback.audio.currentTime < entry.clip.visibleEnd) playbackSamples.push({ clip:entry.clip.id, wall:now, audio:playback.audio.currentTime, source:metadata.mediaTime, presented:metadata.presentedFrames, expected:metadata.expectedDisplayTime, decodeSeconds:metadata.processingDuration, rate:video.playbackRate, clockError:playback.native.sourceTime(entry, playback.audio.currentTime) - video.currentTime });
           video.requestVideoFrameCallback(record);
         };
         video.requestVideoFrameCallback(record);
@@ -62,9 +62,22 @@ if (!process.versions.electron) {
       const ensureVideo = playback.native.ensureVideo.bind(playback.native);
       playback.native.ensureVideo = entry => { const ready = ensureVideo(entry); observeVideo(entry); return ready; };
       for (const entry of playback.native.entries.values()) if (entry.media.kind === 'video') observeVideo(entry);
+      const quality = (entry, time, boundary) => {
+        const q = entry.content.getVideoPlaybackQuality();
+        qualitySamples.push({ clip:entry.clip.id, time, total:q.totalVideoFrames, dropped:q.droppedVideoFrames, boundary });
+      };
+      const update = playback.native.update.bind(playback.native);
+      playback.native.update = time => {
+        for (const entry of playback.native.entries.values()) if (entry.media.kind === 'video' && entry.content) {
+          const visible = time >= entry.clip.visibleStart && time < entry.clip.visibleEnd;
+          if (visible !== !!entry.benchmarkVisible) quality(entry, time, visible ? 'start' : 'end');
+          entry.benchmarkVisible = visible;
+        }
+        update(time);
+      };
       window.qualityTimer = setInterval(() => {
-        for (const entry of playback.native.entries.values()) if (entry.media.kind === 'video' && entry.content && !entry.layer.hidden) {
-          const q = entry.content.getVideoPlaybackQuality(); qualitySamples.push({ clip:entry.clip.id, time:playback.audio.currentTime, total:q.totalVideoFrames, dropped:q.droppedVideoFrames });
+        for (const entry of playback.native.entries.values()) if (entry.media.kind === 'video' && entry.content && playback.audio.currentTime >= entry.clip.visibleStart && playback.audio.currentTime < entry.clip.visibleEnd) {
+          quality(entry, playback.audio.currentTime);
         }
       }, 250);
       void 0;
@@ -79,19 +92,32 @@ if (!process.versions.electron) {
     }
     const result = await win.webContents.executeJavaScript(`(() => {
       clearInterval(qualityTimer);
+      for (const entry of playback.native.entries.values()) if (entry.benchmarkVisible && entry.content) {
+        const q = entry.content.getVideoPlaybackQuality();
+        qualitySamples.push({ clip:entry.clip.id, time:playback.audio.currentTime, total:q.totalVideoFrames, dropped:q.droppedVideoFrames, boundary:'stop' });
+      }
       return { time:playback.time, playing:playback.playing, stats:playback.native.stats, samples:playbackSamples, quality:qualitySamples,
         stage:document.getElementById('native-preview').getBoundingClientRect().toJSON(), devicePixelRatio, fps:playback.fps };
     })()`);
     result.mediaEvents = mediaEvents; result.gpu = await app.getGPUInfo('complete');
     result.displays = screen.getAllDisplays().map(d => ({ bounds:d.bounds, frequency:d.displayFrequency }));
     result.versions = process.versions;
+    result.presentation = {
+      disableDirectComposition: app.commandLine.hasSwitch('disable-direct-composition'),
+      disableGpuVsync: app.commandLine.hasSwitch('disable-gpu-vsync'),
+      disableFrameRateLimit: app.commandLine.hasSwitch('disable-frame-rate-limit'),
+    };
     result.byClip = [...new Set(result.samples.map(s => s.clip))].map(clip => {
       const values = result.samples.filter(s => s.clip === clip), first = values[0], last = values.at(-1);
       const gaps = values.slice(1).map((s, i) => s.wall - values[i].wall).sort((a, b) => a - b);
+      const quality = result.quality.filter(s => s.clip === clip);
+      const errors = values.map(s => Math.abs(s.clockError) * 1000).sort((a, b) => a - b);
       return { clip, callbacks:values.length, seconds:(last.wall - first.wall) / 1000,
         callbackFps:(values.length - 1) * 1000 / (last.wall - first.wall),
         presentedFps:(last.presented - first.presented) * 1000 / (last.wall - first.wall),
-        p95GapMs:gaps[Math.floor(gaps.length * .95)], maxGapMs:gaps.at(-1) };
+        p95GapMs:gaps[Math.floor(gaps.length * .95)], maxGapMs:gaps.at(-1),
+        droppedWhileVisible:quality.length ? quality.at(-1).dropped - quality[0].dropped : null,
+        p95ClockErrorMs:errors[Math.floor(errors.length * .95)], maxClockErrorMs:errors.at(-1) };
     });
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ time:result.time, stats:result.stats, byClip:result.byClip }, null, 2));

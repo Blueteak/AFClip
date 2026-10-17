@@ -18,6 +18,16 @@ const previewGraphics = { graphics: {} };
 const files = new Map();
 const outputs = new Set();
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
+// Chromium 152's DirectComposition VSync fallback sleeps for a rounded-up 17 ms
+// on this Windows setup, delivering only ~56 fps. Use the GPU-backed EGL window
+// compositor with Chromium's deadline scheduler instead of that hardware wait.
+// This changes only the editor process; export workers retain their own settings.
+const presentation = option('--presentation') || process.env.REELET_PRESENTATION || (process.platform === 'win32' ? 'compatibility' : 'default');
+if (!['default', 'compatibility', 'direct-composition'].includes(presentation)) throw new Error('Unknown presentation mode');
+if (process.platform === 'win32' && presentation === 'compatibility') {
+  app.commandLine.appendSwitch('disable-direct-composition');
+  app.commandLine.appendSwitch('disable-gpu-vsync');
+}
 
 async function request(route, payload) {
   const response = await fetch(endpoint.url + route, {
