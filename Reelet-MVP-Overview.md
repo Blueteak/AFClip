@@ -105,8 +105,9 @@ The gesture creates an audio crossfade for audio clips, a dissolve for visual cl
 
 - Provide clip volume, mute, fade-in and fade-out.
 - Drag a horizontal volume line to adjust overall clip volume. Separate upper-corner handles control fade durations.
-- Each fade has a draggable curve control for its shape without requiring individual keyframes.
+- Audio fades use fixed Ease In/Out curves. Adjustable fade shapes are deferred beyond MVP.
 - Modifier-click adds volume points; dragging adjusts the line or existing points; Delete removes a selected point.
+- Volume points ease in and out between each other, including temporary clip-edge anchors for a lone point.
 - Fade handles remain independent of volume points. Apply fades over volume automation and display the resulting audible level.
 - Stretch volume points with the audio so they follow the same sounds. Fade durations remain in timeline time and clamp if the clip becomes too short.
 

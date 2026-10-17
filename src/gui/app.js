@@ -1296,7 +1296,7 @@ const pointLocal = (c, p) => (secs(p.time) - secs(c.sourceIn)) / secs(c.speed);
 const sourceAtFrame = (c, f) => fadd(c.sourceIn, fmul(fsub(fromF(f), c.start), c.speed));
 const sameTime = (a, b) => a.num * b.den === b.num * a.den;
 const levelGain = (c, t) => (c.volume ?? 1) * window.ReeletTimeline.automationGain(c, t);
-// Gain is linear between points, so subdivide each segment to draw its dB curve.
+// Subdivide each eased gain segment to draw its dB curve.
 function envelopePaths(c) {
   const duration = secs(c.duration), fi = Math.min(secs(c.fadeIn), duration), fo = Math.min(secs(c.fadeOut), duration), ease = window.ReeletTimeline.easeInOut;
   const fade = t => (fi ? ease(t / secs(c.fadeIn)) : 1) * (fo ? ease((duration - t) / secs(c.fadeOut)) : 1);
