@@ -2,7 +2,7 @@
 const { watch } = require('node:fs');
 const path = require('node:path');
 
-module.exports = function watchRenderer(window, beforeReload) {
+module.exports = function watchRenderer(window, beforeReload = () => {}, options = {}) {
   let timer, dirty = 0, closed = false;
   const schedule = () => { clearTimeout(timer); timer = setTimeout(reload, 350); };
   const changed = () => { dirty++; schedule(); };
@@ -21,11 +21,18 @@ module.exports = function watchRenderer(window, beforeReload) {
       if (!closed) { console.warn('GUI reload deferred:', error.message); schedule(); }
     }
   }
-  const frontend = new Set(['app.js','playback.js','native-preview.js','styles.css','index.html']);
-  const watchers = [
-    watch(__dirname, (_event, name) => { if (frontend.has(String(name))) changed(); }),
-    watch(path.join(__dirname,'../render'), (_event, name) => { if (String(name) === 'timeline.cjs') changed(); }),
+  const files = options.files || [
+    ...['app.js','playback.js','native-preview.js','styles.css','index.html'].map(name => path.join(__dirname,name)),
+    path.join(__dirname,'../render/timeline.cjs'),
   ];
+  const directories = new Map();
+  for (const file of files) {
+    const directory = path.dirname(file);
+    if (!directories.has(directory)) directories.set(directory,new Set());
+    directories.get(directory).add(path.basename(file));
+  }
+  const watchers = [...directories].map(([directory,names]) =>
+    watch(directory, (_event, name) => { if (names.has(String(name))) changed(); }));
   for (const watcher of watchers) watcher.on('error', error => console.warn('GUI watcher:', error.message));
   window.once('closed', () => { closed = true; clearTimeout(timer); for (const watcher of watchers) watcher.close(); });
 };

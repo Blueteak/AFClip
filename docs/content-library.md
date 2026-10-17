@@ -6,11 +6,14 @@ The library is a standalone local application in this repository. It shares Reel
 
 ```powershell
 npm run library:gui
+npm run library:dev   # Live GUI reload during development
 npm run library -- --help
 node src/library/cli.ts search --kind audio
 ```
 
 Node 24 and the repository's installed dependencies are required. The GUI and CLI automatically start the same headless service. Its default catalog is `%LOCALAPPDATA%\Reelet\Library`. `REELET_LIBRARY_HOME` selects another active catalog; individual CLI commands can also use `--catalog PATH`. SQLite stores annotations, identity records, project references, jobs and bounded history. Disposable artifacts live in the catalog's `cache` directory. Media stays at its original path.
+
+`npm run library:dev` or `npm run library -- gui --dev` watches the library HTML, CSS and JavaScript plus shared Reelet styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
 
 The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. Reelet's library browser uses a separate read-only capability and session; annotation writes through that capability are rejected by the service.
 

@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {libraryEndpoint,request} from './client.ts';
 const help=`Content Library. GUI and CLI use the same local catalog and operation contract.
 
-  npm run library -- gui [--id ASSET]
+  npm run library -- gui [--id ASSET] [--dev]
   npm run library -- endpoint
   npm run library -- import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
   npm run library -- search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
@@ -38,10 +38,10 @@ Ranges use exclusive end frames/samples. No command deletes original media.
 async function main(){const args=process.argv.slice(2),command=args.shift();if(!command||['help','--help','-h'].includes(command)){console.log(help);return;}
   const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false;
   const numbers=new Set(['revision','targetRevision','limit','offset','bytes','startFrame','endFrame','startSample','endSample','minDuration','maxDuration','width','count','columns','frame','rangeOffset']);
-  for(let i=0;i<args.length;i++){if(!args[i].startsWith('--')){positionals.push(args[i]);continue;}const key=args[i].slice(2);if(key==='wait'){wait=true;continue;}if(['deleted','assetsOnly','inbox','hierarchy','watched'].includes(key)){c[key]=args[i+1]==='false'?false:true;if(['true','false'].includes(args[i+1]))i++;continue;}const value=args[++i];if(value===undefined)throw new Error(`Missing --${key} value`);if(key==='catalog')catalog=value;else c[key]=numbers.has(key)?Number(value):['tags','ids','members'].includes(key)?value.split(',').filter(Boolean):value;}
+  for(let i=0;i<args.length;i++){if(!args[i].startsWith('--')){positionals.push(args[i]);continue;}const key=args[i].slice(2);if(key==='wait'){wait=true;continue;}if(key==='dev'){c.dev=true;continue;}if(['deleted','assetsOnly','inbox','hierarchy','watched'].includes(key)){c[key]=args[i+1]==='false'?false:true;if(['true','false'].includes(args[i+1]))i++;continue;}const value=args[++i];if(value===undefined)throw new Error(`Missing --${key} value`);if(key==='catalog')catalog=value;else c[key]=numbers.has(key)?Number(value):['tags','ids','members'].includes(key)?value.split(',').filter(Boolean):value;}
   const ep=await libraryEndpoint(catalog);let result:any;
   if(command==='endpoint')result=ep;
-  else if(command==='gui'){const child=spawn(process.execPath,[fileURLToPath(new URL('./launch.cjs',import.meta.url)),'--catalog',ep.catalogDir,ep.gui+(c.id?'&asset='+encodeURIComponent(c.id):'')],{detached:true,windowsHide:true,stdio:'ignore'});child.unref();result={opened:true,url:ep.gui};}
+  else if(command==='gui'){const child=spawn(process.execPath,[fileURLToPath(new URL('./launch.cjs',import.meta.url)),'--catalog',ep.catalogDir,...(c.dev?['--dev']:[]),ep.gui+(c.id?'&asset='+encodeURIComponent(c.id):'')],{detached:true,windowsHide:true,stdio:'ignore'});child.unref();result={opened:true,dev:!!c.dev,url:ep.gui};}
   else {if(['import','register','rescan'].includes(command)&&positionals[0])c.path=path.resolve(positionals[0]);
     const payload=command==='call'?JSON.parse(fs.readFileSync(positionals[0]==='-'?0:positionals[0],'utf8')):c;
     result=await request(ep,'/command',payload);
