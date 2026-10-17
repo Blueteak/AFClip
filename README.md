@@ -2,12 +2,13 @@
 
 Reelet is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
 
-The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The first implementation is a smaller editing slice: a shared project engine, CLI, basic desktop editor and separate export workers. Track folders, audio automation curves, reusable selects and the rest of the agreed MVP remain future work.
+The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The first implementation is a smaller editing slice: a shared project engine, CLI, basic desktop editor and separate export workers. Track folders, audio automation curves, Content Library integration and the rest of the agreed MVP remain future work. The planned standalone Content Library owns reusable video/audio annotations and named selects.
 
 ## Design
 
 - [MVP Overview](Reelet-MVP-Overview.md): agreed behavior and scope.
 - [Technical Overview](Reelet-Technical-Overview.md): architecture and Windows prototype criteria.
+- [Content Library Overview](content-library-overview.md): standalone library scope, ownership, Inbox lifetime and Reelet integration.
 
 These overviews supersede the earlier design brief.
 
