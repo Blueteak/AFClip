@@ -43,6 +43,7 @@
         <button id="save-clip" class="primary" type="submit">Apply changes</button>
         <p class="field-help">Timing snaps to project frames. Committed edits save automatically.</p>
       </form>
+      <div class="export-settings"><label><input id="full-verification" type="checkbox"> Thorough export check</label><p class="field-help">Check every exported frame. Takes longer.</p></div>
       <div id="render-card" hidden><h3 id="job-title">Exporting</h3><progress id="job-progress" max="1" value="0"></progress><p id="job-detail"></p><button id="cancel-job">Cancel render</button><button id="watch-export" hidden>Play finished export</button><button id="show-export" hidden>Show in folder</button></div>
     </aside>
     <section class="timeline panel">

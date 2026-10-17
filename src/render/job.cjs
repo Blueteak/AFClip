@@ -6,6 +6,7 @@ const { performance } = require('node:perf_hooks');
 const ffmpeg = require('ffmpeg-static'), ffprobe = require('ffprobe-static').path;
 const { compile, seconds } = require('./timeline.cjs');
 const { getFrameIndex, decodeFrameTimestamps } = require('./frame-index.cjs');
+const { verifyOutput } = require('./verify.cjs');
 const config = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const work = path.join(path.dirname(process.argv[2]), 'render');
 const children = new Set(); let cancelled = false, partial;
@@ -104,17 +105,18 @@ async function main() {
   await run('renderer', require('electron'), [path.join(__dirname, 'worker.cjs'), renderFile], false, true);
   cancelCheck();
   const stats = JSON.parse(fs.readFileSync(path.join(work, 'stats.json'), 'utf8'));
+  let verification = null;
   if (config.kind !== 'frame') {
     emit({ type: 'progress', phase: 'mux', progress: .97, message: 'Combining picture and audio' });
     await run('mux', ffmpeg, ['-hide_banner', '-y', '-r', `${project.fps.num}/${project.fps.den}`, '-i', path.join(work, 'video.h264'), '-i', audio.output, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-t', String(end - begin), '-movflags', '+faststart', partial]);
-    const info = JSON.parse((await run('verify', ffprobe, ['-v', 'error', '-count_frames', '-show_streams', '-of', 'json', partial], true)).toString());
-    const video = info.streams.find(s => s.codec_type === 'video');
-    if (Number(video?.nb_read_frames) !== stats.frames || !info.streams.some(s => s.codec_type === 'audio')) throw new Error(`Encoded output is incomplete: expected ${stats.frames} video frames and audio, read ${video?.nb_read_frames || 0} frames; inspect verify.log and mux.log`);
+    const mode = config.verification || 'quick';
+    emit({ type: 'progress', phase: 'verify', progress: .99, message: mode === 'full' ? 'Checking container and decoding every output frame' : 'Checking output streams and timestamps' });
+    verification = await verifyOutput({ file: partial, ffprobe, run, mode, expected: { frames: stats.frames, width, height, fps: project.fps.num / project.fps.den, duration: end - begin } });
   }
   cancelCheck(); fs.renameSync(partial, config.output); partial = null;
   const wallMs = performance.now() - started;
   emit({ type: 'complete', output: config.output, kind: config.kind, width, height, frameTime: config.frameTime, duration: end - begin, frames: stats.frames,
-    stats: { ...stats, wallMs, indexCacheHits, indexMs: indexing.reduce((sum, entry) => sum + entry.ms, 0), indexing, audioClips: audio?.clips || 0, sourceDecode: 'software', composition: config.mode, encoder: config.kind === 'frame' ? 'png' : config.mode === 'gpu' ? 'NVENC D3D11' : 'libx264', rawFrameCacheBytes: 0 } });
+    stats: { ...stats, wallMs, verification, indexCacheHits, indexMs: indexing.reduce((sum, entry) => sum + entry.ms, 0), indexing, audioClips: audio?.clips || 0, sourceDecode: 'software', composition: config.mode, encoder: config.kind === 'frame' ? 'png' : config.mode === 'gpu' ? 'NVENC D3D11' : 'libx264', rawFrameCacheBytes: 0 } });
 }
 function cleanIntermediates() {
   // All targets are fixed children of this job's resolved render directory.

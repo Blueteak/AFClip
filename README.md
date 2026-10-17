@@ -28,6 +28,8 @@ The example references local recordings and audio on this PC. It is not a portab
 
 The GUI currently offers clip selection and numeric edits, track controls, exact-frame rendering and playback of completed exports. Continuous timeline playback and most gesture-based editing are not implemented. The overviews describe the destination, not completed features.
 
+Exports use fast container and timestamp verification by default. Enable **Thorough export check** in the editor or pass `--verify full` to also decode and count the output frames.
+
 ## Rendering experiments
 
 The [Windows benchmarks](benchmarks/windows/README.md) remain available separately. [Baseline measurements](docs/windows-benchmark-results.md) record the original path, and [rendering fixes](docs/windows-rendering-solutions.md) explain the color and decode changes. The [shared-texture experiment](docs/windows-gpu-export.md) removes full-frame bitmap readback from NVIDIA export through a D3D11-to-NVENC bridge. Run `npm run bench:gpu` to compare that path with the earlier CPU and GPU bitmap controls.

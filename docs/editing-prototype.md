@@ -145,4 +145,20 @@ The indexer now uses `-show_packets` for AVC/HEVC samples in MOV/MP4, sorts inte
 
 A fresh full export with zero timestamp-cache hits indexed all eight sources in **0.929 seconds** and completed in **102.11 seconds**, versus **326.77 seconds** for the original cold export. Rendering itself took 77.50 seconds; indexing is no longer the bottleneck. These are individual measurements on the same PC, with application indexes cold but the OS filesystem cache not flushed.
 
-All 16,526 source timestamps exactly matched the prior decoded indexes. The 90-frame VFR fixture also matched exactly, and manual checks confirmed malformed timing/layouts reject the fast path and invoke the decode fallback. The new complete MP4 has the same SHA-256 as the prior revised edit: the output is byte-for-byte identical. [Measurements and parity evidence](indexing-performance.json) include the per-source timings and hashes. The final output still receives the existing full decoded-frame-count verification; this change only removes unnecessary source decoding during indexing.
+All 16,526 source timestamps exactly matched the prior decoded indexes. The 90-frame VFR fixture also matched exactly, and manual checks confirmed malformed timing/layouts reject the fast path and invoke the decode fallback. The new complete MP4 has the same SHA-256 as the prior revised edit: the output is byte-for-byte identical. [Measurements and parity evidence](indexing-performance.json) include the per-source timings and hashes. Those measurements still included full decoded-frame-count verification. The next change reduces that cost separately.
+
+## Output verification
+
+MP4 exports now default to `--verify quick`. Before publishing the finished file, the worker checks H.264/AAC streams, dimensions, frame rate, zero start times, video packet count, packet flags, continuous presentation timestamps, stream durations, and stereo 48 kHz audio coverage. This relies on our encoders producing one video packet per frame without B-frame reordering. AAC priming is allowed before time zero. MP4 duration rounding gets a 1 ms allowance at the final video packet; ordinary frame timestamps remain checked against the video time base.
+
+For a decoded-frame check, enable **Thorough export check** in the editor or use:
+
+```powershell
+node src/cli.ts export /path/to/project exports/sample-first-edit.mp4 --verify full --wait
+```
+
+Full mode performs the quick checks, then decodes the output to confirm the expected video frame count and nonempty decoded audio. Quick mode does not decode compressed picture/audio payloads, so it cannot detect every damaged bitstream. Neither mode judges the edit's visual quality or sound by ear. Review the finished export for those. Both modes finish before the temporary MP4 replaces the requested destination, and cancellation remains available during verification. Job statistics record the mode, packet counts, decoded frame count when requested, and elapsed verification time.
+
+On the existing 64-second edit, quick verification took **0.139 seconds**, versus **21.551 seconds** with full decoding. A new GPU export completed in **87.162 seconds**, including 84.699 seconds of rendering and 0.136 seconds of verification, with all eight source indexes cached. Its SHA-256 matched the previous edit exactly. Rendering speed varies between runs; the direct verification comparison isolates the work removed.
+
+Manual checks also covered a three-second software export with full verification, a nine-frame 30000/1001 fps MP4, and rejection of missing frames/audio, incorrect dimensions/timestamps, discarded video packets and audio gaps. The editor checkbox was inspected in a captured window. [Recorded results](output-verification-results.json) contain the timings and output hash. No always-run test suite was added.

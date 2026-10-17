@@ -111,8 +111,9 @@ app.whenReady().then(async () => {
     for (const file of selected.filePaths) imported.push(await request('/command', { command: 'import', path: file }));
     return imported;
   });
-  handle('render', async ({ kind, mode, frameTime }) => {
+  handle('render', async ({ kind, mode, frameTime, verification = 'quick' }) => {
     if (!['frame', 'export'].includes(kind) || !['gpu', 'software'].includes(mode || 'gpu')) throw new Error('Invalid render request');
+    if (!['quick', 'full'].includes(verification)) throw new Error('Invalid verification mode');
     let output;
     if (kind === 'frame') {
       const cache = path.join(projectDir, 'cache', 'gui');
@@ -125,7 +126,7 @@ app.whenReady().then(async () => {
       await fs.mkdir(path.dirname(output), { recursive: true });
     }
     outputs.add(path.resolve(output));
-    return request('/command', { command: 'render', kind, mode: mode || 'gpu', frameTime, output });
+    return request('/command', { command: 'render', kind, mode: mode || 'gpu', verification, frameTime, output });
   });
   handle('media-url', async file => {
     if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result');
