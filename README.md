@@ -1,30 +1,20 @@
 # Reelet
 
-Reelet is a desktop video editor for short gamedev marketing videos. It brings footage/audio management, multitrack editing, and expressive 2D typography and overlays into a focused workflow that both people and coding agents can control.
+Reelet is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
 
-## What this does
+The MVP supports supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. It includes universal tracks, track folders, trimming, stretching, audio curves, fades, dissolves, reusable selects and SDR MP4 export. Video treatments and built-in graphic-code editing are deferred.
 
-- Quickly and fluidly edit gameplay footage, music, sound effects, and 2D assets.
-- Manage clips, triage footage, mark selects, create subclips, arrange multiple tracks, preview, and export.
-- Overlay rich typography, custom fonts, effects, 2D animation, and reusable branding.
-- CLI as a primary input method - anything in GUI can be done via CLI, and GUI doesn't need to be open to function.
-- Remain local-first and agent-agnostic - bring your own agent into the workflow, no account needed.
+## Design
 
-## What this does not
+- [MVP Overview](Reelet-MVP-Overview.md): agreed behavior and scope.
+- [Technical Overview](Reelet-Technical-Overview.md): architecture and Windows prototype criteria.
 
-- Video post processing (color grading, greenscreen, masking, etc)
-- Complex VFX 
-- Special formats
-- Export platform integrations
-- Handle an account
+These overviews supersede the earlier design brief.
 
-## Planning
+## Implementation status
 
-See the [design brief](docs/design-brief.md) for requirements, proposed system boundaries, open decisions, and milestone acceptance criteria. Implementation and dependency selection should follow those investigations.
+The editor is not implemented yet. Existing local media benchmarks are experiments, not the application.
 
-No runtime dependencies, paid services, generated media, bundled fonts, or third-party editor components are included in this initial repository. Project licensing and dependency licensing remain to be decided.
+The planned architecture uses an independent TypeScript/Node.js project engine, an Electron GUI and separate rendering workers. Chromium composition and bundled FFmpeg tools are provisional choices. GPU acceleration should be used where available, with software fallbacks.
 
-## Repository contents
-
-- `README.md` — project overview and status.
-- `docs/design-brief.md` — product requirements and implementation planning.
+The next step is a Windows prototype proving shared GUI/CLI editing, deterministic graphics, synchronized audio and composed export. Rendering correctness and measured performance will determine the final pipeline.
