@@ -2,7 +2,7 @@
 
 This is the agreed design for a standalone, local content library for video and audio. It supports choosing footage for Reelet and finding sound effects for game development. It must remain useful without Reelet installed.
 
-This document owns library behavior and its integration contract. The [Reelet MVP](Reelet-MVP-Overview.md) and [technical overview](Reelet-Technical-Overview.md) own editing behavior and project architecture. This is planned work, not a description of an implemented library.
+This document owns library behavior and its integration contract. The [Reelet MVP](Reelet-MVP-Overview.md) and [technical overview](Reelet-Technical-Overview.md) own editing behavior and project architecture. The [Content Library MVP guide](docs/content-library.md) records the implemented subset, commands, verification and remaining work; this overview remains the full design contract.
 
 ## Applications and ownership
 

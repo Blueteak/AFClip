@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {request} from '../engine/client.ts';
+export {request};
+export const catalogDir=()=>path.resolve(process.env.REELET_LIBRARY_HOME||path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'.local','share'),'Reelet','Library'));
+export async function libraryEndpoint(dir=catalogDir()) {
+  dir=path.resolve(dir);fs.mkdirSync(dir,{recursive:true});const file=path.join(dir,'endpoint.json');
+  const existing=async()=>{try{const ep=JSON.parse(fs.readFileSync(file,'utf8'));await request(ep,'/health');return ep;}catch{return null;}};
+  const ep=await existing();if(ep)return ep;
+  const log=fs.openSync(path.join(dir,'service.log'),'a');
+  const child=spawn(process.env.REELET_NODE_PATH||process.execPath,[fileURLToPath(new URL('./server.ts',import.meta.url)),dir],{detached:true,windowsHide:true,stdio:['ignore',log,log]});child.unref();fs.closeSync(log);let error:any;child.on('error',e=>error=e);
+  for(let i=0;i<150;i++){if(error)throw error;await new Promise(r=>setTimeout(r,100));const ready=await existing();if(ready)return ready;}
+  throw new Error(`Library service did not start. See ${path.join(dir,'service.log')}`);
+}
+export async function libraryCommand(command:any) {return request(await libraryEndpoint(),'/command',command);}

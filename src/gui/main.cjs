@@ -148,6 +148,14 @@ app.whenReady().then(async () => {
   handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewGraphics.graphics = {}; previewSession.close(); });
   ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
+  handle('library', async id => {
+    await request('/command', {command:'library-sync'});
+    const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
+    const ep = JSON.parse(result.stdout).result;
+    const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
+    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), ep.gui+(id?'&asset='+encodeURIComponent(id):''), '--project', projectDir], { windowsHide:true, detached:true, stdio:'ignore', env });
+    child.unref(); return {opened:true};
+  });
   handle('command', payload => {
     if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);

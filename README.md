@@ -2,7 +2,7 @@
 
 Reelet is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
 
-The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The first implementation is a smaller editing slice: a shared project engine, CLI, basic desktop editor and separate export workers. Track folders, audio automation curves, Content Library integration and the rest of the agreed MVP remain future work. The planned standalone Content Library owns reusable video/audio annotations and named selects.
+The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The implementation includes a shared project engine, CLI, desktop editor, separate export workers and a standalone Content Library for reusable video/audio annotations and named selects. Track folders, audio automation curves and other parts of the editing overview remain future work.
 
 ## Design
 
@@ -32,6 +32,12 @@ The GUI is a keyboard-first dark editor modeled on Premiere and Resolve conventi
 Exports use fast container and timestamp verification by default. Choose **Thorough** verification in the Export dialog or pass `--verify full` to also decode and count the output frames.
 
 The playback target is sustained **1080p60**; seeking targets 25 ms at p95 with 60 fps updates during scrubbing. The prepared seek cache now meets those targets on the representative Windows edit: 20.7 ms p95 across 120 randomized seeks and 300/300 correct scrub updates at 60 Hz. Scrubbing uses bounded 540p proxies built in the background. After 75 ms idle, paused video refines to the original source resolution; playback and full-resolution inspection also use originals. Unprepared ranges use slower original decoding. GPU preview presents native Chromium video layers directly, removing the previous 540p JPEG transfer path. The representative Windows edit now measures 60 fps steady-state playback, with an opening startup interval still present. See the [playback notes](docs/timeline-playback.md) for measurements and limits, or run `node benchmarks/windows/playback.cjs` to measure a disposable 1080p60 copy of the example edit.
+
+## Content Library
+
+Run `npm run library:gui` for the standalone library, or `npm run library -- --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares Reelet's native media presentation and fast-seek implementation.
+
+In Reelet, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking, the 35-asset GUI annotation pass and remaining scope.
 
 ## Development reload
 

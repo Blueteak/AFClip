@@ -256,6 +256,7 @@ const editable = () => !!project() && !exportJobId;
 const hasSelection = () => selection.size > 0 || !!selTransition;
 
 action('import', { menu: 'File', group: 1, label: 'Import media…', icon: 'import', keys: ['Ctrl+I'], desc: 'Add footage, music, sound effects or images. Originals stay where they are.', enabled: editable, run: () => importMedia() });
+action('library', { menu: 'File', group: 1, label: 'Browse content library…', icon: 'folder', keys: ['Ctrl+L'], desc: 'Browse and preview reusable assets and ranges. Edit annotations in the standalone library.', run: () => api.library() });
 action('importGraphic', { menu: 'File', group: 1, label: 'Import graphic folder…', icon: 'graphic', keys: ['Ctrl+Shift+I'], desc: 'Add an HTML/CSS/JS graphic. The folder needs an index.html.', enabled: editable, run: () => importMedia('graphic') });
 action('export', { menu: 'File', group: 2, label: 'Export…', icon: 'export', keys: ['Ctrl+M'], desc: 'Render an H.264/AAC MP4 of the sequence or the In/Out range.', enabled: () => editable() && clips().length > 0, run: () => openExport() });
 action('checkpoint', { menu: 'File', group: 3, label: 'New checkpoint…', icon: 'flag', keys: ['Ctrl+Shift+S'], desc: 'Save a restorable snapshot of the whole project. The latest five are kept.', enabled: editable, run: () => newCheckpoint() });
@@ -725,7 +726,7 @@ function addTrack(name) {
     return { ops: [put('tracks', t)], pre: { [`track:${t.id}`]: 0, [`occupancy:${t.id}`]: 0 }, message: `Added “${t.name}”` };
   });
 }
-function mediaLength(m) { return m.kind === 'graphic' || m.kind === 'image' ? 5 * nominal() : Math.max(1, Math.floor(secs(m.duration) * fps() + 1e-6)); }
+function mediaLength(m) { const range=m.metadata?.library; return m.kind === 'graphic' || m.kind === 'image' ? 5 * nominal() : range?.end ? Math.max(1, Math.floor(secs(range.end)*fps()+1e-6)-Math.ceil(secs(range.start)*fps()-1e-6)) : Math.max(1, Math.floor(secs(m.duration) * fps() + 1e-6)); }
 function addMediaAt(m, trackId, f) {
   const id = uid('clip');
   edit(() => {
@@ -733,7 +734,8 @@ function addMediaAt(m, trackId, f) {
     let target = trackId && trackById(trackId);
     if (target && (target.locked || !free(target.id, f, f + len))) target = null;
     if (!target) { target = { id: uid('track'), name: stem(mediaName(m)), disabled: false, locked: false }; ops.push(put('tracks', target)); Object.assign(pre, { [`track:${target.id}`]: 0, [`occupancy:${target.id}`]: 0 }); }
-    ops.push(put('clips', { id, trackId: target.id, mediaId: m.id, name: stem(mediaName(m)), start: fromF(Math.max(0, f)), duration: fromF(len), sourceIn: ZERO, speed: ONE, volume: 1, mute: false, fadeIn: ZERO, fadeOut: ZERO }));
+    const sourceIn=m.metadata?.library?.start?fromF(Math.ceil(secs(m.metadata.library.start)*fps()-1e-6)):ZERO;
+    ops.push(put('clips', { id, trackId: target.id, mediaId: m.id, name: m.metadata?.library?.name||stem(mediaName(m)), start: fromF(Math.max(0, f)), duration: fromF(len), sourceIn, speed: ONE, volume: 1, mute: false, fadeIn: ZERO, fadeOut: ZERO }));
     return { ops, pre, message: `Added “${stem(mediaName(m))}” at ${tc(f)}${trackId && target.id !== trackId ? ' on a new track' : ''}` };
   }).then(ok => { if (ok) select([id]); });
 }
@@ -930,7 +932,7 @@ function drawMedia() {
       hint: [{ keys: '#Drag', text: 'to timeline' }, { keys: '#Double-click', text: 'add at playhead' }] });
     row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); };
     row.ondblclick = () => editable() && addMediaAt(m, null, playF);
-    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }]); };
+    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}]:[]), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
     row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-reelet-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
     row.ondragend = () => { dragMedia = null; clearDropGhost(); };
     list.append(row);

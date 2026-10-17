@@ -8,7 +8,7 @@ window.NativePreview = class NativePreview {
     this.pending = new Map(); this.requestId = 0;
     this.frames = new Map(); this.frameBytes = 0;
     this.frameBudget = Math.min(setup.project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024);
-    this.stats = { ticks: 0, sourceFrames: 0, maxTickMs: 0, resyncs: 0 };
+    this.stats = { ticks: 0, sourceFrames: 0, presentedFrames: 0, maxTickMs: 0, resyncs: 0 };
     this.stage = document.createElement('div'); this.stage.className = 'native-composition';
     this.stage.style.width = setup.width + 'px'; this.stage.style.height = setup.height + 'px';
     host.replaceChildren(this.stage);
@@ -47,6 +47,7 @@ window.NativePreview = class NativePreview {
   ensureVideo(entry) {
     if (entry.content) return entry.loaded;
     const video = document.createElement('video');
+    entry.lastPresentedFrames = undefined;
     video.muted = true; video.preload = 'auto'; video.playsInline = true;
     video.style.visibility = entry.still && !entry.still.hidden ? 'hidden' : '';
     video.style.objectFit = entry.clip.transform?.fit === 'fill' ? 'cover' : 'contain';
@@ -68,6 +69,10 @@ window.NativePreview = class NativePreview {
       }
       if (entry.prefetchRequest && Math.abs(metadata.mediaTime - entry.prefetchRequest.time) < 1e-6) this.prefetch(entry, entry.prefetchRequest.time);
       this.stats.sourceFrames++;
+      // Callback delivery may coalesce. Chromium's cumulative presentation count
+      // distinguishes missed callbacks from actual dropped playback frames.
+      this.stats.presentedFrames += Math.max(0, metadata.presentedFrames - (entry.lastPresentedFrames ?? metadata.presentedFrames - 1));
+      entry.lastPresentedFrames = metadata.presentedFrames;
       entry.videoCallback = video.requestVideoFrameCallback(presented);
     };
     entry.videoCallback = video.requestVideoFrameCallback(presented);
@@ -80,7 +85,7 @@ window.NativePreview = class NativePreview {
     while (low < high) { const mid = (low + high) >>> 1; if (pts[mid] <= time + 1e-7) low = mid + 1; else high = mid; }
     return Math.max(0, low - 1);
   }
-  frameTime(entry, time) { return entry.media.pts[this.frameIndex(entry,time)]; }
+  frameTime(entry, time) { return entry.media.pts.length ? entry.media.pts[this.frameIndex(entry,time)] : time; }
   frameKey(entry, time) { return entry.clip.mediaId + ':' + Math.round(time * 1e6); }
   storeFrame(key, bitmap, demand) {
     const bytes = bitmap.width * bitmap.height * 4;
@@ -172,7 +177,7 @@ window.NativePreview = class NativePreview {
   }
   prefetch(entry, time) {
     entry.prefetchRequest = null;
-    if (this.closed || this.running || !entry.content || !this.cachedFrame(entry, time)) return;
+    if (this.closed || this.running || !entry.content || !entry.media.pts.length || !this.cachedFrame(entry, time)) return;
     const video = entry.content, pts = entry.media.pts, selected = this.frameTime(entry, time);
     const index = this.frameIndex(entry, selected);
     const end = pts[Math.min(pts.length - 1, index + 8)];
@@ -199,7 +204,7 @@ window.NativePreview = class NativePreview {
     while (low < high) { const mid = (low + high) >>> 1; if (pts[mid] <= time + 1e-7) low = mid + 1; else high = mid; }
     const index = Math.max(0, low - 1);
     // Seek inside the selected presentation interval, avoiding timestamp rounding at its edge.
-    const target = pts[index] + Math.min(.001, ((pts[index + 1] ?? pts[index] + .02) - pts[index]) / 2);
+    const target = pts.length ? pts[index] + Math.min(.001, ((pts[index + 1] ?? pts[index] + .02) - pts[index]) / 2) : time;
     const fresh = !entry.content, loaded = this.ensureVideo(entry), video = entry.content;
     // Set the startup position before metadata/data arrive, avoiding a decode
     // of frame zero followed by a second decode of the requested GOP.
