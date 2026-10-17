@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: reelet-media:; media-src reelet-media:; connect-src 'none'">
+  <title>Reelet</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon">r</span> reelet</div>
+    <div class="project-heading"><strong id="project-name">Opening project</strong><span id="project-specs"></span></div>
+    <div class="history"><button id="undo" title="Undo the last shared edit · Ctrl+Z">Undo</button><button id="redo" title="Redo · Ctrl+Shift+Z">Redo</button></div>
+    <select id="render-mode" aria-label="Render mode" title="Choose GPU rendering or software fallback"><option value="gpu">GPU render</option><option value="software">Software render</option></select><button id="export" class="primary">Export MP4</button>
+  </header>
+  <main>
+    <aside class="bin panel">
+      <div class="panel-heading"><h2>Project media</h2><button id="import" class="small">Import</button></div>
+      <input id="search" type="search" placeholder="Find media" aria-label="Find media">
+      <div id="media-list" class="media-list"></div>
+      <div class="bin-footer">Original media stays in place.</div>
+    </aside>
+    <section class="viewer panel">
+      <div class="panel-heading"><h2>Composition</h2><span id="preview-status">Select a time to preview</span></div>
+      <div class="preview-stage">
+        <img id="preview" alt="Composited project frame" hidden>
+        <video id="export-video" controls hidden></video>
+        <div id="preview-empty"><span class="empty-mark">r</span><p>Your edit, frame by frame.</p><button id="first-preview">Render this frame</button></div>
+      </div>
+      <div class="transport"><button id="previous-frame" title="Previous frame">&#x2039;</button><button id="render-frame">Render frame</button><button id="next-frame" title="Next frame">&#x203A;</button><output id="timecode">00:00:00:00</output><span class="transport-end" id="timeline-duration"></span></div>
+      <input id="playhead" type="range" min="0" max="1" value="0" step="0.033333" aria-label="Playhead">
+    </section>
+    <aside class="inspector panel">
+      <div class="panel-heading"><h2>Clip inspector</h2><span id="clip-type"></span></div>
+      <div id="inspector-empty" class="empty-copy">Select a clip on the timeline to adjust its timing and audio.</div>
+      <form id="clip-form" hidden>
+        <label>Name<input name="name" type="text" maxlength="160"></label>
+        <label>Timeline start <span>seconds</span><input name="start" type="number" min="0" step="0.033333"></label>
+        <label>Source in <span>seconds</span><input name="sourceIn" type="number" min="0" step="0.033333"></label>
+        <label>Duration <span>seconds</span><input name="duration" type="number" min="0.033333" step="0.033333"></label>
+        <label>Volume <span>%</span><input name="volume" type="number" min="0" max="400" step="1"></label>
+        <button id="save-clip" class="primary" type="submit">Apply changes</button>
+        <p class="field-help">Timing snaps to project frames. Committed edits save automatically.</p>
+      </form>
+      <div id="render-card" hidden><h3 id="job-title">Exporting</h3><progress id="job-progress" max="1" value="0"></progress><p id="job-detail"></p><button id="cancel-job">Cancel render</button><button id="watch-export" hidden>Play finished export</button><button id="show-export" hidden>Show in folder</button></div>
+    </aside>
+    <section class="timeline panel">
+      <div class="panel-heading"><h2>Timeline</h2><span id="timeline-note">Higher tracks appear above lower tracks</span><button id="add-track" class="small">Add track</button></div>
+      <div id="timeline-scroll"><div class="ruler-row"><span class="track-label">TRACKS</span><div id="ruler"></div></div><div id="track-list"></div></div>
+    </section>
+  </main>
+  <footer><span id="connection-dot"></span><span id="status" role="status">Connecting to project</span><span id="save-status">Local project</span></footer>
+  <script src="app.js"></script>
+</body>
+</html>

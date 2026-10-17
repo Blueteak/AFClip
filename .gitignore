@@ -8,6 +8,10 @@ coverage/
 
 # Local caches, logs, and generated editing data
 .cache/
+.reelet/
+examples/*/project.json
+examples/*/cache/
+examples/*/graphics/graphic_*/
 .temp/
 tmp/
 logs/

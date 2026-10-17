@@ -1,0 +1,164 @@
+{
+  "title": "Vellum",
+  "duration": 64,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "transition": {
+    "type": "cross-dissolve",
+    "duration": 1,
+    "alignment": "center",
+    "cutTimes": [
+      8,
+      16,
+      24,
+      32,
+      40,
+      48,
+      56
+    ]
+  },
+  "clips": [
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\4P_Fantasy_3.mp4",
+      "name": "4P_Fantasy_3",
+      "sourceIn": 1,
+      "sourceOut": 9,
+      "timelineStart": 0,
+      "duration": 8,
+      "intent": "Aerial reveal of the ruined courtyard, then moving toward combat.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\4P_Fund_3.mp4",
+      "name": "4P_Fund_3",
+      "sourceIn": 29,
+      "sourceOut": 37,
+      "timelineStart": 8,
+      "duration": 8,
+      "intent": "Low view of spell combat across the green clearing.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\4P_Dares_4.mp4",
+      "name": "4P_Dares_4",
+      "sourceIn": 4,
+      "sourceOut": 12,
+      "timelineStart": 16,
+      "duration": 8,
+      "intent": "Cool blue ice arena and airborne character.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\4P_Spire_3.mp4",
+      "name": "4P_Spire_3",
+      "sourceIn": 8,
+      "sourceOut": 16,
+      "timelineStart": 24,
+      "duration": 8,
+      "intent": "Wide rocky arena combat",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\Gauntlet.mp4",
+      "name": "Gauntlet",
+      "sourceIn": 3,
+      "sourceOut": 11,
+      "timelineStart": 32,
+      "duration": 8,
+      "intent": "Spell combat detail.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\Boss_Skeleton_1.mp4",
+      "name": "Boss_Skeleton_1",
+      "sourceIn": 7,
+      "sourceOut": 15,
+      "timelineStart": 40,
+      "duration": 8,
+      "intent": "Large enemy encounter.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\Boss_Reaper_1.mp4",
+      "name": "Boss_Reaper_1",
+      "sourceIn": 47,
+      "sourceOut": 55,
+      "timelineStart": 48,
+      "duration": 8,
+      "intent": "Purple arena boss encounter.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    },
+    {
+      "file": "D:\\Recordings\\Vellum_TrailerCap_November\\Boss_Beams_1.mp4",
+      "name": "Boss_Beams_1",
+      "sourceIn": 3,
+      "sourceOut": 11,
+      "timelineStart": 56,
+      "duration": 8,
+      "intent": "Tall black and white beam attacks for the final escalation.",
+      "audio": {
+        "codec": "aac",
+        "channels": 2,
+        "sampleRate": 48000,
+        "meanDb": -91,
+        "maxDb": -91
+      }
+    }
+  ],
+  "graphics": {
+    "opening": {
+      "file": "graphics/opening/index.html",
+      "start": 0,
+      "duration": 8
+    },
+    "closing": {
+      "file": "graphics/closing/index.html",
+      "start": 58,
+      "duration": 6
+    }
+  },
+  "notes": "All selected original audio streams are digitally silent (-91 dB). Keep attached audio for editability. See soundtrack-plan.json for supplied music/SFX plan. 0.5s source handles exist around every cut. Fades/dissolves preserve64s timeline. Graphics use local playback time."
+}

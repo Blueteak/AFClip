@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vellum opening</title>
+<style>
+@font-face{font-family:Cinzel;src:url('./Cinzel.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+#shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(12,8,22,.75),rgba(12,8,22,.25) 26%,transparent 57%);opacity:0}
+#title{position:absolute;left:108px;bottom:106px;color:#fff7df;opacity:0;transform-origin:left bottom;text-shadow:0 3px 24px #080510}
+#eyebrow{font:500 18px Cinzel;letter-spacing:8px;margin:0 0 16px 5px;color:#ded1ad}
+h1{font:500 112px/1 Cinzel;letter-spacing:13px;margin:0}
+#rule{height:1px;width:440px;transform-origin:left center;background:linear-gradient(90deg,#dcc697,#dcc697 70%,transparent);margin:23px 0 0 6px}
+#diamond{position:absolute;left:88px;bottom:137px;width:5px;height:5px;background:#dcc697;transform:rotate(45deg);opacity:0}
+</style></head><body>
+<div id="shade"></div><div id="title"><p id="eyebrow">GAMEPLAY</p><h1>Vellum</h1><div id="rule"></div></div><div id="diamond"></div>
+<script>
+'use strict';
+const clamp=x=>Math.max(0,Math.min(1,x)),smooth=x=>{x=clamp(x);return x*x*(3-2*x)};
+window.render=async function(t){
+  if(!Number.isFinite(t))throw new Error('Graphic time must be finite');
+  await document.fonts.ready;
+  const enter=smooth((t-.3)/1.15),leave=1-smooth((t-6.4)/1.1),opacity=enter*leave;
+  document.getElementById('title').style.opacity=String(opacity);
+  document.getElementById('title').style.transform=`translateY(${(1-enter)*25}px)`;
+  document.getElementById('shade').style.opacity=String(opacity);
+  document.getElementById('rule').style.transform=`scaleX(${smooth((t-.65)/1.3)})`;
+  document.getElementById('diamond').style.opacity=String(opacity);
+};
+addEventListener('message',async event=>{
+  if(event.source!==parent||event.data?.type!=='reelet-render')return;
+  const {requestId,time}=event.data;
+  try{await window.render(time);parent.postMessage({type:'reelet-ready',requestId},'*')}
+  catch(error){parent.postMessage({type:'reelet-error',requestId,error:String(error.message||error)},'*')}
+});
+</script></body></html>

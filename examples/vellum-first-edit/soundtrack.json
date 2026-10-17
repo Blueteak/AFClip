@@ -1,0 +1,31 @@
+{
+  "auditionStatus": "No listening/transcription tool was available. Selection uses supplied pack/track names, embedded publisher descriptions, source metadata, and decoded waveform levels. Root should audition if practical; do not claim aural verification.",
+  "music": {
+    "file": "D:\\Audio Effects\\_Music\\Ovani Fantasy\\Action 1 (RT 2)\\Fantasy Action 1 cut 60.wav",
+    "sourceIn": 0, "duration": 62, "timelineStart": 1, "gainDb": -5, "fadeIn": 0.5, "fadeOut": 2,
+    "note": "Whole supplied 60-second edit plus its 2-second reverb tail. Stereo 48 kHz. Measured mean -18.0 dB, sample peak 0.0 dB before gain. No looping or time stretching."
+  },
+  "effects": [
+    {
+      "name": "Opening page turn", "file": "D:\\Audio Effects\\Book_SFX\\Hard Cover\\Turn page\\Hard_cover_turn_page_001.mp3",
+      "sourceIn": 0, "duration": 0.54, "timelineStart": 0.45, "gainDb": 2, "fadeIn": 0.02, "fadeOut": 0.06,
+      "note": "Peak near source0.30s, accompanies title reveal without adding game claims."
+    },
+    {
+      "name": "Ice transition air", "file": "D:\\Audio Effects\\Motion, Whooshes, and Impacts\\Whooshes\\Whoosh Air Center 1.wav",
+      "sourceIn": 0, "duration": 4.2, "timelineStart": 14.8, "gainDb": -12, "fadeIn": 0.1, "fadeOut": 0.3,
+      "note": "Waveform peak near source1.20s places accent at timeline16s icy scene cut. Publisher description: central airy whoosh for transitions."
+    },
+    {
+      "name": "Boss transition", "file": "D:\\Audio Effects\\Motion, Whooshes, and Impacts\\Whooshes\\Whoosh Dark 001.wav",
+      "sourceIn": 0, "duration": 6.9, "timelineStart": 38.3, "gainDb": -14, "fadeIn": 0.1, "fadeOut": 0.5,
+      "note": "Waveform peak near source1.71s accents timeline40s first boss shot. Publisher describes dark suspenseful whoosh."
+    },
+    {
+      "name": "Closing title impact", "file": "D:\\Audio Effects\\Motion, Whooshes, and Impacts\\Impacts\\Impact Low Reverb 001.wav",
+      "sourceIn": 0, "duration": 1.9, "timelineStart": 58, "gainDb": -3, "fadeIn": 0, "fadeOut": 0.2,
+      "note": "Peak near source0.03s. Low impact with reverb under closing card entrance."
+    }
+  ],
+  "mixNote": "Keep original silent clip audio attached at normal gain. Mix music/effects on separate named tracks. Use final peak limiting if combined audio needs it; no duplicated music or made-up synced game effects."
+}

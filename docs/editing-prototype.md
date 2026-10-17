@@ -1,0 +1,136 @@
+# Editing prototype
+
+This is the first usable project-engine slice, not the complete [MVP](../Reelet-MVP-Overview.md). It follows the independent Node engine and worker architecture in the [Technical Overview](../Reelet-Technical-Overview.md).
+
+The first complete edit is exported locally at `exports/vellum-first-edit.mp4`: 64 seconds, 1920 by 1080, 30 fps, H.264 and stereo 48 kHz AAC. It contains eight gameplay shots, seven dissolves, two animated titles, a music bed and four supplied sound effects. The project remains editable in `examples/vellum-first-edit`.
+
+## Run it
+
+Use Node 24 and `npm ci`. Dependencies pin Electron, FFmpeg and ffprobe; a separate FFmpeg installation is unnecessary.
+
+```powershell
+node src/cli.ts --help
+npm start -- examples/vellum-first-edit
+node src/cli.ts inspect examples/vellum-first-edit
+node src/cli.ts export examples/vellum-first-edit exports/vellum-first-edit.mp4 --mode gpu --wait
+```
+
+The supplied example is a 64-second Vellum edit assembled from local gameplay, a music bed, sound effects and two animated HTML graphics. Its source paths belong to this PC. `npm run edit:example` imports those sources and commits the timeline through engine commands. It takes a starting checkpoint and refuses to replace a project that already contains clips.
+
+The GUI displays the media bin, tracks, clips and dissolves. You can import media, add it on a new track, change a selected clip's name/start/source-in/duration/volume, disable or lock tracks, undo/redo, render an exact frame, export, cancel and play the finished MP4. CLI changes arrive live through the same engine. Closing the GUI leaves an active export running.
+
+Frame preview currently runs a rendering job and briefly locks edits. It is not continuous timeline playback. The first render indexes source presentation timestamps. Later renders reuse that index until the source changes.
+
+## Create and edit through the CLI
+
+```powershell
+node src/cli.ts create .cache/my-edit --name "My edit" --width 1920 --height 1080 --fps 30
+node src/cli.ts import .cache/my-edit "D:\Recordings\Vellum\2026-08-31 16-36-14.mp4"
+node src/cli.ts checkpoint .cache/my-edit --task "First rough cut"
+node src/cli.ts inspect .cache/my-edit
+```
+
+Commands return JSON with `ok` and either `result` or a structured `error`. Inspection includes the manifest, object and relationship revisions, undo/redo counts, and any rendering lock. Media imports return the stable imported media ID. Normal imports reference originals; graphic imports copy editable assets into the project.
+
+Edits are atomic batches. Save a JSON file and pass it to `node src/cli.ts apply <project-dir> <batch.json>`. This example adds one track and a four-second clip. Replace `IMPORTED_MEDIA_ID`, and use current revision values from inspection:
+
+```json
+{
+  "preconditions": {
+    "order:tracks": 0,
+    "track:gameplay": 0,
+    "occupancy:gameplay": 0,
+    "clip:opening": 0,
+    "media:IMPORTED_MEDIA_ID": 1
+  },
+  "operations": [
+    { "op": "put", "collection": "tracks", "value": {
+      "id": "gameplay", "name": "Gameplay"
+    } },
+    { "op": "put", "collection": "clips", "value": {
+      "id": "opening", "trackId": "gameplay", "mediaId": "IMPORTED_MEDIA_ID",
+      "start": { "num": 0, "den": 1 },
+      "duration": { "num": 4, "den": 1 },
+      "sourceIn": { "num": 1, "den": 1 }
+    } }
+  ]
+}
+```
+
+`put` patches supplied fields of an existing object or creates a new object. Supported collections are `media`, `tracks`, `clips` and `transitions`. `remove` takes a collection and ID. A project operation accepts `name`, `resolution` or `fps` and requires the current `project` revision:
+
+```json
+{ "op": "project", "value": { "fps": { "num": 30000, "den": 1001 } } }
+```
+
+Include inspected revision keys for objects the batch depends on. New IDs and previously absent relationship keys have revision zero. The engine checks required keys rather than rejecting every intervening project edit. Missing or stale dependencies return `CONFLICT` with the affected keys and actual revisions. Nothing in a rejected batch is committed. The caller rereads and decides whether to retry.
+
+Times are integer fractions `{num,den}`. CLI time arguments accept decimal seconds or fractions such as `1001/30000`. Changed clip times must fall on the current project-frame grid. Changing the project frame rate preserves existing time fractions. Clip speed is a positive fraction, defaults to one, and changes both picture speed and audio pitch. Changing speed does not automatically choose a new duration; supply the intended duration in the same batch.
+
+Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional transforms are `x`, `y`, `scale`, `rotation`, `opacity` and `fit: "fit" | "fill"`. Position offsets are pixels from the centered layout. Fade durations use project seconds. Higher tracks composite over lower tracks. Disabled tracks hide and silence their content. Locked tracks reject changes until explicitly unlocked.
+
+Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
+
+## Render and inspect
+
+```powershell
+node src/cli.ts frame .cache/my-edit exports/frame.png --time 2 --mode gpu --wait
+node src/cli.ts export .cache/my-edit exports/section.mp4 --start 1 --end 3 --mode gpu --wait
+node src/cli.ts status .cache/my-edit
+node src/cli.ts cancel .cache/my-edit
+node src/cli.ts export .cache/my-edit exports/software.mp4 --mode software --wait
+```
+
+Without `--wait`, export/frame return a job ID immediately. Status can inspect that ID. `--wait` returns the final job and exits nonzero if it failed or was cancelled. Logs and job records live under `.reelet/jobs/<job-id>/`.
+
+Every render holds the engine's editing lock, including single-frame and short-section renders. Rendering happens in a separate Node worker with Electron/FFmpeg children. A failure releases the lock while preserving committed project state. Cancellation signals the worker, stops its child processes and removes the partial output. Completion renames a temporary output beside the destination, preserving any previous completed output until the new file is ready. Output paths cannot replace imported media or accepted/editable graphic assets.
+
+GPU export uses Chromium shared textures, D3D11 color conversion and NVENC. It currently requires Windows x64 and compatible NVIDIA hardware. The first native build needs Visual Studio C++ Build Tools and a Windows SDK. It downloads a pinned, checksum-verified NVENC header into the local cache. This is development tooling, not a packaged installer. Software mode uses CPU composition and x264. Both encoders disable B-frame reordering so the raw H.264 mux path can assign presentation timestamps without losing range boundary frames. A three-second software section completed with all 90 frames, titles and mixed audio. GPU failure offers a fresh software restart; it never silently changes encoder halfway through a job.
+
+Both modes decode original media with FFmpeg on the CPU. Each live clip has a reusable decoded RGBA frame buffer, with stream backpressure and a default 256 MiB active-frame budget. No whole-clip RGBA files are written. That budget covers the retained decoder frames, not all FFmpeg, Chromium, GPU, timestamp-index or process memory. The worker records decoding/rendering statistics with the result. Inactive canvases release their backing buffers. Decoded timestamp indexes use a separate 64 MiB disk cache keyed by source path, size and modification time. Large intermediate media, graphic job snapshots and Chromium job profiles are removed after each job.
+
+The renderer supports even output dimensions up to 4096 pixels per side. Video currently requires tagged limited-range BT.709 SDR. HDR is rejected on import; other unsupported color tags fail explicitly at render. Audio is mixed offline from original media with volume, mute, fades, dissolves and speed changes, then encoded to AAC alongside H.264 video. There is no live speaker recording.
+
+## Graphic assets and history
+
+```powershell
+node src/cli.ts import .cache/my-edit path/to/title-folder --kind graphic
+node src/cli.ts undo .cache/my-edit
+node src/cli.ts redo .cache/my-edit
+node src/cli.ts checkpoints .cache/my-edit
+node src/cli.ts restore .cache/my-edit latest --confirm discard-later-edits
+```
+
+A graphic folder needs `index.html`. Import copies it into `graphics/<media-id>`. The imported media's `metadata.authoringPath` identifies that editable folder, while `media.path` points to the accepted immutable version. Edit the authoring folder. The engine observes stable saves, accepts them as undoable changes and queues acceptance while rendering holds the lock. Export uses accepted assets, including a separate job snapshot. Assets are capped at 128 MiB per graphic and symlinks are rejected.
+
+Graphics run in sandboxed iframes without Node APIs or network access. They receive a `postMessage` containing `{type:"reelet-render",requestId,time}`. Render the supplied source time, await assets, and respond with `{type:"reelet-ready",requestId}` or `{type:"reelet-error",requestId,error}`. Each requested time must produce a complete state independently of previous calls. The example graphics demonstrate this contract. The default logical canvas is 1920 by 1080; metadata can specify `logicalWidth` and `logicalHeight`. The compositor scales that canvas to fit the output.
+
+The engine waits for the readiness response and fails if it times out. Broken graphics currently block export; the MVP's explicit omit-broken-graphic override is not implemented. This is a local authoring prototype, not a fully audited hostile-code execution service.
+
+Undo/redo share one chronological session history across GUI and CLI, capped at 100 edits or batches. New edits clear redo. The project daemon survives sequential commands, exits after five idle minutes without a subscriber or active render, and can be closed with `node src/cli.ts close <project-dir>`. Exit ends ordinary undo history.
+
+Checkpoints persist across restarts and retain the latest five. They copy project state and graphic code, while referencing source media. Restore requires the explicit confirmation shown above because it discards later edits, newer checkpoints and ordinary undo/redo history. It does not create another checkpoint first.
+
+## Local protocol and files
+
+`node src/cli.ts endpoint <project-dir>` returns the local `/v1` HTTP endpoint and bearer token. The GUI keeps that token in its main process. `GET /inspect`, `POST /command` and `GET /events` share engine state; SSE emits `hello`, `change` and `job` events. The engine binds only to `127.0.0.1` and rejects browser origins. Keep the token local.
+
+`project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.reelet/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. The project folder currently references source media and is not a Collect-project bundle.
+
+## Manual validation and remaining scope
+
+Manual engine checks covered persistent ownership across calls, stale batch rejection, atomic failure, undo/redo, source import, transition source handles, unchanged clip times after an FPS change, track locking, graphic hot reload and graphic history, and checkpoint confirmation/restoration.
+
+A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
+
+The rest of the MVP is still open: continuous timeline playback, drag/trim/stretch gestures, folders, ripple editing, linked audio detach, markers and selects, waveforms/barcodes, volume automation and fade curves, collection/relink UI, complete GUI coverage of CLI operations, and packaging. Fresh long-edit performance targets have not been agreed. Frame selection uses decoded integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+
+## First edit measurements
+
+On the same Core Ultra 9 285K / RTX 5080 / 64 GB Windows system, the cold full export rendered 1,920 frames in 76.73 seconds, or 25.02 fps. Including first-time source indexing, audio preparation, muxing and verification, it took 326.77 seconds. This includes streaming HEVC source decoding and is not directly comparable to the earlier benchmark with predecoded media. The final revised edit reused all eight timestamp indexes and completed in 101.96 seconds end to end, with 78.19 seconds of rendering at 24.56 fps. These are individual runs, not a statistical benchmark. Full timings are recorded in [first-edit-results.json](first-edit-results.json).
+
+Peak retained decoded-frame memory was 28.125 MiB with two active decoders during dissolves. Sampled Chromium process working sets peaked at 695.7 MiB. The latter excludes FFmpeg workers, driver/GPU allocation and other processes. No raw-frame disk cache or full-frame GPU readback was used. The readiness token is below the picture and cropped out of the export.
+
+The completed first export had exact 64-second video/audio stream durations and 1,920 video frames. Decoded audio measured -23.2 dB mean and -4.4 dB sample peak. A 500 ms music correlation sample at project second 5 matched source second 4 with zero sample offset, correlation 0.998. This checks the intended one-second music placement, not every possible synchronization case. Audio selection used the supplied library names, metadata and waveform levels; it has not been auditioned by ear.
+
+Visual checks covered the opening title, dissolve, eight shot samples, closing title and final fade. One wall-obscured source selection was replaced with a later arena pan, then the whole edit was exported again. CPU and GPU closing-title samples at the same project time agreed visually, with SSIM 0.9852 after their different encoders. The three-second software section took 5.62 seconds end to end with a cached index.

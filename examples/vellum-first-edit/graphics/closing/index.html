@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vellum closing</title>
+<style>
+@font-face{font-family:Cinzel;src:url('./Cinzel.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+#veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 47%,rgba(24,13,43,.90),rgba(8,6,15,.98));opacity:0}
+#card{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff4d9;opacity:0;transform-origin:center}
+#sigil{position:absolute;left:810px;top:220px;width:300px;height:300px;fill:none;stroke:#c8ad75;stroke-width:1;opacity:.25}
+h1{font:500 154px/1 Cinzel;letter-spacing:20px;margin:12px 0 0 20px;text-shadow:0 2px 42px rgba(183,122,255,.18)}
+#line{margin:40px 0 27px;width:620px;height:1px;background:linear-gradient(90deg,transparent,#c8ad75 20%,#c8ad75 80%,transparent);transform-origin:center}
+p{font:500 20px/1 Cinzel;letter-spacing:9px;margin:0 0 0 9px;color:#d4c5a1}
+#cornerA,#cornerB{position:absolute;top:300px;width:1px;height:480px;background:linear-gradient(transparent,#a99168,transparent);opacity:.3}#cornerA{left:360px}#cornerB{right:360px}
+</style></head><body>
+<div id="veil"></div><div id="card">
+<svg id="sigil" viewBox="0 0 300 300" aria-hidden="true"><circle cx="150" cy="150" r="94"/><circle cx="150" cy="150" r="107" stroke-dasharray="3 13"/><path d="M150 30L270 150L150 270L30 150Z M150 47V79 M253 150H221 M150 253V221 M47 150H79"/><path d="M106 129L150 145L194 129V181L150 198L106 181ZM150 145V198"/></svg>
+<div id="cornerA"></div><div id="cornerB"></div><h1>Vellum</h1><div id="line"></div><p>GAMEPLAY</p>
+</div>
+<script>
+'use strict';
+const clamp=x=>Math.max(0,Math.min(1,x)),smooth=x=>{x=clamp(x);return x*x*(3-2*x)};
+window.render=async function(t){
+  if(!Number.isFinite(t))throw new Error('Graphic time must be finite');
+  await document.fonts.ready;
+  const enter=smooth(t/1.2),text=smooth((t-.35)/1.15),leave=1-smooth((t-5)/1);
+  document.getElementById('veil').style.opacity=String(enter);
+  document.getElementById('card').style.opacity=String(text*leave);
+  document.getElementById('card').style.transform=`scale(${.975+.025*text}) translateY(${(1-text)*12}px)`;
+  document.getElementById('line').style.transform=`scaleX(${smooth((t-.65)/1.3)})`;
+  document.getElementById('sigil').style.transform=`rotate(${-.8+clamp(t/6)*1.6}deg)`;
+};
+addEventListener('message',async event=>{
+  if(event.source!==parent||event.data?.type!=='reelet-render')return;
+  const {requestId,time}=event.data;
+  try{await window.render(time);parent.postMessage({type:'reelet-ready',requestId},'*')}
+  catch(error){parent.postMessage({type:'reelet-error',requestId,error:String(error.message||error)},'*')}
+});
+</script></body></html>
