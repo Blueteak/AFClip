@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Reelet project engine and Windows editing prototype",
   "scripts": {
+    "library": "node src/library/cli.ts",
+    "library:gui": "node src/library/cli.ts gui",
     "reelet": "node src/cli.ts",
     "start": "node src/gui/launch.cjs",
     "dev": "node src/gui/launch.cjs --dev",

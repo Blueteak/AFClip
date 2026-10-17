@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 import {ProjectState,atomicJSON} from './state.ts';
 import {inspectMedia,importGraphic,graphicSignature,snapshotGraphic} from './probe.ts';
 import {checkpoint,listCheckpoints,restoreCheckpoint} from './checkpoints.ts';
+import {LibraryLink} from './library.ts';
+import {libraryCommand} from '../library/client.ts';
 import {EngineError,assert,fail,revisions,duration,time,cmp,ZERO} from '../shared/project.ts';
 
 const dir=fs.realpathSync(process.argv[2]),internal=path.join(dir,'.reelet');fs.mkdirSync(internal,{recursive:true});const lockPath=path.join(internal,'engine.lock'),endpointPath=path.join(internal,'endpoint.json');
@@ -14,6 +16,10 @@ function alive(pid:number){try{process.kill(pid,0);return true;}catch{return fal
 try{const fd=fs.openSync(lockPath,'wx');fs.writeFileSync(fd,JSON.stringify({pid:process.pid}));fs.closeSync(fd);}catch(e:any){if(e.code!=='EEXIST')throw e;let old:any;try{old=JSON.parse(fs.readFileSync(lockPath,'utf8'));}catch{process.exit(0);}if(alive(old.pid))process.exit(0);fs.rmSync(lockPath,{force:true});const fd=fs.openSync(lockPath,'wx');fs.writeFileSync(fd,JSON.stringify({pid:process.pid}));fs.closeSync(fd);}
 process.on('exit',()=>{try{const lock=JSON.parse(fs.readFileSync(lockPath,'utf8'));if(lock.pid===process.pid){fs.rmSync(lockPath,{force:true});fs.rmSync(endpointPath,{force:true});}}catch{}});
 const state=new ProjectState(dir),token=randomBytes(32).toString('hex'),subscribers=new Set<http.ServerResponse>(),jobs=new Map<string,any>();let active:any=null,lastActivity=Date.now(),queue=Promise.resolve();const jobsDir=path.join(internal,'jobs');fs.mkdirSync(jobsDir,{recursive:true});for(const entry of fs.readdirSync(jobsDir)){const p=path.join(jobsDir,entry,'status.json');if(fs.existsSync(p)){try{const j=JSON.parse(fs.readFileSync(p,'utf8'));if(['running','cancelling'].includes(j.status)){j.status='failed';j.error={code:'ENGINE_INTERRUPTED',message:'Engine ended before the render completed'};atomicJSON(p,j);}jobs.set(j.id,j);}catch{}}}
+const library=new LibraryLink(state);
+// Retry the durable project-owned outbox without making playback/export depend on the catalog.
+setTimeout(()=>{const work=queue.then(()=>library.recover());queue=work.then(()=>{},()=>{});},100);
+setInterval(()=>{if(fs.existsSync(library.pendingFile)){const work=queue.then(()=>library.sync());queue=work.then(()=>{},()=>{});}},15000).unref();
 function publish(event:string,data:any){for(const s of subscribers)s.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);}
 function jobChanged(j:any){atomicJSON(path.join(jobsDir,j.id,'status.json'),j);publish('job',j);}
 function result(res:http.ServerResponse,value:any,status=200){res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({ok:true,result:value}));}
@@ -23,12 +29,14 @@ function startRender(command:any){state.requireUnlocked();const kind=command.kin
 }
 async function command(c:any){assert(c&&typeof c.command==='string','Missing command');switch(c.command){
  case 'inspect':return state.inspect();
- case 'apply':{const r=state.batch(c.batch);publish('change',r);return r;}
- case 'undo':case 'redo':{const r=state.history(c.command);publish('change',r);return r;}
+ case 'library-sync':{const result=await library.migrate();publish('change',state.inspect());return result;}
+ case 'apply':{const r=state.batch(c.batch);await library.sync();publish('change',r);return r;}
+ case 'undo':case 'redo':{const r=state.history(c.command);await library.sync();publish('change',r);return r;}
  case 'checkpoint':return checkpoint(state,c.task);
  case 'checkpoints':return listCheckpoints(state);
- case 'restore':{const r=restoreCheckpoint(state,c.checkpointId||'latest',c.confirmation);publish('change',r);return r;}
- case 'import':{state.requireUnlocked();assert(typeof c.path==='string','Import requires path');const m=c.kind==='graphic'?importGraphic(dir,c.path):await inspectMedia(c.path,c.kind);const pre=revisions(state.p);pre[`media:${m.id}`]=0;const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}
+ case 'restore':{const r=restoreCheckpoint(state,c.checkpointId||'latest',c.confirmation);await library.sync();publish('change',r);return r;}
+ case 'import':{state.requireUnlocked();assert(typeof c.path==='string','Import requires path');let m=c.kind==='graphic'?importGraphic(dir,c.path):await inspectMedia(c.path,c.kind);try{m=await library.register(m);const pre=revisions(state.p);pre[`media:${m.id}`]=0;const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});await library.sync();publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}catch(e){await library.sync();throw e;}}
+ case 'library-import':{state.requireUnlocked();const item=await libraryCommand({command:'inspect',id:c.id}),a=item.parent||item;assert(a.availability==='available'&&!a.deleted,'Library source is unavailable');let m=await inspectMedia(a.path);m={...m,metadata:{...m.metadata,library:{libraryId:a.libraryId,assetId:a.id,sourceId:item.parent?item.sourceId:a.sourceId,sourceLocations:a.source.locations,rangeId:item.parent?item.id:undefined,rangeRevision:item.parent?item.revision:undefined,start:item.parent?item.start:undefined,end:item.parent?item.end:undefined,name:item.name}}};const pre=revisions(state.p);pre[`media:${m.id}`]=0;const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});await library.sync();publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}
  case 'render':return startRender(c);
  case 'status':return c.jobId?(jobs.get(c.jobId)||fail('NOT_FOUND','Unknown render job',{jobId:c.jobId})):{active:active?.job||null,jobs:[...jobs.values()].slice(-30)};
  case 'cancel':{if(!active)fail('NOT_RENDERING','No render is running');assert(!c.jobId||c.jobId===active.job.id,'Requested job is not active');fs.writeFileSync(active.cancelFile,'cancel\n');active.job.status='cancelling';jobChanged(active.job);return active.job;}

@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-17",
+  "libraryId": "library_381b0c26b5e44950931ead7b328e1013",
+  "assets": 35,
+  "video": 10,
+  "audio": 25,
+  "annotated": 35,
+  "ranges": [
+    {
+      "id": "range_7d63c5c231aa4dce86b71fbf58cfa5ed",
+      "name": "Library spell effect · opening",
+      "start": {
+        "num": 21,
+        "den": 1000
+      },
+      "end": {
+        "num": 3021,
+        "den": 1000
+      },
+      "boundaries": {
+        "startFrame": 0,
+        "endFrame": 90,
+        "startPts": 21,
+        "endPts": 3021,
+        "timeBase": {
+          "num": 1,
+          "den": 1000
+        }
+      }
+    },
+    {
+      "id": "range_9499dee6c1d74f58a5de3e29f6d6e7f8",
+      "name": "Dice contact · first half-second",
+      "start": {
+        "num": 0,
+        "den": 44100
+      },
+      "end": {
+        "num": 22050,
+        "den": 44100
+      },
+      "boundaries": {
+        "startSample": 0,
+        "endSample": 22050,
+        "sampleRate": 44100
+      }
+    }
+  ],
+  "completedJobs": 70,
+  "failedJobs": 0,
+  "playback": {
+    "elapsedSeconds": 6.0101962,
+    "presentedFrames": 360,
+    "additionalDroppedFrames": 0,
+    "rendererFps": 60.06459489625313
+  },
+  "seek": {
+    "requests": 60,
+    "p50Ms": 16.6,
+    "p95Ms": 16.9,
+    "maxMs": 17
+  },
+  "hardware": {
+    "cpu": "Intel Core Ultra 9 285K",
+    "gpu": "NVIDIA RTX 5080",
+    "ramGB": 64
+  },
+  "limits": [
+    "Prepared small-source measurements; no target-scale catalog benchmark.",
+    "SFX annotations derive from source labels, not acoustic analysis."
+  ]
+}
