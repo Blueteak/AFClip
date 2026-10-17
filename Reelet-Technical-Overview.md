@@ -86,6 +86,8 @@ The [shared-texture export experiment](docs/windows-gpu-export.md) keeps compose
 
 ### Performance measurements
 
+The agreed playback target is sustained **60 fps at 1920×1080**. Validate it using a 60 fps copy of the representative edit, original footage, synchronized audio, animated graphics and dissolves. Measure actual video presentation at full 1080p, including dropped frames and pacing; UI update counts or summed frames from overlapping sources do not establish success. Keep this target unless measurements demonstrate a concrete constraint. Seek-latency targets are deferred; improvements that help playback and seeking are welcome.
+
 Measure preview smoothness, seek latency, export speed, command responsiveness and frame-transfer overhead using representative footage. Record the hardware, codecs, source characteristics and enabled acceleration paths with results.
 
 Use those measurements to set numerical acceptance targets before committing to the renderer. Determine the frame-selection, capture, audio-mixing and GPU-sharing implementations from evidence. A simple capture path can establish correctness, but does not by itself establish acceptable export performance.
