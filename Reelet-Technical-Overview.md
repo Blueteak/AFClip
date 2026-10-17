@@ -68,6 +68,8 @@ Build one complete path before expanding the editor: import video with audio, ad
 
 The existing macOS benchmark is useful experimental tooling, but does not validate Windows performance or browser-composed export. Windows results are required before committing to the rendering architecture.
 
+The [Windows rendering measurements](docs/windows-benchmark-results.md) now exercise FFmpeg and offscreen Electron with local gameplay footage. They establish an experimental baseline and record failed color/fallback assumptions. They do not complete the independent project-engine and GUI/CLI prototype below.
+
 ### Functional checks
 
 - CLI starts the project engine; Electron attaches; both use the same editing operations and receive committed state changes.

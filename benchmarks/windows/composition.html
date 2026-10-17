@@ -1,0 +1,61 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; media-src file:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src file: data:">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: black; }
+  video { position: absolute; width: 100%; height: 100%; object-fit: contain; }
+  #title { position: absolute; left: 7%; top: 72%; color: white; font: bold 64px Arial; padding: 20px 28px; background: #18202ddd; border-left: 8px solid #7ce8c5; }
+  #badge { position: absolute; left: 10%; top: 80%; color: #111; background: #7ce8c5; padding: 15px 25px; font: bold 28px Arial; }
+</style>
+<video id="a" muted preload="auto"></video><video id="b" muted preload="auto"></video>
+<div id="title">REELET / WINDOWS PROTOTYPE</div><div id="badge">HTML + CSS / EXPLICIT TIME</div>
+<script>
+const a = document.querySelector('#a'), b = document.querySelector('#b');
+const title = document.querySelector('#title'), badge = document.querySelector('#badge');
+const paint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+function deadline(promise, label) {
+  let id;
+  return Promise.race([promise, new Promise((_, reject) => { id = setTimeout(() => reject(new Error(label + ' timeout')), 8000); })]).finally(() => clearTimeout(id));
+}
+async function load(file) {
+  await Promise.all([a, b].map(v => deadline(new Promise((resolve, reject) => {
+    v.onloadeddata = resolve; v.onerror = () => reject(new Error('Media error ' + v.error?.code)); v.src = file; v.load();
+  }), 'load')));
+  await document.fonts.ready;
+  await paint();
+}
+async function seek(v, time) {
+  if (Math.abs(v.currentTime - time) < 1e-7 && v.readyState >= 2) return;
+  await deadline(new Promise((resolve, reject) => {
+    v.onseeked = () => v.readyState >= 2 ? resolve() : reject(new Error('Frame not ready'));
+    v.onerror = () => reject(new Error('Seek media error')); v.currentTime = time;
+  }), 'seek');
+}
+function graphics(t) {
+  title.style.transform = `translateX(${Math.sin(t * 2) * 90}px)`;
+  badge.style.transform = `translateX(${Math.cos(t * 3) * 50}px) rotate(${Math.sin(t) * 4}deg)`;
+}
+async function renderAt(t, options = {}) {
+  const single = options.single;
+  await Promise.all([seek(a, single ? t : Math.min(t, 2.999)), ...(single ? [] : [seek(b, Math.max(3, Math.min(t + 1, 5.999)))])]);
+  a.style.opacity = '1'; b.style.opacity = single ? '0' : String(Math.max(0, Math.min(1, t - 2)));
+  title.style.display = badge.style.display = options.noGraphics ? 'none' : 'block';
+  graphics(t); await paint();
+  return { currentTime: a.currentTime, readyState: a.readyState };
+}
+function pixel() {
+  const c = document.createElement('canvas'); c.width = c.height = 1;
+  const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(a, 0, 0, 1, 1);
+  return Array.from(ctx.getImageData(0, 0, 1, 1).data);
+}
+async function preview(seconds = 3) {
+  b.style.opacity = '0'; await seek(a, 0); const before = a.getVideoPlaybackQuality();
+  const samples = [], start = performance.now(); let previous = start, stopped = false;
+  function tick(now) { samples.push(now - previous); previous = now; graphics(a.currentTime); if (!stopped) requestAnimationFrame(tick); }
+  requestAnimationFrame(tick); await a.play();
+  await new Promise(resolve => setTimeout(resolve, seconds * 1000)); a.pause(); stopped = true;
+  const after = a.getVideoPlaybackQuality();
+  return { elapsedMs: performance.now() - start, mediaTime: a.currentTime, totalFrames: after.totalVideoFrames - before.totalVideoFrames, droppedFrames: after.droppedVideoFrames - before.droppedVideoFrames, rafIntervalsMs: samples };
+}
+</script>
