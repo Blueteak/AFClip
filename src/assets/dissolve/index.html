@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+const canvas=document.getElementById('output'),ctx=canvas.getContext('2d');
+function size(w,h){if(canvas.width!==w)canvas.width=w;if(canvas.height!==h)canvas.height=h;ctx.clearRect(0,0,w,h);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.filter='none';}
+window.render=({width:w,height:h,inputs:[a,b],progress:p,params})=>{size(w,h);if(params.curve==='smooth')p=p*p*(3-2*p);ctx.globalAlpha=1-p;ctx.drawImage(a,0,0,w,h);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=p;ctx.drawImage(b,0,0,w,h);return canvas;};
+</script>

@@ -1,0 +1,5 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="a"></canvas><canvas id="b"></canvas><script>
+const a=document.getElementById('a'),b=document.getElementById('b');
+window.render=({width,height,inputs,progress:p,params})=>{[a,b].forEach((c,i)=>{if(c.width!==width)c.width=width;if(c.height!==height)c.height=height;const ctx=c.getContext('2d');ctx.clearRect(0,0,width,height);ctx.drawImage(inputs[i],0,0,width,height);});const blur=Math.sin(Math.PI*p)*params.radius;a.style.opacity=1-p;b.style.opacity=p;a.style.filter=b.style.filter=`blur(${blur}px)`;a.style.mixBlendMode=b.style.mixBlendMode='plus-lighter';};
+</script>

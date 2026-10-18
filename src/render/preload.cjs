@@ -1,5 +1,5 @@
 // This adapter belongs to the trusted compositor. Graphic iframes have opaque origins and no Node.
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { Decoder, frameIndex } = require('./decoder.cjs');
@@ -46,6 +46,7 @@ async function draw(items) {
 contextBridge.exposeInMainWorld('afclipFrames', {
   getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : config.media[c.mediaId].kind })) }),
   draw,
+  rasterAsset: data => ipcRenderer.invoke('afclip:asset-raster',data),
   close: () => { for (const d of decoders.values()) d.close(); decoders.clear(); return { ...stats }; }
 });
 window.addEventListener('beforeunload', () => { for (const d of decoders.values()) d.close(); });

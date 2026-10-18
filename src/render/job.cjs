@@ -30,7 +30,8 @@ async function audioMix(plan, begin, end) {
   const args = ['-hide_banner', '-y'], filters = [], names = []; let n = 0;
   for (const c of plan.clips) {
     if (c.stream === 'video' || !c.media.metadata.hasAudio || c.mute || c.volume === 0 || c.visibleEnd <= begin || c.visibleStart >= end) continue;
-    const start = Math.max(begin, c.visibleStart), finish = Math.min(end, c.visibleEnd), length = finish - start;
+    const start = Math.max(begin,c.visibleStart,c.start-c.sourceIn/c.speed), finish = Math.min(end,c.visibleEnd,c.start+(seconds(c.media.duration)-c.sourceIn)/c.speed), length = finish-start;
+    if(length<=0)continue;
     const source = c.sourceIn + (start - c.start) * c.speed;
     args.push('-ss', String(Math.max(0, source)), '-t', String(length * c.speed), '-i', path.resolve(config.projectDir, c.media.path));
     const terms = [String(c.volume ?? 1)], local = `(t+${start - c.start})`;
@@ -38,7 +39,7 @@ async function audioMix(plan, begin, end) {
     const ease = value => { const x = `max(0,min(1,${value}))`; return `(${x})*(${x})*(3-2*(${x}))`; };
     if (c.fadeIn) terms.push(ease(`${local}/${c.fadeIn}`));
     if (c.fadeOut) terms.push(ease(`(${c.duration}-${local})/${c.fadeOut}`));
-    for (const tr of c.transitions) terms.push(tr.side === 'in' ? `max(0,min(1,(t+${start - tr.start})/${tr.duration}))` : `max(0,min(1,(${tr.end - start}-t)/${tr.duration}))`);
+    for (const tr of c.transitions) if(tr.audio==='cut')terms.push(tr.side==='in'?`gte(t+${start},${tr.cut})`:`lt(t+${start},${tr.cut})`);else terms.push(tr.side === 'in' ? `max(0,min(1,(t+${start - tr.start})/${tr.duration}))` : `max(0,min(1,(${tr.end - start}-t)/${tr.duration}))`);
     const label = `a${n}`;
     // Normalize layout before aeval; the bundled FFmpeg can crash on mono c=same.
     const gain = c.volumePoints?.length ? `aformat=channel_layouts=stereo,aeval='val(ch)*(${terms.join('*')})':c=same` : `volume='${terms.join('*')}':eval=frame`;
@@ -69,10 +70,12 @@ async function main() {
   const begin = config.kind === 'frame' ? seconds(config.frameTime) : config.range ? seconds(config.range.start) : 0;
   const end = config.kind === 'frame' ? begin : config.range ? seconds(config.range.end) : plan.duration;
   const used = new Set(plan.clips.filter(c => config.kind === 'frame' ? begin >= c.visibleStart && begin < c.visibleEnd : c.visibleEnd > begin && c.visibleStart < end).map(c => c.mediaId));
+  for(const c of plan.clips)if(used.has(c.mediaId)){for(const e of c.effects||[])used.add(e.assetId);for(const tr of c.transitions)used.add(tr.assetId);}
   const media = {}, graphics = {}, indexing = []; let prepared = 0, indexCacheHits = 0;
   emit({ type: 'progress', phase: 'prepare', progress: 0, message: 'Inspecting source timestamps and graphics' });
   for (const m of project.media) {
     if (!used.has(m.id)) { media[m.id] = { kind: m.kind }; continue; }
+    if(m.metadata.assetError)throw new Error(`${m.metadata.asset?.name||m.id}: ${m.metadata.assetError}`);
     cancelCheck(); const file = path.resolve(config.projectDir, m.path);
     if (!fs.existsSync(file)) throw new Error(`Missing source: ${file}`);
     media[m.id] = { kind: m.kind, file };
@@ -86,7 +89,7 @@ async function main() {
         else { assetBytes += fs.statSync(src).size; if (assetBytes > 128 * 1024 * 1024) throw new Error('Graphic snapshot exceeds 128 MiB'); fs.copyFileSync(src, dst); }
       } }
       copy(root, snapshot);
-      graphics[m.id] = { root: snapshot, url: `afclip-graphic://${m.id}/index.html`, width: m.metadata.logicalWidth || 1920, height: m.metadata.logicalHeight || 1080 };
+      graphics[m.id] = { asset:m.metadata.asset, root: snapshot, url: `afclip-graphic://${m.id}/index.html`, width: m.metadata.asset ? width : m.metadata.logicalWidth || 1920, height: m.metadata.asset ? height : m.metadata.logicalHeight || 1080 };
     } else if (m.kind === 'video' || m.kind === 'image') {
       if (m.kind === 'video' && (m.metadata.colorSpace !== 'bt709' || m.metadata.colorTransfer !== 'bt709' || m.metadata.colorRange === 'pc')) throw new Error(`This SDR renderer needs tagged limited-range BT.709 video: ${file}`);
       const indexStarted = performance.now();

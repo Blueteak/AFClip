@@ -17,7 +17,8 @@ if (!process.versions.electron) {
   const project = JSON.parse(fs.readFileSync(path.join(source, 'project.json'), 'utf8'));
   project.id = require('node:crypto').randomUUID(); project.name = height + 'p60 playback measurement';
   project.fps = { num: 60, den: 1 }; project.resolution = { width, height };
-  for (const media of project.media) media.path = path.resolve(source, media.path);
+  for (const media of project.media) {media.path = path.resolve(source, media.path);delete media.metadata.authoringPath;}
+  if(process.argv.includes('--effect-stack')){const clip=project.clips.find(c=>c.id==='shot_5');const effect=clip?.effects?.[0];if(!effect)throw new Error('Effect-stack diagnostic needs an effect on shot_5');clip.effects=[0,1,2].map(n=>({...effect,id:'stack_'+n}));}
   fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify(project, null, 2));
   if (process.argv.includes('--reuse-cache')) for (const name of ['frame-index', 'seek-preview']) {
     const cache = path.join(source, 'cache', name);
@@ -26,10 +27,11 @@ if (!process.versions.electron) {
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
   console.log(`Playback artifacts: ${output}`);
   const child = spawn(require('electron'), [__filename, '--measure', output, process.argv[3] || '64', ...(process.argv.includes('--seek') ? ['--seek'] : [])], { env, windowsHide: true, stdio: 'inherit' });
+  const finish=require('./diagnostic-process.cjs')(child,output,process.argv.includes('--seek')?'seeks.json':'results.json');
   child.on('error', error => { console.error(error); process.exitCode = 1; });
   child.on('exit', code => {
     try { execFileSync(process.execPath, [path.join(root, 'src/cli.ts'), 'close', projectDir], { windowsHide: true, stdio: 'ignore', timeout: 10000 }); } catch {}
-    process.exit(code || 0);
+    process.exit(finish(code));
   });
 } else {
   const { app, BrowserWindow, screen } = require('electron');
@@ -43,15 +45,16 @@ if (!process.versions.electron) {
   app.commandLine.appendSwitch('force-device-scale-factor', '1');
   process.argv = [process.argv[0], path.join(root, 'src/gui/main.cjs'), path.join(output, 'project')];
   require('../../src/gui/main.cjs');
+  // Some Windows Electron builds emit quit but leave the diagnostic process
+  // alive in native teardown. Measurements and preview cleanup finish first.
+  app.once('quit', (_event, code) => process.exit(code));
   (async () => {
     const openedAt = performance.now();
     await app.whenReady(); let win;
     for (let i = 0; i < 100; i++) { win = BrowserWindow.getAllWindows()[0]; if (win && !win.webContents.isLoading()) break; await sleep(100); }
     if (!win) throw new Error('Editor did not open');
-    const mediaEvents = [];
-    win.webContents.debugger.attach('1.3');
-    win.webContents.debugger.on('message', (_event, method, params) => { if (method === 'Media.playerPropertiesChanged') mediaEvents.push(params); });
-    await win.webContents.debugger.sendCommand('Media.enable');
+    // Chromium's Media inspector can leave Electron alive after shutdown on
+    // Windows. Measure presentation through video callbacks and quality counters.
     let ready = false;
     const prepareSeconds = Number(process.env.AFCLIP_PREPARE_TIMEOUT_SECONDS || 120);
     if (!(prepareSeconds > 0 && prepareSeconds <= 600)) throw new Error('Preparation deadline must be between 0 and 600 seconds');
@@ -83,8 +86,8 @@ if (!process.versions.electron) {
       result.versions = process.versions; result.gpu = await app.getGPUInfo('complete');
       fs.writeFileSync(path.join(output, 'seeks.json'), JSON.stringify(result, null, 2));
       console.log(JSON.stringify(result.summary, null, 2));
-      await win.webContents.executeJavaScript('playback.pause(false); afclip.previewClose()');
-      await sleep(300); app.exit(0); return;
+      await win.webContents.executeJavaScript('playback.pause(false); playback.native?.close(); void afclip.previewClose(); void 0');
+      await sleep(300); app.quit(); return;
     }
     await win.webContents.executeJavaScript(`
       window.playbackSamples = []; window.qualitySamples = [];
@@ -115,13 +118,14 @@ if (!process.versions.electron) {
         update(time);
       };
       window.qualityTimer = setInterval(() => {
-        for (const entry of playback.native.entries.values()) if (entry.media.kind === 'video' && entry.content && playback.audio.currentTime >= entry.clip.visibleStart && playback.audio.currentTime < entry.clip.visibleEnd) {
+        for (const entry of playback.native?.entries.values()||[]) if (entry.media.kind === 'video' && entry.content && playback.audio.currentTime >= entry.clip.visibleStart && playback.audio.currentTime < entry.clip.visibleEnd) {
           quality(entry, playback.audio.currentTime);
         }
       }, 250);
       void 0;
     `);
     await win.webContents.executeJavaScript('playback.play(0)');
+    for(let attempt=0;attempt<100;attempt++){const state=await win.webContents.executeJavaScript('({playing:playback.playing,ready:playback.ready,busy:playback.busy,error:document.getElementById("status").textContent})');if(state.playing)break;if(!state.ready||attempt===99)throw new Error('Playback did not start: '+JSON.stringify(state));await sleep(100);}
     const before = Date.now();
     while (Date.now() - before < (seconds + 1) * 1000) {
       await sleep(1000);
@@ -135,10 +139,10 @@ if (!process.versions.electron) {
         const q = entry.content.getVideoPlaybackQuality();
         qualitySamples.push({ clip:entry.clip.id, time:playback.audio.currentTime, total:q.totalVideoFrames, dropped:q.droppedVideoFrames, boundary:'stop' });
       }
-      return { time:playback.time, playing:playback.playing, stats:playback.native.stats, samples:playbackSamples, quality:qualitySamples,
+      return { time:playback.time, playing:playback.playing, stats:playback.native.stats, assets:playback.native.assets?.stats, samples:playbackSamples, quality:qualitySamples,
         stage:document.getElementById('native-preview').getBoundingClientRect().toJSON(), devicePixelRatio, fps:playback.fps };
     })()`);
-    result.mediaEvents = mediaEvents; result.gpu = await app.getGPUInfo('complete');
+    result.gpu = await app.getGPUInfo('complete');
     result.previewReadyMs = previewReadyMs;
     result.seekCache = await win.webContents.executeJavaScript('playback.native.setup.seekCache');
     result.displays = screen.getAllDisplays().map(d => ({ bounds:d.bounds, frequency:d.displayFrequency }));
@@ -164,12 +168,12 @@ if (!process.versions.electron) {
     });
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ time:result.time, stats:result.stats, byClip:result.byClip }, null, 2));
-    await win.webContents.executeJavaScript('playback.pause(false); afclip.previewClose()');
-    await sleep(300); app.exit(0);
+    await win.webContents.executeJavaScript('playback.pause(false); playback.native?.close(); void afclip.previewClose(); void 0');
+    await sleep(300);win.close();
   })().catch(async error => {
     fs.writeFileSync(path.join(output, 'error.json'), JSON.stringify({error:error.message,versions:process.versions},null,2));
     console.error(error);
-    for (const window of BrowserWindow.getAllWindows()) await window.webContents.executeJavaScript('afclip.previewClose()').catch(()=>{});
+    for (const window of BrowserWindow.getAllWindows()) await Promise.race([window.webContents.executeJavaScript('void afclip.previewClose(); void 0').catch(()=>{}),sleep(1000)]);
     await sleep(300); app.exit(1);
   });
 }

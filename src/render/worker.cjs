@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -30,6 +30,8 @@ function bounded(promise, time, label) { let timer; return Promise.race([promise
 async function main() {
   await app.whenReady();
   require('./graphic-protocol.cjs')(protocol, config);
+  const raster=require('./asset-raster.cjs')(()=>config.graphics);
+  ipcMain.handle('afclip:asset-raster',(_event,data)=>raster.render(data));
   let encoded;
   if (shared) {
     const ready = reply();
@@ -56,7 +58,7 @@ async function main() {
   win.webContents.on('render-process-gone', (_, details) => fail(new Error(`Compositor failed: ${details.reason}`)));
   win.webContents.on('console-message', (_, details) => console.error(`Graphic/compositor: ${details.message}`));
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
-    const allowed = details.url.startsWith('afclip-graphic:') || details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href || details.url.startsWith('data:');
+    const allowed = details.url.startsWith('afclip-graphic:') || details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href || details.url.startsWith('data:') || ['asset-runtime.js','../shared/asset.cjs'].some(name=>details.url===require('node:url').pathToFileURL(path.join(__dirname,name)).href);
     callback({ cancel: !allowed });
   });
   async function consume(texture) {

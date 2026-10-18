@@ -35,6 +35,8 @@ class TimelinePlayback {
     const pictureClips = project.clips.filter(c => visualIds.has(c.id) || boundaryIds.has(c.id));
     const pictureTracks = new Set(pictureClips.map(c => c.trackId));
     const pictureMedia = new Set(pictureClips.map(c => c.mediaId));
+    for(const tr of visualTransitions)pictureMedia.add(tr.assetId);
+    for(const c of pictureClips)for(const effect of c.effects||[])pictureMedia.add(effect.assetId);
     const videoKey = JSON.stringify({ ...project,
       markers: [],
       media: project.media.filter(m => pictureMedia.has(m.id)),

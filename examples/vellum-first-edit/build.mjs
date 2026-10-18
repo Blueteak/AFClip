@@ -26,8 +26,9 @@ const t = n => ({ num: Math.round(n * 30), den: 30 });
 for (const [id, name] of [['music', 'Music'], ['sfx', 'Title and transition accents'], ['footage', 'Gameplay selects'], ['titles', 'Titles']]) put('tracks', { id, name, locked: false, disabled: false });
 for (const [i, clip] of edl.clips.entries()) {
   put('clips', { id: `shot_${i + 1}`, trackId: 'footage', mediaId: media.get(clip.file).id, name: clip.intent, start: t(clip.timelineStart), duration: t(clip.duration), sourceIn: t(clip.sourceIn),
+    ...(i===4?{effects:[{id:'vellum_soften',assetId:state.project.media.find(m=>m.metadata.builtin==='blur').id,params:{radius:.6},seed:205}]}:{}),
     fadeIn: t(i === 0 ? .6 : 0), fadeOut: t(i === edl.clips.length - 1 ? 1.2 : 0) });
-  if (i) put('transitions', { id: `dissolve_${i}`, trackId: 'footage', fromClipId: `shot_${i}`, toClipId: `shot_${i + 1}`, duration: t(1), alignment: 'center' });
+  if (i) put('transitions', { assetId:state.project.media.find(m=>m.metadata.builtin===(['dissolve','wipe','blur-transition','spin'][i-1]||'dissolve')).id, params:i===2?{pixelBand:0,glow:8}:i===3?{radius:14}:{}, seed:100+i, audio:'crossfade', id: `dissolve_${i}`, trackId: 'footage', fromClipId: `shot_${i}`, toClipId: `shot_${i + 1}`, duration: t(1), alignment: 'center' });
 }
 for (const [i, clip] of [soundtrack.music, ...soundtrack.effects].entries()) {
   const m = media.get(clip.file), maxDuration = m.duration.num / m.duration.den - clip.sourceIn;

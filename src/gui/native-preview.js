@@ -12,6 +12,7 @@ window.NativePreview = class NativePreview {
     this.stage = document.createElement('div'); this.stage.className = 'native-composition';
     this.stage.style.width = setup.width + 'px'; this.stage.style.height = setup.height + 'px';
     host.replaceChildren(this.stage);
+    this.assets=window.AssetRuntime?new AssetRuntime(this.stage,setup,data=>window.afclip.rasterAsset(data)):null;
     this.resize = new ResizeObserver(() => this.fit()); this.resize.observe(host.parentElement); this.fit();
     this.message = e => {
       const entry = [...this.entries.values()].find(v => v.media.kind === 'graphic' && v.content?.contentWindow === e.source);
@@ -40,7 +41,7 @@ window.NativePreview = class NativePreview {
         Object.assign(hits.style, {width:iframe.style.width, height:iframe.style.height, transform:iframe.style.transform});
         entry.hits = hits; layer.append(hits);
       } else if (media.kind === 'image') {
-        const img = new Image(); img.src = media.url; entry.content = img; layer.append(img);
+        const img = new Image(); img.crossOrigin='anonymous'; img.src = media.url; entry.content = img; layer.append(img);
         entry.loaded = img.decode(); entry.loaded.catch(this.onError);
       }
     }
@@ -82,7 +83,7 @@ window.NativePreview = class NativePreview {
     if (entry.content) return entry.loaded;
     const video = document.createElement('video');
     entry.lastPresentedFrames = undefined;
-    video.muted = true; video.preload = 'auto'; video.playsInline = true;
+    video.crossOrigin='anonymous'; video.muted = true; video.preload = 'auto'; video.playsInline = true;
     video.style.visibility = entry.still && !entry.still.hidden ? 'hidden' : '';
     video.style.objectFit = entry.clip.transform?.fit === 'fill' ? 'cover' : 'contain';
     entry.content = video; entry.layer.append(video);
@@ -204,6 +205,7 @@ window.NativePreview = class NativePreview {
           this.hideStill(entry);
           entry.presentedTime = entry.videoTime;
         }));
+        if(current())await this.assets?.frame(window.AFClipTimeline.at(this.setup.plan,time),this.entries);
       })();
       this.seekWork = work;
       work.catch(error => { if (current()) console.warn('Paused original preview unavailable:', error.message); });
@@ -245,6 +247,7 @@ window.NativePreview = class NativePreview {
     if (fresh) video.currentTime = Math.max(0, target);
     await loaded;
     if (this.closed || entry.content !== video) return;
+    entry.lastSeekAt = performance.now();
     video.pause(); video.playbackRate = entry.clip.speed;
     if (Math.abs(video.currentTime - target) < .0001 && video.readyState >= 2 && !video.seeking) return;
     await new Promise((resolve, reject) => {
@@ -257,6 +260,7 @@ window.NativePreview = class NativePreview {
     });
   }
   graphic(entry, time) {
+    if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
     if (entry.graphicBusy) { entry.graphicNext = time; return entry.graphicBusy; }
     entry.graphicBusy = entry.loaded.then(() => new Promise((resolve, reject) => {
       if (this.closed) return resolve();
@@ -271,7 +275,7 @@ window.NativePreview = class NativePreview {
     return entry.graphicBusy;
   }
   layout(time) {
-    const items = window.AFClipTimeline.at(this.setup.plan, time), active = new Set(items.map(i => i.clipId));
+    const items = window.AFClipTimeline.at(this.setup.plan, time);this.assets?.reset(this.entries,items);const active = new Set(items.map(i => i.clipId));
     for (const [id, entry] of this.entries) {
       entry.layer.hidden = !active.has(id);
       if (entry.layer.hidden) this.hideStill(entry);
@@ -339,6 +343,8 @@ window.NativePreview = class NativePreview {
       if (this.cachedFrame(entry, frame)) this.prefetch(entry, frame);
       else entry.prefetchRequest = { time:frame };
     }
+    await this.assets?.frame(items,this.entries);
+    if(generation!==this.generation||this.closed)return false;
     this.prepare(time, forPlayback);
     if (!forPlayback) this.refinePaused(time, generation);
     return true;
@@ -378,10 +384,16 @@ window.NativePreview = class NativePreview {
       const video = entry.content;
       if (entry.warming || video.readyState < 2 || video.seeking) continue;
       this.hideStill(entry);
+      if(sourceTime<0||sourceTime>=entry.media.pts[entry.media.pts.length-1]){video.pause();const target=this.frameTime(entry,Math.max(0,sourceTime));if(Math.abs(video.currentTime-target)>.002)video.currentTime=target+.0001;continue;}
       const error = sourceTime - video.currentTime, speed = entry.clip.speed;
-      if (Math.abs(error) > .2) { video.currentTime = Math.max(0, sourceTime); this.stats.resyncs++; }
+      // A hidden source can take ~250 ms to finish a seek. Immediately seeking
+      // again for that accumulated clock error traps it in a seek loop. Give
+      // playback a chance to catch up before another discontinuous correction.
+      if (Math.abs(error) > .2 && now - (entry.lastSeekAt ?? -Infinity) > 1000) { video.currentTime = Math.max(0, sourceTime); entry.lastSeekAt = now; this.stats.resyncs++; }
       else {
-        const correction = preroll ? (Math.abs(error) > .01 ? Math.sign(error) * .2 : 0) : (Math.abs(error) > .025 ? Math.sign(error) * .02 : 0);
+        const correction = preroll || Math.abs(error) > .1
+          ? Math.max(-.5, Math.min(.5, error * 4 / speed))
+          : (Math.abs(error) > .025 ? Math.sign(error) * .02 : 0);
         const rate = Math.max(.0625, Math.min(16, speed * (1 + correction)));
         if (video.playbackRate !== rate) video.playbackRate = rate;
       }
@@ -397,6 +409,7 @@ window.NativePreview = class NativePreview {
         this.prerollSink.drawImage(video, 0, 0, 1, 1);
       }
     }
+    this.assets?.update(items,this.entries,this.onError);
     this.prepare(time);
   }
   pause(preservePrefetch = false) {
@@ -415,8 +428,10 @@ window.NativePreview = class NativePreview {
     window.removeEventListener('message', this.message);
     for (const p of this.pending.values()) { clearTimeout(p.timer); p.resolve(); } this.pending.clear();
     for (const e of this.entries.values()) if (e.media.kind === 'video' && e.content) { e.releaseVideo?.(); e.content.cancelVideoFrameCallback(e.videoCallback); e.content.removeAttribute('src'); e.content.load(); }
+    for(const entry of this.entries.values()){if(entry.assetInput)entry.assetInput.width=entry.assetInput.height=0;if(entry.effectOutput){entry.effectOutput.width=entry.effectOutput.height=0;entry.effectOutput.remove();}}
     for (const frame of this.frames.values()) frame.bitmap.close(); this.frames.clear(); this.frameBytes = 0;
     if (this.frameCanvas) this.frameCanvas.width = this.frameCanvas.height = 0;
+    this.assets?.close();
     this.host.replaceChildren();
   }
 };
