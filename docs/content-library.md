@@ -5,15 +5,15 @@ The library is a standalone local application in this repository. It shares AFCl
 ## Start
 
 ```powershell
-npm run library:gui
+aflib gui
 npm run library:dev   # Live GUI reload during development
-npm run library -- --help
-node src/library/cli.ts search --kind audio
+aflib --help
+aflib search --kind audio
 ```
 
-Node 24 and the repository's installed dependencies are required. The GUI and CLI automatically start the same headless service. Its default catalog is `%LOCALAPPDATA%\AFClip\Library`. `AFCLIP_LIBRARY_HOME` selects another active catalog; individual CLI commands can also use `--catalog PATH`. SQLite stores annotations, identity records, project references, jobs and bounded history. Disposable artifacts live in the catalog's `cache` directory. Media stays at its original path.
+Node 24 or newer is required. Run `npm ci` and `npm link` from the checkout once to register `afclip` and `aflib` globally. The GUI and CLI automatically start the same headless service. Its default catalog is `%LOCALAPPDATA%\AFClip\Library`. `AFCLIP_LIBRARY_HOME` selects another active catalog; individual CLI commands can also use `--catalog PATH`. SQLite stores annotations, identity records, project references, jobs and bounded history. Disposable artifacts live in the catalog's `cache` directory. Media stays at its original path.
 
-`npm run library:dev` or `npm run library -- gui --dev` watches the library HTML, CSS and JavaScript plus shared AFClip styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
+`npm run library:dev` or `aflib gui --dev` watches the library HTML, CSS and JavaScript plus shared AFClip styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
 
 The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. AFClip's library browser uses a separate read-only capability and session; annotation writes through that capability are rejected by the service.
 
@@ -38,11 +38,11 @@ CLI `search` and `overview` now return compact responses by default. Search keep
 Use `search --folder inbox` for only Inbox items. `--include-inbox` searches both Inbox and the main library. The ambiguous old `--inbox` CLI flag now returns an error explaining both alternatives. Unknown options and invalid enum/numeric values fail before contacting the service. `help COMMAND`, `COMMAND --help` and `schema [COMMAND]` expose supported fields, types and revision rules. Structured `call` remains available for exact API requests.
 
 ```powershell
-node src/library/cli.ts search --folder inbox --assetsOnly --fields id,name,revision
-node src/library/cli.ts prepare --ids ASSET_ID --level index --wait
-node src/library/cli.ts artifact --id ASSET_ID --type contact-sheet --start 0 --end 20 --count 8 --wait
-node src/library/cli.ts waveform --id AUDIO_ID --summary
-node src/library/cli.ts schema range-save
+aflib search --folder inbox --assetsOnly --fields id,name,revision
+aflib prepare --ids ASSET_ID --level index --wait
+aflib artifact --id ASSET_ID --type contact-sheet --start 0 --end 20 --count 8 --wait
+aflib waveform --id AUDIO_ID --summary
+aflib schema range-save
 ```
 
 `prepare --level index` creates exact video frame boundaries without seek proxies or decoded audio. It enables frame-based range annotations. Audio needs only verified source metadata for sample-based ranges. Default `--level preview` retains full preparation. Cached preparation flags describe generated artifacts, not whether an original file can already play.
@@ -62,17 +62,17 @@ Batch results are ordered snapshots: each operation returns its resulting ID/rev
 Every GUI operation calls `/v1/command`. The CLI accepts the operation name followed by `--field value`, or exact JSON with `call request.json` / `call -`. All responses are JSON. Author defaults to `agent`; the GUI defaults to `human` and allows choosing `agent` for a GUI-driven annotation pass.
 
 ```powershell
-node src/library/cli.ts folder-create --name SFX
-node src/library/cli.ts import "D:\Audio Effects\Magic Spell Impacts" --folder FOLDER_ID --limit 25 --wait
-node src/library/cli.ts search --q impact --kind audio --limit 20 --offset 0
-node src/library/cli.ts inspect --id ASSET_ID
-node src/library/cli.ts annotate --id ASSET_ID --revision 2 --name "Spell hit" --tags TAG_ID --notes "Candidate for ability contact."
-node src/library/cli.ts prepare --ids ASSET_ID --wait
-node src/library/cli.ts preview --id ASSET_ID
-node src/library/cli.ts frames --id VIDEO_ASSET_ID
-node src/library/cli.ts original --id ASSET_OR_RANGE_ID
-node src/library/cli.ts range-save --assetId ASSET_ID --revision 3 --name "Contact" --startSample 0 --endSample 24000
-node src/library/cli.ts range-save --assetId VIDEO_ASSET_ID --revision 3 --name "Opening" --startFrame 0 --endFrame 90
+aflib folder-create --name SFX
+aflib import "D:\Audio Effects\Magic Spell Impacts" --folder FOLDER_ID --limit 25 --wait
+aflib search --q impact --kind audio --limit 20 --offset 0
+aflib inspect --id ASSET_ID
+aflib annotate --id ASSET_ID --revision 2 --name "Spell hit" --tags TAG_ID --notes "Candidate for ability contact."
+aflib prepare --ids ASSET_ID --wait
+aflib preview --id ASSET_ID
+aflib frames --id VIDEO_ASSET_ID
+aflib original --id ASSET_OR_RANGE_ID
+aflib range-save --assetId ASSET_ID --revision 3 --name "Contact" --startSample 0 --endSample 24000
+aflib range-save --assetId VIDEO_ASSET_ID --revision 3 --name "Opening" --startFrame 0 --endFrame 90
 ```
 
 `annotate` also accepts an asset `annotationTracks` array of `{id,name}` objects through structured `call` input. `range-save` accepts `trackId`; omitting it preserves an existing assignment or uses the first track for a new range. Nonempty tracks cannot be removed.
@@ -123,11 +123,11 @@ AFClip's normal import registers audio/video and persists library identity, sour
 Open **File > Browse content library**, or `Ctrl+L`, to browse, preview and add an asset or named range to the project bin. **Edit in library** opens the standalone writer. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
 
 ```powershell
-node src/cli.ts library-sync PROJECT_DIR
-node src/cli.ts library-import PROJECT_DIR ASSET_OR_RANGE_ID
+afclip library-sync PROJECT_DIR
+afclip library-import PROJECT_DIR ASSET_OR_RANGE_ID
 ```
 
-Agents can find clips with `node src/library/cli.ts search --q "impact" --kind audio`, then pass a result's `id` directly to `node src/cli.ts library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `AFCLIP_LIBRARY_HOME` when overriding the default.
+Agents can find clips with `aflib search --q "impact" --kind audio`, then pass a result's `id` directly to `afclip library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `AFCLIP_LIBRARY_HOME` when overriding the default.
 
 AFClip's Media List shows current library names grouped by home folder. Search includes filenames, tags, notes, parent asset context and folder names. Hover a row for tags, notes, take counts and source details. Range rows show the saved selection duration; changed ranges, replaced sources and removed library records are flagged without changing saved project timing or paths. Metadata refreshes every five seconds and when the window gains focus. If the library is unavailable, the list retains its last metadata and project editing remains available. Older projects register audio/video in the background when the editor opens. Images and graphics stay under Project media.
 
@@ -150,13 +150,13 @@ Temporary selections stay in the monitor until insertion. Insertion saves a sepa
 The CLI uses the same source inspection, waveform implementation and insertion operation:
 
 ```powershell
-node src/cli.ts source-inspect PROJECT_DIR MEDIA_ID
-node src/cli.ts source-prepare PROJECT_DIR MEDIA_ID --wait
-node src/cli.ts source-jobs PROJECT_DIR MEDIA_ID
-node src/cli.ts source-cancel PROJECT_DIR MEDIA_ID JOB_ID
-node src/cli.ts source-waveform PROJECT_DIR MEDIA_ID --start 0 --duration 2 --bins 512
-node src/cli.ts source-insert PROJECT_DIR MEDIA_ID --at 2
-node src/cli.ts source-insert PROJECT_DIR MEDIA_ID --at 2 --track TRACK_ID --selection '{"revision":3,"sourceId":"SOURCE_ID","startSample":11025,"endSample":55125}'
+afclip source-inspect PROJECT_DIR MEDIA_ID
+afclip source-prepare PROJECT_DIR MEDIA_ID --wait
+afclip source-jobs PROJECT_DIR MEDIA_ID
+afclip source-cancel PROJECT_DIR MEDIA_ID JOB_ID
+afclip source-waveform PROJECT_DIR MEDIA_ID --start 0 --duration 2 --bins 512
+afclip source-insert PROJECT_DIR MEDIA_ID --at 2
+afclip source-insert PROJECT_DIR MEDIA_ID --at 2 --track TRACK_ID --selection '{"revision":3,"sourceId":"SOURCE_ID","startSample":11025,"endSample":55125}'
 ```
 
 Use `selectionContext` from `source-inspect` for selection revision and source ID. Video selections supply `startFrame` and `endFrame` instead. Inspection includes range IDs, revisions, exact boundaries, tags, notes, takes and parent asset context. `source-waveform` reads the project's saved original and returns per-channel signed peaks and RMS data.
@@ -167,7 +167,7 @@ Duplicate verification can resolve provisional assets to a canonical asset with 
 
 Scratch verification covered 44.1 kHz stereo selections and 30 fps video inserted into a 24 fps project, CLI waveform/inspection, preparation and cancellation, locked and stale destinations, stale library selections, atomic undo/redo, duplicate resolution and insertion of saved selections without library reads.
 
-Project reference updates are persisted to `.afclip/library-outbox.json` before an edit returns and sent to the library in the background. Failed delivery retries every 15 seconds and on reopening the project. Registration first persists the previous reference set so interrupted imports can be reconciled. `node src/cli.ts library-status PROJECT` reports `pending`, `syncing`, `error` and `lastSyncedAt`; `library-sync PROJECT` registers legacy bin media and explicitly waits for reconciliation. Ordinary edits and exports do not wait for delivery. Source inspection, waveform and preparation requests also run outside the project edit queue.
+Project reference updates are persisted to `.afclip/library-outbox.json` before an edit returns and sent to the library in the background. Failed delivery retries every 15 seconds and on reopening the project. Registration first persists the previous reference set so interrupted imports can be reconciled. `afclip library-status PROJECT` reports `pending`, `syncing`, `error` and `lastSyncedAt`; `library-sync PROJECT` registers legacy bin media and explicitly waits for reconciliation. Ordinary edits and exports do not wait for delivery. Source inspection, waveform and preparation requests also run outside the project edit queue.
 
 `node benchmarks/windows/library-offline.ts` checks a deliberately stalled catalog, including a pending source-inspection request. On 2026-10-18, the project edit returned in 7 ms and a software export completed while delivery was stalled. Killing and restarting that scratch project's engine preserved the edit and delivered its saved references when the catalog responded again. The check uses generated audio and a local stub service; it never changes the active library.
 
