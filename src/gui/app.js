@@ -185,7 +185,7 @@ function idleHint() {
   if (drag) return;
   if (hoverHint) return hintItems(hoverHint);
   if (tool === 'razor') return hintItems([{ text: 'Razor: click a clip to split it' }, { keys: 'V', text: 'back to selection' }]);
-  hintItems([{ keys: '?', text: 'Shortcuts' }, { keys: 'Ctrl+Shift+P', text: 'Search commands' }]);
+  hintItems([{ keys: '?', text: 'Shortcuts' }, { keys: 'Ctrl+Space', text: 'Search commands' }]);
 }
 function flashHint(items, ms = 4500) { clearTimeout(hintTimer); hintItems(items); hintTimer = setTimeout(() => { hintTimer = null; idleHint(); }, ms); }
 // Mouse users get a gentle nudge toward the shortcut, a few times per action.
@@ -319,7 +319,7 @@ action('shorter', { menu: 'View', group: 2, label: 'Shorter tracks', keys: ['Ctr
 action('autoRender', { menu: 'View', group: 3, label: 'Update preview after edits', desc: 'Refresh the program monitor when GUI or CLI edits change the project.', checked: () => prefs.autoRender, run: () => { prefs.autoRender = !prefs.autoRender; savePrefs(); syncChrome(); if (prefs.autoRender) requestFrame(0); } });
 action('softwareRender', { menu: 'View', group: 3, label: 'Use software rendering', icon: 'chip', desc: 'Software preview decoding and CPU exports. Use it when the GPU path is unavailable.', checked: () => prefs.renderMode === 'software', run: () => setRenderMode(prefs.renderMode === 'gpu' ? 'software' : 'gpu') });
 action('resetLayout', { menu: 'View', group: 4, label: 'Reset panel layout', run: () => { Object.assign(prefs, { leftW: 250, rightW: 290, tlH: 330, trackH: 50 }); savePrefs(); applyLayout(); fitZoom = true; drawTimeline(); } });
-action('palette', { menu: 'Help', group: 1, label: 'Search commands…', icon: 'command', keys: ['Ctrl+Shift+P'], desc: 'Find any action by name and see its shortcut.', run: () => openPalette() });
+action('palette', { menu: 'Help', group: 1, label: 'Search commands…', icon: 'command', keys: ['Ctrl+Space'], desc: 'Find any action by name and see its shortcut.', run: () => openPalette() });
 action('shortcuts', { menu: 'Help', group: 1, label: 'Keyboard shortcuts', icon: 'keyboard', keys: ['?', 'Ctrl+/'], run: () => openShortcuts() });
 action('welcome', { menu: 'Help', group: 2, label: 'Getting started', icon: 'help', run: () => welcome(true) });
 
@@ -460,14 +460,14 @@ function openShortcuts() {
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
       h('span', { class: 'kbd-group' }, keys.flatMap((k, i) => [i ? h('span', { class: 'alt' }, g.joined ? '+' : 'or') : null, k.startsWith('#') ? h('span', { class: 'alt' }, k.slice(1)) : kbd(k)])))))));
-  dialog({ title: 'Keyboard shortcuts', iconName: 'keyboard', wide: true, body: h('div', { class: 'dialog-body' }, grid), foot: [kbd('Ctrl+Shift+P'), ' searches every command'] });
+  dialog({ title: 'Keyboard shortcuts', iconName: 'keyboard', wide: true, body: h('div', { class: 'dialog-body' }, grid), foot: [kbd('Ctrl+Space'), ' searches every command'] });
 }
 
 function welcome(force) {
   if (prefs.welcomed && !force) return;
   toast({ cls: 'welcome', title: 'Welcome to Reelet', timeout: 0,
     body: h('div', {}, 'Hover any control to see what it does and its shortcut. Most editing is one key away.', h('br'),
-      kbd('?'), ' all shortcuts  ·  ', kbd('Ctrl+Shift+P'), ' search commands', h('br'), 'Drag media from the bin onto the timeline to start.'),
+      kbd('?'), ' all shortcuts  ·  ', kbd('Ctrl+Space'), ' search commands', h('br'), 'Drag media from the bin onto the timeline to start.'),
     actions: [{ label: 'Got it', primary: true, run: () => { prefs.welcomed = true; savePrefs(); } }] });
 }
 
@@ -1966,9 +1966,9 @@ function buildChrome() {
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
   $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('play', 'play', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), actionButton('renderFrame'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
   for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
-  $('command-center-keys').replaceWith(kbd('Ctrl+Shift+P'));
+  $('command-center-keys').replaceWith(kbd('Ctrl+Space'));
   $('command-center').onclick = () => run('palette', 'key');
-  $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Shift+P', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });
+  $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Space', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });
   $('mode-chip').onclick = () => run('softwareRender');
   for (const tab of document.querySelectorAll('.bin .tab')) tab.onclick = () => showTab(tab.dataset.tab);
   document.querySelector('.bin [data-tab="media"]').tip = { title: 'Media bin', desc: 'Imported footage, audio, images and graphics. Originals stay where they are.' };
@@ -2027,7 +2027,7 @@ document.addEventListener('keydown', e => {
   const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
   if (typing) {
     if (combo === 'Escape') e.target.blur();
-    if (!['Ctrl+Shift+P', 'Ctrl+M', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+I'].includes(combo)) return;
+    if (!['Ctrl+Space', 'Ctrl+M', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+I'].includes(combo)) return;
   }
   if (e.altKey && !e.ctrlKey && !e.shiftKey && /^Key[A-Z]$/.test(e.code)) {
     const menu = [...$('menubar').children].find(b => b.textContent[0].toUpperCase() === e.code.slice(3));
