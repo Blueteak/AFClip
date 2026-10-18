@@ -75,6 +75,7 @@ const stem = value => basename(value).replace(/\.[^.]+$/, '');
 const mediaName = m => {
   if (!m) return 'Missing media';
   // Imported graphic folders are renamed to stable IDs, so borrow the name of a clip that uses them.
+  if (m.metadata?.asset) return m.metadata.asset.name;
   if (m.kind === 'graphic') return clips().find(c => c.mediaId === m.id && c.name)?.name || `Graphic ${m.id.slice(-6)}`;
   return libraryMedia[m.id]?.name || m.metadata?.library?.name || basename(m.path);
 };
@@ -284,7 +285,7 @@ const hasSelection = () => selection.size > 0 || !!selTransition || !!selMarker;
 
 action('import', { menu: 'File', group: 1, label: 'Import media…', icon: 'import', keys: ['Ctrl+I'], desc: 'Add footage, music, sound effects or images. Originals stay where they are.', enabled: editable, run: () => importMedia() });
 action('library', { menu: 'File', group: 1, label: 'Browse content library…', icon: 'folder', keys: ['Ctrl+L'], desc: 'Browse and preview reusable assets and ranges. Edit annotations in the standalone library.', run: () => api.library() });
-action('importGraphic', { menu: 'File', group: 1, label: 'Import graphic folder…', icon: 'graphic', keys: ['Ctrl+Shift+I'], desc: 'Add an HTML/CSS/JS graphic. The folder needs an index.html.', enabled: editable, run: () => importMedia('graphic') });
+action('importGraphic', { menu: 'File', group: 1, label: 'Import HTML asset folder…', icon: 'graphic', keys: ['Ctrl+Shift+I'], desc: 'Add an HTML/CSS/JS graphic. The folder needs an index.html.', enabled: editable, run: () => importMedia('graphic') });
 action('export', { menu: 'File', group: 2, label: 'Export…', icon: 'export', keys: ['Ctrl+M'], desc: 'Render an H.264/AAC MP4 of the sequence or the In/Out range.', enabled: () => editable() && clips().length > 0, run: () => openExport() });
 action('checkpoint', { menu: 'File', group: 3, label: 'New checkpoint…', icon: 'flag', keys: ['Ctrl+Shift+S'], desc: 'Save a restorable snapshot of the whole project. The latest five are kept.', enabled: editable, run: () => newCheckpoint() });
 action('showHistory', { menu: 'File', group: 3, label: 'Checkpoints', icon: 'history', desc: 'Show checkpoints and shared undo history.', run: () => showTab('history') });
@@ -769,7 +770,7 @@ function deleteSelection() {
   if (selPoint && selection.size === 1 && selection.has(selPoint.clipId)) return deletePoint(selPoint);
   const tid = selTransition, ids = [...selection];
   selection = new Set(); selTransition = null;
-  if (tid) return edit(() => transitionById(tid) ? { ops: [remove('transitions', tid)], message: 'Dissolve removed' } : null);
+  if (tid) return edit(() => transitionById(tid) ? { ops: [remove('transitions', tid)], message: 'Transition removed' } : null);
   edit(() => {
     const list = withLinked(ids.map(clipById).filter(Boolean)); if (!list.length) return null;
     if (lockedRefusal(list) !== false) return null;
@@ -898,15 +899,12 @@ function unlinkClip() {
   linkCommand(() => ({ op: 'unlink', clipId: id }), () => clipById(id)?.linkId ? unlinkRefusal() : 'The clip is no longer linked', 'Unlinked picture and audio');
 }
 
-// Longest dissolve (in frames) the footage around a cut allows.
+// Longest transition that fits without overlapping another transition.
 function dissolveRoom(a, b, alignment = 'center', ignoreId) {
-  const ma = mediaById(a.mediaId), mb = mediaById(b.mediaId);
-  const outRoom = sourceBound(ma) ? (secs(ma.duration) - secs(a.sourceIn) - secs(a.duration) * secs(a.speed)) / secs(a.speed) : Infinity;
-  const inRoom = sourceBound(mb) ? secs(b.sourceIn) / secs(b.speed) : Infinity;
   const occupied = (t, side) => !t || t.id === ignoreId ? 0 : t.alignment === 'center' ? secs(t.duration) / 2 : t.alignment === side ? secs(t.duration) : 0;
   const aRoom = secs(a.duration) - occupied(transitions().find(t => t.toClipId === a.id), 'start');
   const bRoom = secs(b.duration) - occupied(transitions().find(t => t.fromClipId === b.id), 'end');
-  const before = Math.min(inRoom, aRoom), after = Math.min(outRoom, bRoom);
+  const before = aRoom, after = bRoom;
   const room = alignment === 'center' ? 2 * Math.min(before, after) : alignment === 'start' ? after : before;
   return Math.max(0, Math.floor(room * fps() + 1e-6));
 }
@@ -923,10 +921,10 @@ function addDissolve() {
     if (!cuts.length) return refuse(scope ? 'The selected clips have no open cut to dissolve' : 'No open cut between adjacent clips');
     const { a, b, f } = cuts.sort((x, y) => Math.abs(x.f - at) - Math.abs(y.f - at))[0];
     const room = dissolveRoom(a, b), wanted = nominal();
-    if (room < 2) { toast({ kind: 'error', title: 'No room for a dissolve', body: `There is no spare footage beyond the cut at ${tc(f)}. Trim the clips to create handles.` }); return null; }
+    if (room < 2) { toast({ kind: 'error', title: 'No room for a dissolve', body: `There is no room between neighbouring transition windows at ${tc(f)}.` }); return null; }
     let frames = Math.min(wanted, room); if (frames % 2 && frames > 2) frames--;
     return { ops: [put('transitions', { id, trackId: a.trackId, fromClipId: a.id, toClipId: b.id, duration: fromF(frames), alignment: 'center' })], pre: { [`transition:${id}`]: 0 },
-      message: frames < wanted ? `Dissolve at ${tc(f)} limited to ${shortTc(frames)} by available footage` : `Dissolve added at ${tc(f)}` };
+      message: frames < wanted ? `Dissolve at ${tc(f)} limited to ${shortTc(frames)} by neighbouring transitions` : `Dissolve added at ${tc(f)}` };
   }).then(ok => { if (ok) selectTransition(id); });
 }
 
@@ -937,7 +935,17 @@ function addTrack(name) {
   });
 }
 function mediaLength(m) { const range=m.metadata?.library; return m.kind === 'graphic' || m.kind === 'image' ? 5 * nominal() : range?.end ? Math.max(1, Math.floor(secs(range.end)*fps()+1e-6)-Math.ceil(secs(range.start)*fps()-1e-6)) : Math.max(1, Math.floor(secs(m.duration) * fps() + 1e-6)); }
+function applyAsset(m){
+  if(m.metadata.asset.role==='transition'){
+    if(!selTransition)return refuse('Select a transition on the timeline, then choose its asset');
+    return edit([put('transitions',{id:selTransition,assetId:m.id,params:{}})],'Transition asset changed');
+  }
+  const selected=selectedClips().filter(clipVisual);
+  if(!selected.length)return refuse('Select a visual clip before adding an effect');
+  return edit(selected.map(c=>put('clips',{id:c.id,effects:[...(c.effects||[]),{id:uid('effect'),assetId:m.id,params:{},seed:crypto.getRandomValues(new Uint32Array(1))[0]}]})),'Effect added');
+}
 function addMediaAt(m, trackId, f, sourceRange = null) {
+  if(m.metadata.asset&&m.metadata.asset.role!=='content')return applyAsset(m);
   return perform(() => {
     const len = sourceRange ? sourceRangeLength(sourceRange) : mediaLength(m), target = trackId && trackById(trackId);
     const chosen = target && !target.locked && free(target.id, f, f + len) ? trackId : undefined;
@@ -1210,6 +1218,8 @@ function drawMedia() {
   const key = JSON.stringify(media.map(m => [m.id, m.metadata?.library]));
   if (key !== libraryMediaKey && !libraryLoading) void refreshLibraryMedia();
   const usage = new Map(); for (const c of clips()) usage.set(c.mediaId, (usage.get(c.mediaId) || 0) + 1);
+  for(const tr of transitions())usage.set(tr.assetId,(usage.get(tr.assetId)||0)+1);
+  for(const c of clips())for(const effect of c.effects||[])usage.set(effect.assetId,(usage.get(effect.assetId)||0)+1);
   const visible = filteredMedia();
   $('media-count').textContent = query ? `${visible.length}/${media.length}` : media.length || '';
   const scrollTop = list.scrollTop;
@@ -1242,6 +1252,14 @@ function drawMedia() {
     row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, { label: 'Preview in Source monitor', icon: 'eye', run: () => openSource(m) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}, {label:link.temporary?'Copy source library ID':'Copy library ID',icon:'copy',run:()=>perform(()=>api.copyText(mediaLibraryId(m)), 'Library ID copied')}]:[]), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
     row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-afclip-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
     row.ondragend = () => { dragMedia = null; clearDropGhost(); };
+    if(m.metadata.asset&&m.metadata.asset.role!=='content'){
+      row.draggable=false;row.ondragstart=null;
+      row.querySelector('.meta').textContent=m.metadata.asset.role;
+      row.tip={title:mediaName(m),desc:'Double-click to apply to the selected '+(m.metadata.asset.role==='transition'?'transition':'clip'),meta:m.metadata.authoringPath||m.path};
+      row.onclick=()=>{binSelection=m.id;list.focus();drawMedia();};
+      row.ondblclick=()=>editable()&&applyAsset(m);
+      row.oncontextmenu=e=>contextMenu(e,[{label:'Apply to selection',disabled:!editable(),run:()=>applyAsset(m)},{label:'Remove from project bin',disabled:!!used||!editable()||m.metadata.builtin==='dissolve',run:()=>edit(()=>({ops:[remove('media',m.id)],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0}}),'Asset removed')}]);
+    }
     list.append(row);
   }
   if (!media.length) list.append(h('div', { class: 'empty-note' }, 'No media yet.', h('br'), h('button', { class: 'link-button', onclick: () => run('import') }, 'Import media'), ' ', kbd('Ctrl+I'), h('br'), h('button', { class: 'link-button', onclick: () => run('library') }, 'Browse content library'), ' ', kbd('Ctrl+L')));
@@ -1607,24 +1625,62 @@ function drawClipInspector(box, c) {
       field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked }), { unit: '%' }),
       field('Framing', segmented([['fit', 'Fit', 'Show the whole picture, letterboxing if needed.'], ['fill', 'Fill', 'Cover the frame and crop the excess.']], t.fit || 'fit', v => setT('fit', v, v === 'fill' ? 'Fill frame' : 'Fit frame'), locked), { tip: 'Shift+F toggles.' })));
   }
+  if(clipVisual(c))drawEffectsInspector(box,c,locked);
   box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), peers.length ? chip('unlink', 'Unlink') : clipHasAudio(c) && m?.kind === 'video' ? chip('detachAudio', 'Detach') : null, chip('copy'), chip('delete', null, 'danger')));
 }
+function assetParameters(box, instance, locked, update) {
+  const asset=mediaById(instance.assetId)?.metadata.asset;
+  if(!asset)return;
+  const section=h('div',{class:'insp-section'},h('div',{class:'section-title'},'Parameters'));
+  for(const [id,spec] of Object.entries(asset.parameters||{})){
+    const value=instance.params?.[id]??spec.default,set=value=>update({...instance.params,[id]:value});let input;
+    if(spec.type==='number')input=plainNumber(value,2,set,{min:spec.min,max:spec.max,step:spec.step||.1,disabled:locked});
+    else if(spec.type==='boolean'){input=h('input',{type:'checkbox',checked:value,disabled:locked});input.onchange=()=>set(input.checked);}
+    else if(spec.type==='choice'){input=h('select',{disabled:locked},...spec.choices.map(v=>h('option',{value:v,selected:v===value},v)));input.onchange=()=>set(input.value);}
+    else {input=h('input',{type:spec.type==='color'?'color':'text',value,disabled:locked});input.onchange=()=>set(input.value);}
+    section.append(field(spec.label||id,input));
+  }
+  for(const id of Object.keys(instance.params||{}))if(!Object.hasOwn(asset.parameters||{},id))section.append(h('button',{disabled:locked,onclick:()=>{const next={...instance.params};delete next[id];update(next);}},`Remove missing parameter ${id}`));
+  if(section.children.length>1)box.append(section);
+}
+function assetSelect(role,value,locked,change){
+  const select=h('select',{disabled:locked,'aria-label':role+' asset'},...project().media.filter(m=>m.metadata.asset?.role===role).map(m=>h('option',{value:m.id,selected:m.id===value},mediaName(m))));
+  select.onchange=()=>change(select.value);return select;
+}
 function drawTransitionInspector(box, t) {
-  const a = clipById(t.fromClipId), b = clipById(t.toClipId), locked = !!trackById(t.trackId)?.locked || !editable();
-  $('inspector-title').textContent = 'Transition';
-  $('inspector-kind').append(icon('dissolve', 'sm'), 'Dissolve');
-  const room = alignment => dissolveRoom(a, b, alignment, t.id);
-  box.append(h('div', { class: 'insp-head' }, icon('dissolve'), h('strong', {}, 'Cross dissolve')),
-    h('div', { class: 'insp-source' }, `${clipName(a)} → ${clipName(b)}`),
-    h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Timing'),
-      field('Duration', timeInput(toF(t.duration), f => edit([put('transitions', { id: t.id, duration: fromF(f) })], `Dissolve ${shortTc(f)}`), { min: 1, max: room(t.alignment), disabled: locked }), { tip: 'Uses source frames beyond each clip edge. Timeline length does not change.' }),
-      field('Alignment', segmented([['start', 'Start', 'Begins at the cut and runs into the next clip.'], ['center', 'Center', 'Centered on the cut (default).'], ['end', 'End', 'Ends at the cut.']], t.alignment, v => {
-        const max = room(v);
-        if (max < toF(t.duration)) { say(`Only ${shortTc(max)} of footage is available for “${v}” alignment`, 'warn'); return; }
-        edit([put('transitions', { id: t.id, alignment: v })], `Alignment ${v}`);
-      }, locked))),
-    h('div', { class: 'insp-note' }, `Up to ${shortTc(room(t.alignment))} with the footage available at this cut.`),
-    h('div', { class: 'insp-actions' }, chip('delete', null, 'danger')));
+  const a=clipById(t.fromClipId),b=clipById(t.toClipId),locked=!!trackById(t.trackId)?.locked||!editable(),asset=mediaById(t.assetId);
+  const update=value=>edit([put('transitions',{id:t.id,...value})],'Transition updated');
+  $('inspector-title').textContent='Transition';$('inspector-kind').append(icon('dissolve','sm'),asset?.metadata.asset?.name||'HTML');
+  const room=alignment=>dissolveRoom(a,b,alignment,t.id);
+  box.append(h('div',{class:'insp-head'},icon('dissolve'),h('strong',{},asset?.metadata.asset?.name||'HTML transition')),
+    h('div',{class:'insp-source'},`${clipName(a)} to ${clipName(b)}`),
+    field('Asset',assetSelect('transition',t.assetId,locked,assetId=>update({assetId,params:{}}))),
+    h('div',{class:'insp-section'},h('div',{class:'section-title'},'Timing'),
+      field('Duration',timeInput(toF(t.duration),f=>update({duration:fromF(f)}),{min:1,max:room(t.alignment),disabled:locked})),
+      field('Alignment',segmented([['start','Start'],['center','Center'],['end','End']],t.alignment,v=>{if(room(v)<toF(t.duration)){say('Transition would overlap another cut','warn');return;}update({alignment:v});},locked)),
+      field('Audio',segmented([['crossfade','Crossfade'],['cut','Cut']],t.audio,v=>update({audio:v}),locked))));
+  assetParameters(box,t,locked,params=>update({params}));
+  const before=t.alignment==='start'?0:t.alignment==='end'?secs(t.duration):secs(t.duration)/2,after=secs(t.duration)-before;
+  const hold=(sourceBound(mediaById(a.mediaId))&&secs(a.sourceIn)+(secs(a.duration)+after)*secs(a.speed)>secs(mediaById(a.mediaId).duration)+1e-7)||(sourceBound(mediaById(b.mediaId))&&secs(b.sourceIn)<before*secs(b.speed));
+  box.append(h('div',{class:'insp-note'},hold?'Uses held boundary frames where source footage runs out.':'Uses available source footage. Cut position and timeline duration stay fixed.'),
+    h('div',{class:'insp-note'},asset?.metadata.authoringPath||asset?.path||''),
+    h('button',{class:'chip-button',disabled:locked,onclick:()=>perform(async()=>{const r=await api.command({command:'asset-duplicate',assetId:t.assetId});await api.command({command:'apply',batch:{preconditions:r.revisions,operations:[put('transitions',{id:t.id,assetId:r.media.id})]}});},'Transition made unique')},'Make unique'),
+    h('div',{class:'insp-actions'},chip('delete',null,'danger')));
+}
+function drawEffectsInspector(box,c,locked){
+  const choices=project().media.filter(m=>m.metadata.asset?.role==='effect');if(!choices.length)return;
+  const set=effects=>edit([put('clips',{id:c.id,effects})],'Effects updated');
+  const section=h('div',{class:'insp-section'},h('div',{class:'section-title'},'Effects'));
+  for(const [index,effect] of (c.effects||[]).entries()){
+    section.append(h('div',{class:'section-title'},mediaName(mediaById(effect.assetId)),
+      h('button',{disabled:locked||index===0,onclick:()=>{const next=[...c.effects];[next[index-1],next[index]]=[next[index],next[index-1]];set(next);}},'Up'),
+      h('button',{disabled:locked,onclick:()=>set(c.effects.filter(e=>e.id!==effect.id))},'Remove')));
+    assetParameters(section,effect,locked,params=>set(c.effects.map(e=>e.id===effect.id?{...e,params}:e)));
+    section.append(h('button',{disabled:locked,onclick:()=>perform(async()=>{const r=await api.command({command:'asset-duplicate',assetId:effect.assetId});const clip=r.project.clips.find(v=>v.id===c.id);return api.command({command:'apply',batch:{preconditions:r.revisions,operations:[put('clips',{id:c.id,effects:clip.effects.map(e=>e.id===effect.id?{...e,assetId:r.media.id}:e)})]}});},'Effect made unique')},'Make unique'));
+  }
+  const select=assetSelect('effect',choices[0].id,locked,()=>{});
+  section.append(select,h('button',{class:'chip-button',disabled:locked,onclick:()=>set([...(c.effects||[]),{id:uid('effect'),assetId:select.value,params:{},seed:crypto.getRandomValues(new Uint32Array(1))[0]}])},'Add effect'));
+  box.append(section);
 }
 function drawMarkerInspector(box, m) {
   const disabled = !editable(), beyond = secs(m.time) * fps() > timelineEndF() + 1e-8;
@@ -1761,7 +1817,7 @@ function trackRow(t, width) {
     const d = secs(tr.duration), before = tr.alignment === 'start' ? 0 : tr.alignment === 'end' ? d : d / 2;
     const w = d * pps;
     const el = h('div', { class: `xfade ${selTransition === tr.id ? 'selected' : ''}`, dataset: { id: tr.id }, style: { left: `${(secs(b.start) - before) * pps}px`, width: `${Math.max(4, w)}px` } }, w > 18 ? icon('dissolve') : null);
-    el.tip = { title: 'Cross dissolve', follow: true, meta: `Duration ${shortTc(toF(tr.duration))} · ${tr.alignment}`, hint: [{ keys: '#Click', text: 'select' }, { keys: 'Delete', text: 'remove' }] };
+    el.tip = { title: mediaById(tr.assetId)?.metadata.asset?.name||'Transition', follow: true, meta: `Duration ${shortTc(toF(tr.duration))} · ${tr.alignment}`, hint: [{ keys: '#Click', text: 'select' }, { keys: 'Delete', text: 'remove' }] };
     el.oncontextmenu = e => { selectTransition(tr.id); contextMenu(e, [{ action: 'delete' }]); };
     lane.append(el);
   }
@@ -2092,7 +2148,7 @@ function moveDrag(e) {
     } else d.res.limit = 'No spare source footage for a crossfade';
   }
   for (const el of d.els) { el.classList.add('dragging'); el.classList.toggle('invalid', !!d.res.error); el.style.transform = `translate(${frameX(dF)}px, ${dTrack * rowH}px)`; }
-  if (d.crossfade) readout(`Crossfade ${shortTc(d.crossfade.frames)}`, d.crossfade.limited ? 'Limited by available source handles or neighbouring transitions' : 'Release to apply');
+  if (d.crossfade) readout(`Crossfade ${shortTc(d.crossfade.frames)}`, d.crossfade.limited ? 'Limited by neighbouring transitions' : 'Release to apply');
   else if (dF || dTrack || contact != null) readout(`${dF >= 0 ? '+' : '−'}${shortTc(Math.abs(dF))}   ${tc(startF(d.primary) + dF)}`, d.res.error || d.res.limit || (d.res.dropped ? `Removes ${d.res.dropped} dissolve${d.res.dropped > 1 ? 's' : ''}` : '')); else $('drag-readout').hidden = true;
 }
 function trimDrag(e) {
@@ -2480,6 +2536,7 @@ window.afclipPrepareReload = () => {
 api.onEvent(async event => {
   try {
     if (event.type === 'disconnected') { playback.pause(false); setConnected(false, event.value?.message); syncChrome(); say('Project connection closed. Reopen the project to reconnect.', 'error'); return; }
+    if(event.type==='graphic-error'){playback.pause(false);say(event.value.error?.message||'HTML asset reload failed','error');return;}
     if (event.type === 'job') { await onJob(event.value.job || event.value); return; }
     if (event.type === 'change' || event.type === 'hello') {
       const next = event.value.inspect || event.value;

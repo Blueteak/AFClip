@@ -1,5 +1,5 @@
 // Persistent, disposable compositor. Only the latest waiting frame is retained.
-const { app, BrowserWindow, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createInterface } = require('node:readline');
@@ -67,6 +67,8 @@ createInterface({ input: control }).on('line', line => {
 }).on('close', () => shutdown());
 app.whenReady().then(async () => {
   require('./graphic-protocol.cjs')(protocol, config);
+  const raster=require('./asset-raster.cjs')(()=>config.graphics);
+  ipcMain.handle('afclip:asset-raster',(_event,data)=>raster.render(data));
   const { width, height } = config;
   win = new BrowserWindow({ width, height: height + 8, useContentSize: true, show: false, webPreferences: {
     offscreen: true, backgroundThrottling: false, sandbox: false, nodeIntegration: false, contextIsolation: true,
@@ -78,7 +80,7 @@ app.whenReady().then(async () => {
   win.webContents.on('will-frame-navigate', (event, details) => { if (details?.url && !details.url.startsWith('afclip-graphic:')) event.preventDefault(); });
   win.webContents.on('render-process-gone', (_, details) => fail(new Error(`Preview compositor failed: ${details.reason}`)));
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !(
-    details.url.startsWith('afclip-graphic:') || details.url.startsWith('data:') ||
+    details.url.startsWith('afclip-graphic:') || details.url.startsWith('data:') || ['asset-runtime.js','../shared/asset.cjs'].some(name=>details.url===require('node:url').pathToFileURL(path.join(__dirname,name)).href) ||
     details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href
   ) }));
   win.webContents.on('paint', (_event, _dirty, image) => {

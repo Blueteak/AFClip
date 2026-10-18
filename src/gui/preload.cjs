@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('afclip', Object.freeze({
+  rasterAsset: data => ipcRenderer.invoke('afclip:asset-raster',data),
   previewOpen: mode => ipcRenderer.invoke('afclip:preview-open', mode),
   previewClose: () => ipcRenderer.invoke('afclip:preview-close'),
   previewAudio: value => ipcRenderer.invoke('afclip:preview-audio', value),

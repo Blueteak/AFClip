@@ -1,11 +1,12 @@
 <!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src afclip-graphic:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; frame-src afclip-graphic:;">
 <style>
 *{box-sizing:border-box}html,body{margin:0;background:#000;overflow:hidden}#stage{position:relative;overflow:hidden;background:#000}.layer{position:absolute;inset:0;transform-origin:center;display:none}.layer canvas{position:absolute;width:100%;height:100%;object-fit:contain}.layer iframe{position:absolute;left:50%;top:50%;border:0;transform-origin:center}#token{position:absolute;right:0;width:8px;height:8px}
-</style></head><body><div id="stage"></div><div id="token"></div><script>
+</style></head><body><div id="stage"></div><div id="token"></div><script src="../shared/asset.cjs"></script><script src="asset-runtime.js"></script><script>
 const setup=window.afclipFrames.getSetup(),stage=document.getElementById('stage'),layers=new Map(),pending=new Map();let requestId=0;
 const logicalWidth=setup.compositionWidth||setup.width,logicalHeight=setup.compositionHeight||setup.height;
 stage.style.width=logicalWidth+'px';stage.style.height=logicalHeight+'px';stage.style.transformOrigin='top left';stage.style.transform=`scale(${setup.width/logicalWidth},${setup.height/logicalHeight})`;document.getElementById('token').style.top=setup.height+'px';
+const assets=new AssetRuntime(stage,setup,data=>window.afclipFrames.rasterAsset(data));
 const loads=[];
 for(const clip of setup.clips){if(clip.kind==='audio')continue;const layer=document.createElement('div');layer.className='layer';stage.append(layer);let content;
   if(clip.kind==='graphic'){
@@ -22,15 +23,17 @@ window.ready=Promise.all(loads).then(()=>document.fonts.ready);
 function graphicFrame(frame,time,text){return new Promise((resolve,reject)=>{const id=++requestId;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Graphic did not acknowledge explicit time within 10 seconds'));},10000);pending.set(id,{source:frame.contentWindow,resolve:()=>{clearTimeout(timer);resolve();},reject:e=>{clearTimeout(timer);reject(e);}});frame.contentWindow.postMessage({type:'afclip-render',requestId:id,time,text},'*');});}
 window.renderFrame=async(items,token)=>{
   await window.ready;
+  assets.reset(layers,items);
   for(const {layer}of layers.values())layer.style.display='none';
   const graphics=[];
   for(const item of items){const entry=layers.get(item.clipId);if(!entry)continue;const {layer,content,kind}=entry,tr=item.transform;
     layer.style.display='block';layer.style.zIndex=String(item.track*10000+items.indexOf(item));layer.style.opacity=String(item.opacity);
     layer.style.transform=`translate(${tr.x||0}px,${tr.y||0}px) rotate(${tr.rotation||0}deg) scale(${tr.scale||1})`;
-    if(kind==='graphic')graphics.push(graphicFrame(content,item.sourceTime,item.text));else content.style.objectFit=tr.fit==='fill'?'cover':'contain';
+    if(kind==='graphic')graphics.push(setup.graphics[item.mediaId]?.asset?assets.content(item.clipId,item.mediaId,content,window.ready,item):graphicFrame(content,item.sourceTime,item.text));else content.style.objectFit=tr.fit==='fill'?'cover':'contain';
   }
   const stats=await window.afclipFrames.draw(items);
   await Promise.all(graphics);
+  await assets.frame(items,layers);
   if(graphics.length){await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);}
   document.getElementById('token').style.backgroundColor=`rgb(${token&255},${(token>>8)&255},${(token>>16)&255})`;
   document.body.getBoundingClientRect();return stats;

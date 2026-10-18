@@ -60,7 +60,7 @@ function compile(project) {
   for (const t of project.transitions || []) {
     const a = byId.get(t.fromClipId), b = byId.get(t.toClipId); if (!a || !b) continue;
     const duration = seconds(t.duration), start = b.start - (t.alignment === 'start' ? 0 : t.alignment === 'end' ? duration : duration / 2);
-    const tr = { ...t, start, end: start + duration, duration };
+    const tr = { ...t, asset:media.get(t.assetId)?.metadata.asset, cut:b.start, start, end: start + duration, duration };
     a.visibleEnd = Math.max(a.visibleEnd, tr.end); b.visibleStart = Math.min(b.visibleStart, tr.start);
     a.transitions.push({ ...tr, side: 'out' }); b.transitions.push({ ...tr, side: 'in' });
   }
@@ -69,15 +69,20 @@ function compile(project) {
 function at(plan, time) {
   return plan.clips.filter(c => time >= c.visibleStart - 1e-8 && time < c.visibleEnd - 1e-8).map(c => {
     const local = time - c.start;
-    let visual = 1, audio = audioGain(c, local);
+    let visual = 1, audio = audioGain(c, local), transition;
+    const rawTime=c.sourceIn+local*c.speed, sourceDuration=seconds(c.media.duration);
+    if(rawTime<0||rawTime>=sourceDuration)audio=0;
     const fadeIn = c.fadeIn ? clamp(local / c.fadeIn) : 1;
     const fadeOut = c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1;
     visual *= fadeIn * fadeOut;
     for (const tr of c.transitions) if (time >= tr.start && time < tr.end) {
       const p = clamp((time - tr.start) / tr.duration);
-      if (tr.side === 'in') { visual *= p; audio *= p; } else audio *= 1 - p;
+      transition={...tr,progress:p,time:time-tr.start};
+      if(tr.audio==='cut')audio*=tr.side==='in'?(time>=tr.cut?1:0):(time<tr.cut?1:0);
+      else audio*=tr.side==='in'?p:1-p;
     }
-    return { clipId: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : c.media.kind, sourceTime: c.sourceIn + local * c.speed,
+    return { clipId: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : c.media.kind, sourceTime: ['video','audio'].includes(c.media.kind)?Math.max(0,Math.min(rawTime,Math.max(0,sourceDuration-1e-7))):Math.max(0,rawTime),
+      held:rawTime<0||rawTime>=sourceDuration, transition, effects:c.effects||[], params:c.params||{}, seed:c.seed||0, time:local, duration:c.duration, progress:clamp(local/c.duration),
       text: c.text || {}, opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }

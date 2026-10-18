@@ -116,6 +116,9 @@ async function capture() {
 
 app.whenReady().then(async () => {
   require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
+  const raster=require('../render/asset-raster.cjs')(()=>previewGraphics.graphics);
+  handle('asset-raster',data=>raster.render(data));
+  app.on('before-quit',()=>raster.close());
   const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', projectDir], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   const reply = JSON.parse(result.stdout.trim());
   if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
@@ -170,17 +173,17 @@ app.whenReady().then(async () => {
   previewSession = new (require('./preview-session.cjs'))(projectDir,
     value => { if (!window.isDestroyed()) window.webContents.send('afclip:preview', value); },
     (file, id) => { previewFiles.set(id, file); return `afclip-media://${id}/asset`; },
-    graphics => { previewGraphics.graphics = structuredClone(graphics); },
+    graphics => { raster.close(); previewGraphics.graphics = structuredClone(graphics); },
     id => previewFiles.delete(id));
   handle('preview-open', async mode => {
     if (!['gpu', 'software'].includes(mode)) throw new Error('Invalid preview mode');
     const generation = ++previewGeneration;
-    previewFiles.clear(); previewGraphics.graphics = {};
+    raster.close(); previewFiles.clear(); previewGraphics.graphics = {};
     const state = await request('/inspect');
     if (generation !== previewGeneration) return { id: null, revision: state.project.revision };
     return previewSession.open(state.project, mode);
   });
-  handle('preview-close', () => { previewGeneration++; previewFiles.clear(); previewGraphics.graphics = {}; previewSession.close(); });
+  handle('preview-close', () => { previewGeneration++; raster.close(); previewFiles.clear(); previewGraphics.graphics = {}; previewSession.close(); });
   handle('preview-audio', async ({ sessionId, revision }) => {
     const state = await request('/inspect');
     if (state.project.revision !== revision) throw new Error('Project changed while preparing audio');
@@ -230,7 +233,7 @@ app.whenReady().then(async () => {
     } catch (error) { mediaLibraryEndpoint = null; throw error; }
   });
   handle('command', payload => {
-    if (!payload || !['text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('import', async kind => {
@@ -271,7 +274,7 @@ app.whenReady().then(async () => {
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
-    previewGeneration++; previewSession.close(); previewFiles.clear(); previewGraphics.graphics = {};
+    previewGeneration++; previewSession.close(); raster.close(); previewFiles.clear(); previewGraphics.graphics = {};
   });
   watchEvents();
   if (option('--capture')) captureTimer = setTimeout(() => capture().catch(console.error), 45000);

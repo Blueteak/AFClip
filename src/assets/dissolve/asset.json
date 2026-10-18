@@ -1,0 +1,15 @@
+{
+  "apiVersion": 1,
+  "role": "transition",
+  "name": "Cross dissolve",
+  "parameters": {
+    "curve": {
+      "type": "choice",
+      "default": "linear",
+      "choices": [
+        "linear",
+        "smooth"
+      ]
+    }
+  }
+}
