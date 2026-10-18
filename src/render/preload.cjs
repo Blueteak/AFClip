@@ -3,7 +3,7 @@ const { contextBridge } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { Decoder, frameIndex } = require('./decoder.cjs');
-const file = process.argv.find(x => x.startsWith('--reelet-render='))?.slice(16);
+const file = process.argv.find(x => x.startsWith('--afclip-render='))?.slice(16);
 const config = JSON.parse(fs.readFileSync(file, 'utf8'));
 const decoders = new Map();
 const stats = { peakDecodedBytes: 0, peakDecoders: 0, decodedSourceFrames: 0, restarts: 0 };
@@ -43,7 +43,7 @@ async function draw(items) {
   stats.peakDecoders = Math.max(stats.peakDecoders, decoders.size);
   return { ...stats };
 }
-contextBridge.exposeInMainWorld('reeletFrames', {
+contextBridge.exposeInMainWorld('afclipFrames', {
   getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : config.media[c.mediaId].kind })) }),
   draw,
   close: () => { for (const d of decoders.values()) d.close(); decoders.clear(); return { ...stats }; }

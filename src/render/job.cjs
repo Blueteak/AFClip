@@ -86,7 +86,7 @@ async function main() {
         else { assetBytes += fs.statSync(src).size; if (assetBytes > 128 * 1024 * 1024) throw new Error('Graphic snapshot exceeds 128 MiB'); fs.copyFileSync(src, dst); }
       } }
       copy(root, snapshot);
-      graphics[m.id] = { root: snapshot, url: `reelet-graphic://${m.id}/index.html`, width: m.metadata.logicalWidth || 1920, height: m.metadata.logicalHeight || 1080 };
+      graphics[m.id] = { root: snapshot, url: `afclip-graphic://${m.id}/index.html`, width: m.metadata.logicalWidth || 1920, height: m.metadata.logicalHeight || 1080 };
     } else if (m.kind === 'video' || m.kind === 'image') {
       if (m.kind === 'video' && (m.metadata.colorSpace !== 'bt709' || m.metadata.colorTransfer !== 'bt709' || m.metadata.colorRange === 'pc')) throw new Error(`This SDR renderer needs tagged limited-range BT.709 video: ${file}`);
       const indexStarted = performance.now();

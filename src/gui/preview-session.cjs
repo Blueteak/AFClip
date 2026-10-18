@@ -9,7 +9,7 @@ module.exports = class PreviewSession {
   }
   async open(project, mode) {
     this.close();
-    const id = randomUUID(), root = path.resolve(this.projectDir, '.reelet', 'gui-preview', id);
+    const id = randomUUID(), root = path.resolve(this.projectDir, '.afclip', 'gui-preview', id);
     const session = { id, root, revision: project.revision, cancelFile: path.join(root, 'cancel') };
     this.current = session;
     await fs.mkdir(root, { recursive: true });
@@ -18,7 +18,7 @@ module.exports = class PreviewSession {
     await fs.writeFile(config, JSON.stringify({ projectDir: this.projectDir, project, kind: 'preview', mode, nativePreview: mode === 'gpu',
       output: path.join(root, 'unused.png'), jobId: id, cancelFile: session.cancelFile }));
     if (this.current !== session) { this.clean(session); return { id, revision: project.revision }; }
-    const child = spawn(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], {
+    const child = spawn(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], {
       windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
     });
     session.child = child;
@@ -78,7 +78,7 @@ module.exports = class PreviewSession {
       output, cancelFile }));
     if (this.current !== session || generation !== session.audioGeneration) throw new Error('Preview replaced');
     const work = new Promise((resolve, reject) => {
-      const child = spawn(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+      const child = spawn(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../render/job.cjs'), config], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let error = '';
       child.stdout.resume(); child.stderr.on('data', b => { error = (error + b).slice(-4000); });
       child.on('error', reject);
@@ -104,7 +104,7 @@ module.exports = class PreviewSession {
     return { audioUrl: this.registerFile(output, id), revision: project.revision };
   }
   clean(session) {
-    if (path.dirname(session.root) === path.resolve(this.projectDir, '.reelet', 'gui-preview')) Promise.allSettled([...(session.audioWork || [])]).then(() => fs.rm(session.root, { recursive: true, force: true, maxRetries: 3 })).catch(() => {});
+    if (path.dirname(session.root) === path.resolve(this.projectDir, '.afclip', 'gui-preview')) Promise.allSettled([...(session.audioWork || [])]).then(() => fs.rm(session.root, { recursive: true, force: true, maxRetries: 3 })).catch(() => {});
   }
   close() {
     const session = this.current; this.current = null;

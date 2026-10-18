@@ -1,8 +1,8 @@
 # Content Library Overview
 
-This is the agreed design for a standalone, local content library for video and audio. It supports choosing footage for Reelet and finding sound effects for game development. It must remain useful without Reelet installed.
+This is the agreed design for a standalone, local content library for video and audio. It supports choosing footage for AFClip and finding sound effects for game development. It must remain useful without AFClip installed.
 
-This document owns library behavior and its integration contract. The [Reelet MVP](Reelet-MVP-Overview.md) and [technical overview](Reelet-Technical-Overview.md) own editing behavior and project architecture. The [Content Library MVP guide](docs/content-library.md) records the implemented subset, commands, verification and remaining work; this overview remains the full design contract.
+This document owns library behavior and its integration contract. The [AFClip MVP](AFClip-MVP-Overview.md) and [technical overview](AFClip-Technical-Overview.md) own editing behavior and project architecture. The [Content Library MVP guide](docs/content-library.md) records the implemented subset, commands, verification and remaining work; this overview remains the full design contract.
 
 ## Applications and ownership
 
@@ -18,12 +18,12 @@ The first release is single-user and local-first, with concurrent human GUI and 
 | Asset names, tags, notes and reusable named ranges | Content Library |
 | Nested library folders, collections and tag vocabulary | Content Library |
 | Reusable source metadata, thumbnails, waveforms, indexes and suitable seek proxies | Content Library |
-| Project bin membership and temporary editorial In/Out selection | Reelet |
-| Timeline instances, cut points, effects, mixing and project settings | Reelet |
-| Timeline compositions, mixed audio and exports | Reelet |
+| Project bin membership and temporary editorial In/Out selection | AFClip |
+| Timeline instances, cut points, effects, mixing and project settings | AFClip |
+| Timeline compositions, mixed audio and exports | AFClip |
 | Decoding, playback and artifact-generation implementation | Shared code, with jobs and cache lifecycle controlled by the owning application |
 
-Reelet cannot author library annotations or organization. Its narrow write permissions are source registration and Inbox reference/lifetime operations. "Edit in library" opens the standalone library at the selected asset or range.
+AFClip cannot author library annotations or organization. Its narrow write permissions are source registration and Inbox reference/lifetime operations. "Edit in library" opens the standalone library at the selected asset or range.
 
 ## Assets, originals and source versions
 
@@ -37,9 +37,9 @@ The library references existing files. It never deletes original media files, in
 
 A re-encode or any changed bytes represent a different source version. If a file is overwritten, preserve the old version record and annotation history, and show that its bytes may no longer be available. Catalog history is not a backup of media files.
 
-Offer an explicit action to accept replacement media under the same logical asset and clear its active annotations. This resets tags, notes and ranges while preserving folder placement and retaining old state in history. Existing Reelet clips remain pinned to their old source version until explicitly relinked. Undo can restore metadata, but cannot restore overwritten bytes.
+Offer an explicit action to accept replacement media under the same logical asset and clear its active annotations. This resets tags, notes and ranges while preserving folder placement and retaining old state in history. Existing AFClip clips remain pinned to their old source version until explicitly relinked. Undo can restore metadata, but cannot restore overwritten bytes.
 
-Missing files remain searchable with an unavailable status. Removing an asset from the catalog is recoverable and leaves files and existing Reelet project snapshots intact. Expose permanent catalog purge as a separate explicit operation. Propagate deleted-library status to consumers.
+Missing files remain searchable with an unavailable status. Removing an asset from the catalog is recoverable and leaves files and existing AFClip project snapshots intact. Expose permanent catalog purge as a separate explicit operation. Propagate deleted-library status to consumers.
 
 Optional watched source folders discover new files while the library is running. Provide explicit import and rescan commands as well. Source-folder mappings can place discoveries into logical library folders. Missing paths or disconnected drives never erase annotations.
 
@@ -51,30 +51,30 @@ Each permanent asset has one home folder; ranges belong beneath their asset. Dir
 
 Direct GUI drag-and-drop or CLI import into the library creates permanent items without passing through Inbox. Dropping onto a folder imports there; otherwise use the library root. Re-importing an existing asset reuses its identity without overwriting annotations or folder placement.
 
-Reelet registration uses Inbox for new assets unless a source-folder mapping places them in the permanent library. Existing library assets retain their current placement.
+AFClip registration uses Inbox for new assets unless a source-folder mapping places them in the permanent library. Existing library assets retain their current placement.
 
 ## Inbox lifetime
 
 Inbox is a temporary intake queue. It supports preview, technical metadata inspection and temporary analysis artifacts. Tags, notes and range annotations are forbidden there through both GUI and CLI. Promote an item into a real library folder before annotating it.
 
-Promotion makes the asset permanent, independent of Reelet references. There is no ordinary move from the main library back into Inbox. Undoing promotion can restore the prior state through history.
+Promotion makes the asset permanent, independent of AFClip references. There is no ordinary move from the main library back into Inbox. Undoing promotion can restore the prior state through history.
 
 | Event | Result |
 | --- | --- |
-| Reelet imports a new video/audio asset into its project bin | Register the asset and retain a durable reference for that project |
+| AFClip imports a new video/audio asset into its project bin | Register the asset and retain a durable reference for that project |
 | Another project imports the same asset | Reuse its identity and add that project's reference |
 | A timeline instance is deleted | No change to project-bin reference or Inbox lifetime |
 | A project closes, its engine exits, or its path is unavailable | Keep the reference |
 | The asset is removed from a project bin | Withdraw that project's reference |
 | The last project-bin reference is withdrawn from an unpromoted item | Recoverably remove it from Inbox browsing, leaving its file untouched |
-| Reelet undoes that removal | Restore the same asset identity and recoverable Inbox record |
+| AFClip undoes that removal | Restore the same asset identity and recoverable Inbox record |
 | An item is promoted before the last reference is withdrawn | Keep the permanent asset |
 
 Key durable references by stable project identity. They are not process leases and do not expire because a project or drive is temporarily missing. Provide manual inspection and cleanup for abandoned references.
 
 Registration and project insertion remain separate transactions. Make their coordination durable, idempotent and retryable. Failed or cancelled project insertion must reconcile any tentative Inbox reference; it must not roll back permanent library assets. Repeated import, withdrawal or undo requests must not create duplicate records or references.
 
-The library checks whether an item is still in Inbox when a withdrawal executes. This prevents a delayed Reelet operation from deleting an asset that the user has since promoted. This narrow lifecycle coordination does not merge the two applications' undo histories.
+The library checks whether an item is still in Inbox when a withdrawal executes. This prevents a delayed AFClip operation from deleting an asset that the user has since promoted. This narrow lifecycle coordination does not merge the two applications' undo histories.
 
 ## Annotation and Tag Manager
 
@@ -82,7 +82,7 @@ Assets and optional ranges share a small annotation model: name, compact tags an
 
 Ranges have stable IDs and may overlap. They need not divide the whole asset into a canonical segmentation. Most SFX may have no ranges at all. Range inspection includes parent asset context while distinguishing inherited context from the range's own tags and notes.
 
-Store boundaries in source-native time, independent of Reelet project settings. Preserve exact source frames and presentation timestamps for video, including variable-frame-rate media, and sample-accurate audio boundaries. Project frame-rate changes never rewrite library ranges.
+Store boundaries in source-native time, independent of AFClip project settings. Preserve exact source frames and presentation timestamps for video, including variable-frame-rate media, and sample-accurate audio boundaries. Project frame-rate changes never rewrite library ranges.
 
 Tag Manager owns the vocabulary. Assets and ranges can only receive tags defined there. Offer editable starter tags such as high-energy, low-energy, impact, ambience, dialogue, music, gameplay and cinematic. No mandatory tagging checklist or arbitrary per-item tag cap is needed.
 
@@ -92,31 +92,31 @@ Humans and agents have equal editing authority. Record author type as human or a
 
 ## Operations, concurrency and history
 
-Run a headless library service that starts automatically when the GUI, CLI or Reelet needs it. Communicate through versioned local operation contracts and structured responses. Neither application reads or writes the other's database internals.
+Run a headless library service that starts automatically when the GUI, CLI or AFClip needs it. Communicate through versioned local operation contracts and structured responses. Neither application reads or writes the other's database internals.
 
 GUI and CLI invoke the same validated operations. Publish coherent batches atomically and check revisions of affected objects and relationships. Reject an entire stale conflicting batch with actionable details. Unrelated changes should not invalidate otherwise valid work; retry policy belongs to the agent or caller.
 
-Library GUI and CLI share a library undo history. Keep it separate from Reelet project undo and checkpoints. Use bounded undo and checkpoint conventions consistent with Reelet, without adding an account-based audit system. Original media bytes remain outside rollback.
+Library GUI and CLI share a library undo history. Keep it separate from AFClip project undo and checkpoints. Use bounded undo and checkpoint conventions consistent with AFClip, without adding an account-based audit system. Original media bytes remain outside rollback.
 
 The contract must cover registration and identity resolution; project reference retention and withdrawal; browsing and search; source/range inspection; annotation and organization; tag management; history; artifact requests and jobs; and change subscriptions. Select concrete command names and storage layout during implementation rather than treating this overview as an already available CLI specification.
 
 Consumers receive committed metadata and availability changes. Reconnecting consumers must be able to resynchronize after missed events. Return stable library, asset, source-version and range identities, revision information, exact times and processing status in structured CLI results.
 
-## Reelet integration
+## AFClip integration
 
-Every video/audio item in Reelet's project bin has a library identity. Existing Reelet images and graphics stay project-owned until library support expands to those types. Reelet's local import action invokes library registration, so users do not need to open a second GUI merely to import footage.
+Every video/audio item in AFClip's project bin has a library identity. Existing AFClip images and graphics stay project-owned until library support expands to those types. AFClip's local import action invokes library registration, so users do not need to open a second GUI merely to import footage.
 
-Provide a read-only library browser in Reelet with folder navigation, search, preview and asset/range insertion. Reelet can create a temporary editorial In/Out selection, but saving a reusable named range or changing library notes requires the library application or CLI.
+Provide a read-only library browser in AFClip with folder navigation, search, preview and asset/range insertion. AFClip can create a temporary editorial In/Out selection, but saving a reusable named range or changing library notes requires the library application or CLI.
 
-Metadata changes appear live in Reelet. Inserting a named range uses its current source version and boundaries. A later range edit never changes existing timeline cuts; an existing use can indicate that its library range has changed. Reelet adapts placement and duration to its project grid without rewriting the source-native library boundary.
+Metadata changes appear live in AFClip. Inserting a named range uses its current source version and boundaries. A later range edit never changes existing timeline cuts; an existing use can indicate that its library range has changed. AFClip adapts placement and duration to its project grid without rewriting the source-native library boundary.
 
 Persist source-version identity, selected source timing, usable source locations and library provenance in the project. Existing edits must play and export without the library service when their original bytes remain available. Regenerate missing disposable artifacts or fall back to original decoding. Library availability may limit new browsing/import operations, but cannot become a requirement for rendering an existing edit.
 
-Project settings, effects, clip timing and exports have no authority over library data. Collect project may copy required media as a Reelet portability operation; it does not transfer ownership of reusable annotations or permit the library to modify original files.
+Project settings, effects, clip timing and exports have no authority over library data. Collect project may copy required media as a AFClip portability operation; it does not transfer ownership of reusable annotations or permit the library to modify original files.
 
 ## Artifacts and background work
 
-Share existing playback, decoding, indexing, waveform and proxy implementation where practical. The library owns reusable source-derived artifacts; Reelet owns project-specific output. Extract code as these workflows need it instead of moving the entire rendering pipeline up front.
+Share existing playback, decoding, indexing, waveform and proxy implementation where practical. The library owns reusable source-derived artifacts; AFClip owns project-specific output. Extract code as these workflows need it instead of moving the entire rendering pipeline up front.
 
 Generate cheap browsing data in the background after registration. Request expensive inspection frames, contact sheets, bounded audio/video excerpts and suitable seek proxies on demand. Keep lightweight inspection artifacts reusable so an agent does not repeatedly regenerate the same source evidence.
 
@@ -126,7 +126,7 @@ Use a configurable disk budget for disposable library artifacts. Protect active 
 
 The library has no permanent trimmed/transcoded export feature. Temporary analysis excerpts are permitted and remain disposable artifacts, not new catalog assets or user exports.
 
-Native drag-out hands another application the original file, as a convenience over revealing it in Explorer. A compatible application such as Reelet also receives structured asset, source-version and range data. A generic destination receives the whole original file even when the user drags a range. Use copy/reference behavior that does not remove or move originals. Validate this with another Windows application.
+Native drag-out hands another application the original file, as a convenience over revealing it in Explorer. A compatible application such as AFClip also receives structured asset, source-version and range data. A generic destination receives the whole original file even when the user drags a range. Use copy/reference behavior that does not remove or move originals. Validate this with another Windows application.
 
 ## Search and responsiveness
 
@@ -138,29 +138,29 @@ Allow asynchronous retrieval and incremental results. Clearly indicate incomplet
 
 Measure warm and cold queries separately. Record catalog size, query, hardware and background workload. Scanning, hashing and artifact preparation are separate visible background costs, not reasons to block the catalog interface. Measure them too so preparation cost does not disappear behind the responsiveness target.
 
-Reuse Reelet's measured playback and seeking work, but validate library preview independently. Existing editor measurements do not prove that a large catalog or uncached source meets those targets.
+Reuse AFClip's measured playback and seeking work, but validate library preview independently. Existing editor measurements do not prove that a large catalog or uncached source meets those targets.
 
 ## Delivery order
 
 Build an audio/SFX tracer bullet first: import a file, preview it, place it in a folder, annotate it, find it and drag its original into another application. Exercise the same flow through CLI with the GUI closed, then verify the GUI reflects CLI edits.
 
-Include Reelet registration, Inbox promotion, reference withdrawal and undo in that first integration path. This proves the application boundary before expanding annotation tools. Deliver usable whole-file audio selection without waiting for video range tooling.
+Include AFClip registration, Inbox promotion, reference withdrawal and undo in that first integration path. This proves the application boundary before expanding annotation tools. Deliver usable whole-file audio selection without waiting for video range tooling.
 
-Next add video preview and optional range annotation, exact source timing, range search and Reelet insertion. Reuse the shared media pipeline as needed. Video and audio are both part of the agreed scope; the order is an implementation sequence.
+Next add video preview and optional range annotation, exact source timing, range search and AFClip insertion. Reuse the shared media pipeline as needed. Video and audio are both part of the agreed scope; the order is an implementation sequence.
 
 Defer multi-user collaboration, cloud sync, additional asset types, smart collections, semantic search, custom annotation schemas, managed-copy imports and modified-media exports. Defer non-Windows packaging and validation while preserving portable interfaces.
 
 ### Manual acceptance checks
 
-- Direct GUI/CLI imports create permanent assets; Reelet imports create Inbox items where appropriate. Inbox rejects annotations until promotion.
+- Direct GUI/CLI imports create permanent assets; AFClip imports create Inbox items where appropriate. Inbox rejects annotations until promotion.
 - Two projects share an asset. Removing one bin reference retains it; removing the last removes an unpromoted item. Undo restores its identity. Closing a project does neither.
 - Promotion racing with withdrawal preserves the permanent item. Failed imports and retried commands leave no duplicate or abandoned tentative references.
 - Exact duplicates and relocated sources retain identity and annotations. Missing files remain searchable. Replacement clears active annotations only through the explicit action and leaves existing edits pinned to their prior version.
 - An in-use tag deletion confirms, clears assignments and can be undone. Concurrent conflicting batches reject atomically while unrelated edits proceed.
-- Library range edits update Reelet browsing without moving existing cuts. Video frame boundaries and audio sample boundaries survive insertion into projects with different frame rates.
-- An existing Reelet edit plays and exports with the library service unavailable and originals present.
+- Library range edits update AFClip browsing without moving existing cuts. Video frame boundaries and audio sample boundaries survive insertion into projects with different frame rates.
+- An existing AFClip edit plays and exports with the library service unavailable and originals present.
 - Cancel preparation, clear eligible caches and evict unused artifacts without losing annotations or breaking active readers. No operation deletes original media.
 - Measure first useful search results and completion at the target catalog scale. Check query replacement, pagination and incomplete-result status.
-- Drag an asset or range to a generic Windows application and verify it receives the original file. Verify compatible Reelet insertion also receives the selected range context.
+- Drag an asset or range to a generic Windows application and verify it receives the original file. Verify compatible AFClip insertion also receives the selected range context.
 
 Use lightweight manual verification for each delivered tracer bullet; add automated coverage only where a failure warrants it.

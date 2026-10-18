@@ -53,7 +53,7 @@ class TimelinePlayback {
       this.pause(false);
       this.revision = project.revision;
       this.native.setup.project = project;
-      this.native.setup.plan = window.ReeletTimeline.compile(project);
+      this.native.setup.plan = window.AFClipTimeline.compile(project);
       for (const clip of this.native.setup.plan.clips) {
         const entry = this.native.entries.get(clip.id);
         if (entry) entry.clip = clip;
@@ -68,7 +68,7 @@ class TimelinePlayback {
     this.audioDirty = !!keepVideo;
     if (keepVideo && this.native) {
       this.native.setup.project = project;
-      this.native.setup.plan = window.ReeletTimeline.compile(project);
+      this.native.setup.plan = window.AFClipTimeline.compile(project);
       for (const clip of this.native.setup.plan.clips) {
         const entry = this.native.entries.get(clip.id);
         if (entry) entry.clip = clip;

@@ -15,12 +15,12 @@ window.NativePreview = class NativePreview {
     this.resize = new ResizeObserver(() => this.fit()); this.resize.observe(host.parentElement); this.fit();
     this.message = e => {
       const entry = [...this.entries.values()].find(v => v.media.kind === 'graphic' && v.content?.contentWindow === e.source);
-      if (entry && typeof e.data?.type === 'string' && e.data.type.startsWith('reelet-text-')) { this.textMessage(entry, e.data); return; }
+      if (entry && typeof e.data?.type === 'string' && e.data.type.startsWith('afclip-text-')) { this.textMessage(entry, e.data); return; }
       const p = this.pending.get(e.data?.requestId);
       if (!p || p.source !== e.source) return;
-      if (e.data.type === 'reelet-ready' || e.data.type === 'reelet-error') {
+      if (e.data.type === 'afclip-ready' || e.data.type === 'afclip-error') {
         this.pending.delete(e.data.requestId); clearTimeout(p.timer);
-        e.data.type === 'reelet-ready' ? p.resolve() : p.reject(new Error(e.data.error || 'Graphic failed'));
+        e.data.type === 'afclip-ready' ? p.resolve() : p.reject(new Error(e.data.error || 'Graphic failed'));
       }
     };
     window.addEventListener('message', this.message);
@@ -46,7 +46,7 @@ window.NativePreview = class NativePreview {
     }
   }
   textMessage(entry, data) {
-    if (data.type === 'reelet-text-fields' && Array.isArray(data.fields)) {
+    if (data.type === 'afclip-text-fields' && Array.isArray(data.fields)) {
       entry.hits.replaceChildren();
       if (entry.clip.track.locked) return;
       for (const field of data.fields.slice(0, 256)) {
@@ -57,8 +57,8 @@ window.NativePreview = class NativePreview {
         hit.onpointerdown = event => { event.preventDefault(); event.stopPropagation(); this.requestText(entry, field.id); };
         entry.hits.append(hit);
       }
-    } else if (data.type === 'reelet-text-request') this.requestText(entry, data.field);
-    else if (data.type === 'reelet-text-end') {
+    } else if (data.type === 'afclip-text-request') this.requestText(entry, data.field);
+    else if (data.type === 'afclip-text-end') {
       entry.content.style.pointerEvents = 'none'; entry.hits.hidden = false;
       this.host.dispatchEvent(new CustomEvent('graphic-text-end', {detail:{...data,clipId:entry.clip.id}}));
     }
@@ -67,12 +67,12 @@ window.NativePreview = class NativePreview {
     if (entry.clip.track.locked) return;
     this.host.dispatchEvent(new CustomEvent('graphic-text-start', {detail:{clipId:entry.clip.id,field,activate:() => {
       entry.content.style.pointerEvents = 'auto'; entry.hits.hidden = true;
-      entry.content.contentWindow.postMessage({type:'reelet-text-edit',field}, '*');
+      entry.content.contentWindow.postMessage({type:'afclip-text-edit',field}, '*');
     }}}));
   }
   finishText(cancel = false) {
     for (const entry of this.entries.values()) if (entry.media.kind === 'graphic')
-      entry.content.contentWindow.postMessage({type:'reelet-text-finish',cancel}, '*');
+      entry.content.contentWindow.postMessage({type:'afclip-text-finish',cancel}, '*');
   }
   fit() {
     const box = this.host.parentElement.getBoundingClientRect();
@@ -193,7 +193,7 @@ window.NativePreview = class NativePreview {
       const work = (async () => {
         await prior?.catch(() => {});
         if (!current()) return;
-        await Promise.all(window.ReeletTimeline.at(this.setup.plan, time).filter(i => i.kind === 'video').map(async item => {
+        await Promise.all(window.AFClipTimeline.at(this.setup.plan, time).filter(i => i.kind === 'video').map(async item => {
           const entry = this.entries.get(item.clipId);
           if (!entry.still || entry.still.hidden) return;
           entry.prefetch = null; entry.prefetchRequest = null; cancelAnimationFrame(entry.prefetchTick);
@@ -263,7 +263,7 @@ window.NativePreview = class NativePreview {
       const id = ++this.requestId;
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Graphic did not acknowledge playback time')); }, 10000);
       this.pending.set(id, { source: entry.content.contentWindow, resolve, reject, timer });
-      entry.content.contentWindow.postMessage({ type: 'reelet-render', requestId: id, time, text: entry.clip.text || {}, editable: !entry.clip.track.locked }, '*');
+      entry.content.contentWindow.postMessage({ type: 'afclip-render', requestId: id, time, text: entry.clip.text || {}, editable: !entry.clip.track.locked }, '*');
     })).finally(() => {
       entry.graphicBusy = null;
       if (entry.graphicNext != null && !this.closed) { const next = entry.graphicNext; entry.graphicNext = null; this.graphic(entry, next).catch(this.onError); }
@@ -271,7 +271,7 @@ window.NativePreview = class NativePreview {
     return entry.graphicBusy;
   }
   layout(time) {
-    const items = window.ReeletTimeline.at(this.setup.plan, time), active = new Set(items.map(i => i.clipId));
+    const items = window.AFClipTimeline.at(this.setup.plan, time), active = new Set(items.map(i => i.clipId));
     for (const [id, entry] of this.entries) {
       entry.layer.hidden = !active.has(id);
       if (entry.layer.hidden) this.hideStill(entry);
@@ -289,7 +289,7 @@ window.NativePreview = class NativePreview {
     const generation = ++this.generation;
     this.proxyAbort?.abort(); this.proxyAbort = new AbortController();
     const signal = this.proxyAbort.signal;
-    const selection = window.ReeletTimeline.at(this.setup.plan, time);
+    const selection = window.AFClipTimeline.at(this.setup.plan, time);
     const cached = !forPlayback && selection.filter(i => i.kind === 'video').every(i => {
       const entry = this.entries.get(i.clipId); return this.cachedFrame(entry, i.sourceTime) || this.proxyFrame(entry,i.sourceTime);
     });

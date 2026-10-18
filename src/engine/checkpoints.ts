@@ -6,7 +6,7 @@ import type {ProjectState} from './state.ts';
 import {assert,revisions,validateProject} from '../shared/project.ts';
 import {restoreGraphicAuthors} from './probe.ts';
 
-function root(state:ProjectState){return path.join(state.dir,'.reelet','checkpoints');}
+function root(state:ProjectState){return path.join(state.dir,'.afclip','checkpoints');}
 function index(state:ProjectState):any[]{try{return JSON.parse(fs.readFileSync(path.join(root(state),'index.json'),'utf8'));}catch(e:any){if(e.code==='ENOENT')return [];throw e;}}
 function remove(state:ProjectState,id:string){assert(/^[a-zA-Z0-9_-]+$/.test(id),'Invalid checkpoint ID');const target=path.resolve(root(state),id);assert(target.startsWith(path.resolve(root(state))+path.sep),'Checkpoint deletion escaped project history');fs.rmSync(target,{recursive:true,force:true});}
 export function listCheckpoints(state:ProjectState){return index(state);}

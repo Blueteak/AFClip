@@ -11,7 +11,7 @@ export function graphicFields(dir:string, media:any) {
  assert(file.startsWith(root+path.sep),'Graphic entry escaped its asset folder');
  const fields:{id:string;default:string}[]=[], ids=new Set<string>();
  function visit(node:any) {
-  const attr=node.attrs?.find((a:any)=>a.name==='data-reelet-text');
+  const attr=node.attrs?.find((a:any)=>a.name==='data-afclip-text');
   if(attr){
    const id=attr.value;
    assert(/^[a-zA-Z0-9_-]{1,128}$/.test(id)&&!ids.has(id),'Text fields need unique stable IDs',{field:id});

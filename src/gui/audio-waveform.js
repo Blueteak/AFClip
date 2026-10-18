@@ -1,9 +1,9 @@
 'use strict';
-// Shared audio waveform viewer for the Reelet source monitor and the content library.
+// Shared audio waveform viewer for the AFClip source monitor and the content library.
 // Draws true per-bin peak extrema and RMS at device pixels. Visual gain only changes
 // the drawing; audio playback is never touched.
 //
-//   const view = new ReeletAudioWaveform({ container, load, duration, format, onSeek, tips });
+//   const view = new AFClipAudioWaveform({ container, load, duration, format, onSeek, onSelectRange, onClearRange, getDragRange, tips });
 //
 //   container   Element the view fills. It must be positioned; the view is inset 0.
 //   load(opts)  => Promise<WaveformData>. opts is undefined for the whole source, or
@@ -13,7 +13,7 @@
 //   duration    Source seconds. The ruler and seeking work before data arrives or after it fails.
 //   format(t)   Playback cursor label.
 //   onSeek(t, phase)  Click and drag seeking. phase is 'start', 'move' or 'end'.
-//   tips        'tip' sets Reelet's element.tip spec; 'title' sets a native title.
+//   tips        'tip' sets AFClip's element.tip spec; 'title' sets a native title.
 //
 //   setTime(t)        Move the playback cursor. Cheap; safe to call every frame.
 //   setPlaying(bool)  While playing and zoomed, the view pages to keep the cursor visible.
@@ -76,9 +76,9 @@
     }
   }
 
-  window.ReeletAudioWaveform = class ReeletAudioWaveform {
-    constructor({ container, load, duration = 0, format = t => t.toFixed(3), onSeek, tips = 'tip' }) {
-      Object.assign(this, { container, loader: load, format, onSeek, tips });
+  window.AFClipAudioWaveform = class AFClipAudioWaveform {
+    constructor({ container, load, duration = 0, format = t => t.toFixed(3), onSeek, onSelectRange, onClearRange, getDragRange, onDragStart, onDragEnd, tips = 'tip' }) {
+      Object.assign(this, { container, loader: load, format, onSeek, onSelectRange, onClearRange, getDragRange, tips });
       this.duration = Math.max(0, num(duration));
       this.time = 0; this.playing = false; this.regions = [];
       this.full = null; this.detail = null; this.status = 'loading'; this.error = null;
@@ -106,6 +106,8 @@
         wheel: e => this.wheel(e), dbl: e => { if (e.target === this.canvas && this.zoomed) this.fit(); },
       };
       this.canvas.addEventListener('pointerdown', this.on.down);
+      this.canvas.addEventListener('dragstart', e => onDragStart?.(e));
+      this.canvas.addEventListener('dragend', () => onDragEnd?.());
       this.canvas.addEventListener('pointermove', this.on.move);
       this.canvas.addEventListener('pointerleave', this.on.leave);
       this.canvas.addEventListener('dblclick', this.on.dbl);
@@ -142,7 +144,7 @@
     setRegions(list) {
       const next = (list || []).filter(r => r && num(r.end) > num(r.start)).map(r => ({ start: num(r.start), end: num(r.end), kind: r.kind || 'selection' }));
       if (JSON.stringify(next) === JSON.stringify(this.regions)) return;
-      this.regions = next; this.invalidate();
+      this.regions = next; this.queue();
     }
     zoomBy(factor, anchor = this.zoomAnchor()) {
       if (!(this.duration > 0)) return;
@@ -261,7 +263,6 @@
       g.fillStyle = C.bg; g.fillRect(0, 0, w, h); p.clearRect(0, 0, w, h);
       const lanes = this.laneRects(), src = this.sourceFor(), gain = this.gain;
       for (const r of lanes) { g.fillStyle = C.lane; g.fillRect(0, r.y, w, r.h); }
-      this.drawRegions(g, lanes);
       for (let i = 0; i < lanes.length; i++) {
         const r = lanes[i], cy = r.y + r.h / 2, half = r.h / 2 * (1 - PAD);
         if (src) this.drawGuides(g, r, cy, half, gain);
@@ -388,6 +389,7 @@
       const x = this.xOf(this.time);
       if (x > 0) { g.save(); g.beginPath(); g.rect(0, rh, Math.min(w, x), bottom - rh); g.clip(); g.drawImage(this.played, 0, 0); g.restore(); }
       if (this.overviewH) { const p = this.time / this.duration * w; g.fillStyle = C.accent; g.fillRect(Math.round(p), bottom, Math.max(1, Math.round(dpr)), h - bottom); }
+      this.drawRegions(g, this.laneRects());
       let pill = null;
       if (x >= 0 && x <= w) {
         g.fillStyle = C.accent; g.fillRect(Math.round(x - dpr * .5), rh, Math.max(1, Math.round(dpr * 1.25)), bottom - rh);
@@ -436,7 +438,7 @@
         title: this.status === 'error' ? 'Waveform unavailable' : 'Waveform',
         desc: this.status === 'error' ? `${this.error} Playback still works.` : null,
         meta: this.full ? `${this.full.lanes.length > 1 ? 'Stereo' : 'Mono'} · peak ${this.full.peak > 0 ? dbText(20 * Math.log10(this.full.peak)) : '−∞'} dBFS` : null,
-        hint: [{ keys: '#Click', text: 'seek' }, { keys: '#Wheel', text: 'zoom' }, { keys: ['Shift', '#Wheel'], text: 'pan' }, { keys: '#Double-click', text: 'fit' }],
+        hint: [{ keys: '#Click', text: 'seek' }, ...(this.onSelectRange ? [{ keys: '#Drag', text: 'select range' }, { keys: '#Drag selection', text: 'insert into timeline' }, { keys: 'Shift', text: 'select again' }] : []), { keys: '#Wheel', text: 'zoom' }, { keys: ['Shift', '#Wheel'], text: 'pan' }, { keys: '#Double-click', text: 'fit' }],
         follow: true,
       });
       const badge = b => () => ({ title: b.dataset.tipTitle, desc: b.dataset.tipDesc || null, hint: b.dataset.tipHint ? [{ keys: '#Click', text: b.dataset.tipHint.replace(/^Click /, '') }] : null });
@@ -460,25 +462,37 @@
       if (this.drag) return;
       const { x, y } = this.point(e);
       const over = y >= this.h - this.overviewH && this.overviewH;
-      this.canvas.style.cursor = over ? 'grab' : '';
+      const range = this.getDragRange?.(), t = this.tOf(x);
+      const draggable = !over && range && t >= range.start && t <= range.end && !e.shiftKey;
+      this.canvas.draggable = !!draggable;
+      this.canvas.style.cursor = over || draggable ? 'grab' : this.onSelectRange ? 'crosshair' : '';
       this.hover = over || !(this.duration > 0) ? null : { t: this.tOf(x), y };
       this.queue();
     }
     pointerDown(e) {
       if (!(this.duration > 0) || (e.button !== 0 && e.button !== 1)) return;
+      const hit = this.point(e), range = this.getDragRange?.(), t = this.tOf(hit.x);
+      const over = this.overviewH && hit.y >= this.h - this.overviewH;
+      if (e.button === 0 && !e.altKey && !e.shiftKey && !over && range && t >= range.start && t <= range.end) {
+        this.canvas.draggable = true; return;
+      }
+      this.canvas.draggable = false;
       e.preventDefault();
       const start = this.point(e), mode = this.overviewH && start.y >= this.h - this.overviewH ? 'overview' : e.button === 1 || e.altKey ? 'pan' : 'seek';
       const origin = { start: this.viewStart, x: start.x };
       this.canvas.setPointerCapture(e.pointerId);
       this.drag = mode; this.hover = null;
       let pending = null, raf = 0;
-      const seekAt = (x, phase) => { const t = clamp(this.tOf(x), 0, this.duration); this.time = t; this.queue(); this.onSeek?.(t, phase); };
+      const selectionStart = this.tOf(start.x);
+      const seekAt = (x, phase) => {
+        if (this.onSelectRange && phase !== 'start' && Math.abs(x - start.x) >= 3 * this.dpr) this.onSelectRange(selectionStart, this.tOf(x), phase);
+        const t = clamp(this.tOf(x), 0, this.duration); this.time = t; this.queue(); this.onSeek?.(t, phase); };
       const apply = x => {
         if (mode === 'seek') seekAt(x, 'move');
         else if (mode === 'pan') this.setView(origin.start - (x - origin.x) / this.w * this.viewSpan, this.viewSpan);
         else this.setView((x / this.w) * this.duration - this.viewSpan / 2, this.viewSpan);
       };
-      if (mode === 'seek') seekAt(start.x, 'start');
+      if (mode === 'seek') { this.onClearRange?.(); seekAt(start.x, 'start'); }
       else if (mode === 'overview') { this.canvas.style.cursor = 'grabbing'; apply(start.x); }
       else this.canvas.style.cursor = 'grabbing';
       const move = ev => { pending = this.point(ev).x; if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pending != null) apply(pending); }); };
@@ -489,7 +503,7 @@
         this.canvas.removeEventListener('pointercancel', end);
         this.endDrag = null; this.drag = null; this.canvas.style.cursor = '';
         if (this.destroyed || !ev) return;
-        const x = pending ?? start.x;
+        const x = ev.type === 'pointerup' ? this.point(ev).x : pending ?? start.x;
         if (mode === 'seek') seekAt(x, 'end'); else if (pending != null) apply(x);
       };
       this.endDrag = () => end(null);

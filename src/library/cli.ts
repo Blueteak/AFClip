@@ -32,11 +32,11 @@ const help=`Content Library. GUI and CLI use the same local catalog and operatio
 
 Every /v1 operation is available as a CLI command with --field value options,
 or call <file.json|-> for exact structured input, including atomic apply batches.
-Use --catalog PATH to select a catalog; default is %LOCALAPPDATA%/Reelet/Library.
+Use --catalog PATH to select a catalog; default is %LOCALAPPDATA%/AFClip/Library.
 Author defaults to agent; --author human is supported. Outputs are structured JSON.
 Mutations of existing items require their current revision from inspect/overview.
 Ranges use exclusive end frames/samples. No command deletes original media.
-Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to Reelet:
+Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to AFClip:
   node src/cli.ts library-import <project-dir> <id>
 This adds the source or selected range to the project bin and returns result.media.id.
 Follow nextOffset until complete when searching across multiple pages.

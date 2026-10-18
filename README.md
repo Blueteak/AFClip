@@ -1,14 +1,16 @@
-# Reelet
+# AFClip
 
-Reelet is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
+Agent First Clip. Home: [afclip.com](https://afclip.com).
+
+AFClip is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
 
 The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The implementation includes a shared project engine, CLI, desktop editor, separate export workers and a standalone Content Library for reusable video/audio annotations and named selects. Track folders and other parts of the editing overview remain future work.
 
 ## Design
 
-- [MVP Overview](Reelet-MVP-Overview.md): agreed behavior and scope.
-- [Technical Overview](Reelet-Technical-Overview.md): architecture and Windows prototype criteria.
-- [Content Library Overview](content-library-overview.md): standalone library scope, ownership, Inbox lifetime and Reelet integration.
+- [MVP Overview](AFClip-MVP-Overview.md): agreed behavior and scope.
+- [Technical Overview](AFClip-Technical-Overview.md): architecture and Windows prototype criteria.
+- [Content Library Overview](content-library-overview.md): standalone library scope, ownership, Inbox lifetime and AFClip integration.
 
 These overviews supersede the earlier design brief.
 
@@ -37,9 +39,9 @@ Mac measurements and setup are in [macOS performance](docs/macos-performance.md)
 
 ## Content Library
 
-Run `npm run library:gui` for the standalone library, or `npm run library -- --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares Reelet's native media presentation and fast-seek implementation.
+Run `npm run library:gui` for the standalone library, or `npm run library -- --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares AFClip's native media presentation and fast-seek implementation.
 
-In Reelet, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking, the 35-asset GUI annotation pass and remaining scope.
+In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking, the 35-asset GUI annotation pass and remaining scope.
 
 ## Development reload
 

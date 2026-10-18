@@ -159,3 +159,4 @@ body{grid-template-rows:auto minmax(0,1fr) 28px}
 .clip-info-body .clip-info-label:not(:first-child){margin-top:12px}
 .annotation-popover .tag-chip{background:transparent;border-color:var(--line-2)}
 .annotation-popover .tag-chip.active{background:var(--accent-soft);border-color:#487bba;color:#9bc5ff}
+.source-view>.browser-heading{flex-wrap:wrap;gap:6px}

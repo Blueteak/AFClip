@@ -1,6 +1,6 @@
 'use strict';
 const $ = id => document.getElementById(id);
-const api = window.reelet;
+const api = window.afclip;
 const SVG = 'http://www.w3.org/2000/svg';
 
 // ---------------------------------------------------------------- Exact time
@@ -98,9 +98,9 @@ const withLinked = list => { const out = new Map(list.map(c => [c.id, c])); for 
 // ---------------------------------------------------------------- Preferences
 const prefs = (() => {
   const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', welcomed: false, tips: {}, marks: {} };
-  try { return { ...defaults, ...JSON.parse(localStorage.getItem('reelet.ui') || '{}') }; } catch { return defaults; }
+  try { return { ...defaults, ...JSON.parse(localStorage.getItem('afclip.ui') || '{}') }; } catch { return defaults; }
 })();
-const savePrefs = () => localStorage.setItem('reelet.ui', JSON.stringify(prefs));
+const savePrefs = () => localStorage.setItem('afclip.ui', JSON.stringify(prefs));
 function applyLayout() {
   const root = document.documentElement.style;
   root.setProperty('--left-w', `${prefs.leftW}px`); root.setProperty('--right-w', `${prefs.rightW}px`);
@@ -140,13 +140,15 @@ function syncPlayButton() {
   if (button && button.getAttribute('aria-label') !== label) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', label); }
 }
 // Source monitor: previews bin media with its own clock. It never touches the timeline session or the project.
-const source = new window.ReeletSourcePreview({
+const source = new window.AFClipSourcePreview({
   api, stage: $('source-stage'), strip: $('source-strip'),
   format: t => tc(Math.floor(t * fps() + 1e-7)), frameDuration: () => 1 / fps(),
   onTime: t => drawSourceTime(t),
   onState: () => { syncSourceTransport(); if (monitorView === 'source') drawMonitor(); refreshSourceInspector(); },
   onSelect: () => refreshSourceInspector(),
   onError: error => say(explain(error), 'error'),
+  onDragStart: payload => { hideTip(); dragMedia = payload.media; dragSource = payload; },
+  onDragEnd: () => { dragMedia = null; dragSource = null; clearDropGhost(); $('drag-readout').hidden = true; $('snapline').hidden = true; },
 });
 
 
@@ -486,7 +488,7 @@ function openShortcuts() {
 
 function welcome(force) {
   if (prefs.welcomed && !force) return;
-  toast({ cls: 'welcome', title: 'Welcome to Reelet', timeout: 0,
+  toast({ cls: 'welcome', title: 'Welcome to AFClip', timeout: 0,
     body: h('div', {}, 'Hover any control to see what it does and its shortcut. Most editing is one key away.', h('br'),
       kbd('?'), ' all shortcuts  ·  ', kbd('Ctrl+Space'), ' search commands', h('br'), 'Drag media from the bin onto the timeline to start.'),
     actions: [{ label: 'Got it', primary: true, run: () => { prefs.welcomed = true; savePrefs(); } }] });
@@ -548,10 +550,10 @@ function edit(build, message, extra = {}) {
       await api.command({ command: 'apply', batch: { preconditions: { ...snapshot.revisions, ...pre }, operations: ops } });
     } catch (error) {
       if (error.message.includes('Unsupported object field') && ops.some(op => op.collection === 'clips' && op.value?.volumePoints !== undefined)) {
-        throw new Error('The project engine is older than the volume-point controls. Restart Reelet and its project engine to enable volume points. Saved edits are preserved; session undo history resets.');
+        throw new Error('The project engine is older than the volume-point controls. Restart AFClip and its project engine to enable volume points. Saved edits are preserved; session undo history resets.');
       }
       if (error.message.includes('supported collection') && ops.some(op => op.collection === 'markers')) {
-        throw new Error('The project engine is older than markers. Restart Reelet and its project engine to enable markers. Saved edits are preserved; session undo history resets.');
+        throw new Error('The project engine is older than markers. Restart AFClip and its project engine to enable markers. Saved edits are preserved; session undo history resets.');
       }
       throw error;
     }
@@ -669,7 +671,7 @@ function rippleDelete(start, end, revision = project().revision) {
     try {
       return await api.command({ command: 'apply', batch: { preconditions: { project: revision }, operations: [{ op: 'ripple-delete', start: fromF(start), end: fromF(end) }] } });
     } catch (error) {
-      if (error.message.includes('Expected put or remove')) throw new Error('Restart Reelet and its project engine to enable ripple delete. Saved edits are preserved; session undo history resets.');
+      if (error.message.includes('Expected put or remove')) throw new Error('Restart AFClip and its project engine to enable ripple delete. Saved edits are preserved; session undo history resets.');
       throw error;
     }
   }, `Ripple deleted ${shortTc(end - start)} across all tracks`).then(result => {
@@ -882,7 +884,7 @@ function linkCommand(op, refusal, message) {
     try {
       return await api.command({ command: 'apply', batch: { preconditions: { project: project().revision }, operations: [op()] } });
     } catch (error) {
-      if (/Expected put or remove|Unsupported operation|Unknown operation/i.test(error.message)) throw new Error('The project engine is older than linked audio. Restart Reelet and its project engine to enable Detach Audio. Saved edits are preserved; session undo history resets.');
+      if (/Expected put or remove|Unsupported operation|Unknown operation/i.test(error.message)) throw new Error('The project engine is older than linked audio. Restart AFClip and its project engine to enable Detach Audio. Saved edits are preserved; session undo history resets.');
       throw error;
     }
   }, message);
@@ -935,17 +937,15 @@ function addTrack(name) {
   });
 }
 function mediaLength(m) { const range=m.metadata?.library; return m.kind === 'graphic' || m.kind === 'image' ? 5 * nominal() : range?.end ? Math.max(1, Math.floor(secs(range.end)*fps()+1e-6)-Math.ceil(secs(range.start)*fps()-1e-6)) : Math.max(1, Math.floor(secs(m.duration) * fps() + 1e-6)); }
-function addMediaAt(m, trackId, f) {
-  const id = uid('clip');
-  edit(() => {
-    const len = mediaLength(m), ops = [], pre = { [`clip:${id}`]: 0 };
-    let target = trackId && trackById(trackId);
-    if (target && (target.locked || !free(target.id, f, f + len))) target = null;
-    if (!target) { target = { id: uid('track'), name: stem(mediaName(m)), disabled: false, locked: false }; ops.push(put('tracks', target)); Object.assign(pre, { [`track:${target.id}`]: 0, [`occupancy:${target.id}`]: 0 }); }
-    const sourceIn=m.metadata?.library?.start?fromF(Math.ceil(secs(m.metadata.library.start)*fps()-1e-6)):ZERO;
-    ops.push(put('clips', { id, trackId: target.id, mediaId: m.id, name: libraryMedia[m.id]?.name || m.metadata?.library?.name || stem(mediaName(m)), start: fromF(Math.max(0, f)), duration: fromF(len), sourceIn, speed: ONE, volume: 1, mute: false, fadeIn: ZERO, fadeOut: ZERO }));
-    return { ops, pre, message: `Added “${stem(mediaName(m))}” at ${tc(f)}${trackId && target.id !== trackId ? ' on a new track' : ''}` };
-  }).then(ok => { if (ok) select([id]); });
+function addMediaAt(m, trackId, f, sourceRange = null) {
+  return perform(() => {
+    const len = sourceRange ? sourceRangeLength(sourceRange) : mediaLength(m), target = trackId && trackById(trackId);
+    const chosen = target && !target.locked && free(target.id, f, f + len) ? trackId : undefined;
+    return api.command({command:'source-insert', id:m.id, trackId:chosen, at:fromF(Math.max(0,f)),
+      fps:project().fps, selection:sourceRange?.selection,
+      range:sourceRange && !sourceRange.selection ? sourceRange.range : undefined,
+      preconditions:{...snapshot.revisions, ...(sourceRange ? {[`media:${m.id}`]:sourceRange.revision} : {})}});
+  }, `Added ${stem(mediaName(m))} at ${tc(f)}`).then(result => { if (result?.clip) select([result.clip.id]); });
 }
 // Toggles read the track when the edit runs, so quick repeated clicks alternate correctly.
 function toggleTrack(t, key) {
@@ -1105,7 +1105,7 @@ function draw() {
   if (firstLoad && !selection.size && p.clips.length) selection.add([...p.clips].sort((a, b) => secs(a.start) - secs(b.start))[0].id);
   playF = Math.min(playF, navEndF());
   $('project-name').textContent = p.name;
-  document.title = `${p.name} · Reelet`;
+  document.title = `${p.name} · AFClip`;
   drawMedia(); syncSource(); drawInspector(); drawMonitor(); syncChrome();
   if (drag || editingTrack) deferredDraw = true; else drawTimeline();
   if (!$('history-panel').closest('.tab-page').hidden) drawHistory();
@@ -1240,7 +1240,7 @@ function drawMedia() {
     row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); openSource(m); };
     row.ondblclick = () => editable() && addMediaAt(m, null, playF);
     row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, { label: 'Preview in Source monitor', icon: 'eye', run: () => openSource(m) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}, {label:link.temporary?'Copy source library ID':'Copy library ID',icon:'copy',run:()=>perform(()=>api.copyText(mediaLibraryId(m)), 'Library ID copied')}]:[]), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
-    row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-reelet-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
+    row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-afclip-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
     row.ondragend = () => { dragMedia = null; clearDropGhost(); };
     list.append(row);
   }
@@ -1255,10 +1255,14 @@ $('media-list').addEventListener('keydown', e => {
     // Held arrows settle before a source loads.
     clearTimeout(sourceTimer); sourceTimer = setTimeout(() => openSource(mediaById(binSelection)), 90);
   }
-  else if (e.key === 'Enter' && i >= 0 && editable()) { addMediaAt(media[i], null, playF); e.preventDefault(); e.stopPropagation(); }
+  else if (e.key === 'Enter' && i >= 0 && editable()) {
+    if (monitorView === 'source' && source.mediaId === media[i].id && source.draft) insertMonitoredSource();
+    else addMediaAt(media[i], null, playF);
+    e.preventDefault(); e.stopPropagation();
+  }
 });
 
-const sourceKey = m => JSON.stringify([m.id, m.path, m.metadata?.library ?? null]);
+const sourceKey = m => JSON.stringify([m.id, m.revision, m.path, m.metadata?.library ?? null]);
 let sourceTimer = null;
 function openSource(m) {
   clearTimeout(sourceTimer);
@@ -1278,7 +1282,9 @@ function drawSourceTime(t) {
 }
 function syncSourceTransport() {
   const timed = source.timed;
-  for (const b of $('source-buttons').querySelectorAll('button')) b.disabled = !timed || (b.dataset.source === 'jump' && !source.blocks.length);
+  for (const b of $('source-buttons').querySelectorAll('button')) b.disabled = !timed || (b.dataset.source === 'jump' && !source.blocks.length)
+    || (['mark-in','mark-out'].includes(b.dataset.source) && !source.canMark)
+    || (b.dataset.source === 'clear' && !source.draft) || (b.dataset.source === 'insert' && !editable());
   const play = $('source-buttons').querySelector('[data-source="play"]'), label = source.running ? 'Pause' : 'Play';
   if (play && play.getAttribute('aria-label') !== label) { play.replaceChildren(icon(source.running ? 'pause' : 'play')); play.setAttribute('aria-label', label); }
   $('source-duration').textContent = timed ? tc(Math.round(source.duration * fps())) : '';
@@ -1300,6 +1306,14 @@ function drawSourceMonitor() {
 // Source keys hold JSON, so this key uses a separator the program inspector keys never split on.
 const sourceInspectorKey = () => ['source', source.key, source.status, source.version, source.selected?.key || '', source.notice || ''].join('\u0001');
 function refreshSourceInspector() { if (monitorView === 'source' && sourceInspectorKey() !== inspectorKey) drawInspector(); }
+function insertMonitoredSource() {
+  if (!source.timed || !editable()) return;
+  const id = source.mediaId, selection = source.selectionRequest(), at = fromF(playF);
+  perform(() => api.command({command:'source-insert', id, selection, range:source.draft && !selection ? source.markedRange : undefined, at, fps:project().fps,
+    preconditions:{...snapshot.revisions, [`media:${id}`]:source.data.revision}}), 'Inserted source selection').then(result => {
+    if (result?.clip) { source.pause(); setMonitorView('frame'); select([result.clip.id]); }
+  });
+}
 const staticField = (label, value, tip) => field(label, h('span', { class: 'field-static', tip: { title: label, desc: tip, meta: value } }, value));
 function annotationBody(tags, notes, empty = 'No tags or notes') {
   const out = [];
@@ -1317,7 +1331,12 @@ function drawSourceInspector(box) {
   box.append(h('div', { class: 'insp-head' }, icon(kindIcon(kind)), h('span', { class: 'insp-title' }, a?.name || d?.name || mediaName(m))),
     h('div', { class: 'insp-source', tip: { title: mediaName(m), meta: path } }, basename(path) || kindLabel(kind)));
   if (source.status === 'loading') { box.append(h('div', { class: 'insp-note' }, 'Loading source…')); return; }
-  if (source.status === 'error') { box.append(h('div', { class: 'insp-note warn' }, source.error)); return; }
+  if (source.status === 'error') {
+    box.append(h('div', { class: 'insp-note warn' }, source.error),
+      h('div', {class:'insp-actions'}, h('button', {class:'chip-button',onclick:()=>source.open(m,sourceKey(m))}, 'Retry source')),
+      sourcePreparationControls());
+    return;
+  }
   if (!d) return;
   for (const text of [d.warning, source.notice]) if (text) box.append(h('div', { class: 'insp-note warn' }, text));
   const range = d.selection;
@@ -1326,14 +1345,33 @@ function drawSourceInspector(box) {
     d.width && kind !== 'audio' ? staticField('Size', `${d.width}×${d.height}`) : null,
     range ? staticField('Saved range', `${at(range.start)} → ${at(range.end)}`, 'Project timing for this bin item. Adding it to the timeline uses this range.') : null));
   if (a) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Annotation'), annotationBody(a.tags, a.notes)));
+  if (source.timed) box.append(h('div', {class:'insp-section'}, h('div', {class:'section-title'}, 'Editorial selection'),
+    source.draft ? staticField('In / Out', `${source.markedRange.start.toFixed(6)} → ${source.markedRange.end.toFixed(6)} s`) : h('div', {class:'insp-note'}, 'Insert the saved range or mark a temporary selection with I and O.'),
+    h('div', {class:'source-selection-actions'}, h('button', {class:'chip-button', disabled:!source.canMark, onclick:()=>source.mark()}, 'Mark In'),
+    h('button', {class:'chip-button', disabled:!source.canMark, onclick:()=>source.mark(true)}, 'Mark Out'),
+    h('button', {class:'chip-button', disabled:!source.draft, onclick:()=>source.clearMarks()}, 'Clear marks'),
+    h('button', {class:'chip-button', disabled:!editable(), onclick:insertMonitoredSource}, 'Insert at playhead')),
+    !source.canMark ? h('div', {class:'insp-note'}, 'Prepare this source to enable exact In/Out selection. Saved selections can still be inserted.') : null,
+    sourcePreparationControls()));
+  if (m?.metadata?.library) box.append(h('div', {class:'insp-actions'}, h('button', {class:'chip-button', onclick:()=>api.editLibrary(m.metadata.library.assetId)}, 'Edit in library')));
   const b = source.selected;
   if (b) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, b.name),
     staticField('In', at(b.start)), staticField('Out', at(b.end)), staticField('Length', shortTc(Math.max(0, Math.round((b.end - b.start) * fps())))),
     b.track ? staticField('Track', b.track) : null,
-    b.type === 'take' ? annotationBody(null, b.item.text, 'No transcript') : annotationBody(b.item.tags, b.item.notes)));
+    b.type === 'take' ? annotationBody(null, b.item.text, 'No transcript') : annotationBody(b.item.tags, b.item.notes),
+    h('button', {class:'chip-button', disabled:!source.canMark, onclick:()=>source.useSelected()}, 'Use as In/Out')));
   if (source.blocks.length) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Ranges and takes', h('span', { class: 'tab-spacer' }), String(source.blocks.length)),
     source.blocks.map(x => h('button', { class: `annotation-item ${x.type} ${x.key === b?.key ? 'selected' : ''}`, onclick: () => source.select(x), tip: { title: x.name, meta: [`${at(x.start)} → ${at(x.end)}`, x.track ? `Track ${x.track}` : null].filter(Boolean).join('\n') } },
       h('span', { class: 'swatch' }), h('span', { class: 'label' }, x.name), h('span', { class: 'when' }, shortTc(Math.floor(x.start * fps() + 1e-7)))))));
+}
+
+function sourcePreparationControls() {
+  if (!source.media?.metadata?.library) return null;
+  return h('div', {}, h('div', {class:'source-selection-actions'},
+    h('button', {class:'chip-button',disabled:source.preparing,onclick:()=>source.prepare()}, source.data?.prepared ? 'Prepare again' : 'Prepare source'),
+    source.preparing ? h('button', {class:'chip-button',onclick:()=>source.cancelPreparation()}, 'Cancel preparation') : null),
+    source.preparing ? h('div', {class:'insp-note'}, (source.preparation||[]).map(j=>`${j.phase||j.status} · ${Math.round((j.progress||0)*100)}%`).join('\n') || 'Queuing preparation…') : null,
+    source.status==='error'&&source.notice ? h('div',{class:'insp-note warn'},source.notice) : null);
 }
 
 async function drawHistory() {
@@ -1758,14 +1796,14 @@ function volumePosition(volume) {
 const pointLocal = (c, p) => (secs(p.time) - secs(c.sourceIn)) / secs(c.speed);
 const sourceAtFrame = (c, f) => fadd(c.sourceIn, fmul(fsub(fromF(f), c.start), c.speed));
 const sameTime = (a, b) => a.num * b.den === b.num * a.den;
-const levelGain = (c, t) => (c.volume ?? 1) * window.ReeletTimeline.automationGain(c, t);
+const levelGain = (c, t) => (c.volume ?? 1) * window.AFClipTimeline.automationGain(c, t);
 // Subdivide each eased gain segment to draw its dB curve.
 function envelopePaths(c) {
-  const duration = secs(c.duration), fi = Math.min(secs(c.fadeIn), duration), fo = Math.min(secs(c.fadeOut), duration), ease = window.ReeletTimeline.easeInOut;
+  const duration = secs(c.duration), fi = Math.min(secs(c.fadeIn), duration), fo = Math.min(secs(c.fadeOut), duration), ease = window.AFClipTimeline.easeInOut;
   const fade = t => (fi ? ease(t / secs(c.fadeIn)) : 1) * (fo ? ease((duration - t) / secs(c.fadeOut)) : 1);
   const times = new Set([0, duration]);
   for (let i = 0; i <= 32; i++) { times.add(fi * i / 32); times.add(duration - fo * i / 32); }
-  const points = window.ReeletTimeline.automationPoints(c);
+  const points = window.AFClipTimeline.automationPoints(c);
   if (points.length) {
     const marks = [0, ...points.map(p => pointLocal(c, p)).filter(t => t > 0 && t < duration), duration], steps = Math.max(1, Math.min(12, Math.floor(600 / marks.length)));
     for (let i = 1; i < marks.length; i++) for (let k = 0; k < steps; k++) times.add(marks[i - 1] + (marks[i] - marks[i - 1]) * k / steps);
@@ -1789,7 +1827,7 @@ function paintAudioControls(el, c) {
   Object.assign(area.querySelector('[data-audio="fadeIn"]').style, { left: `${100 * fi / duration}%`, top: `${volumePosition(levelGain(c, fi))}%` });
   Object.assign(area.querySelector('[data-audio="fadeOut"]').style, { left: `${100 * (1 - fo / duration)}%`, top: `${volumePosition(levelGain(c, duration - fo))}%` });
   for (const old of area.querySelectorAll('.audio-point')) old.remove();
-  for (const p of window.ReeletTimeline.automationPoints(c).filter(p => p.implicit)) {
+  for (const p of window.AFClipTimeline.automationPoints(c).filter(p => p.implicit)) {
     area.append(h('div', { class: 'audio-point', title: 'Temporary anchor at clip volume',
       style: { left: `${100 * pointLocal(c, p) / duration}%`, top: `${volumePosition(c.volume ?? 1)}%`, opacity: .45, pointerEvents: 'none' } }));
   }
@@ -1808,7 +1846,7 @@ function paintAudioControls(el, c) {
   ctx.beginPath();
   const audible = { ...c, mute: false };
   for (let x = 0; x < canvas.width; x++) {
-    const peak = Math.min(1, canvas.peaks[x] * window.ReeletTimeline.audioGain(audible, (x + .5) / canvas.width * duration)) * (canvas.height / 2 - 1);
+    const peak = Math.min(1, canvas.peaks[x] * window.AFClipTimeline.audioGain(audible, (x + .5) / canvas.width * duration)) * (canvas.height / 2 - 1);
     ctx.moveTo(x + .5, canvas.height / 2 - peak); ctx.lineTo(x + .5, canvas.height / 2 + peak);
   }
   ctx.stroke();
@@ -1857,7 +1895,7 @@ function beginPointDrag(e, c, index) {
   let base = index == null ? null : points[index];
   if (!base) {
     const f = Math.max(s0, Math.min(e0, laneFrame(e.clientX))), time = sourceAtFrame(c, f), hit = points.findIndex(p => sameTime(p.time, time));
-    base = hit >= 0 ? points[hit] : { time, value: window.ReeletTimeline.automationGain(c, secs(fsub(fromF(f), c.start))) };
+    base = hit >= 0 ? points[hit] : { time, value: window.AFClipTimeline.automationGain(c, secs(fsub(fromF(f), c.start))) };
     index = hit >= 0 ? hit : null;
   }
   const rest = points.filter(p => p !== base), at = rest.findIndex(p => secs(p.time) > secs(base.time)), ins = at < 0 ? rest.length : at;
@@ -2222,19 +2260,22 @@ $('tl-scroll').addEventListener('wheel', e => {
 }, { passive: false });
 
 // Structured library drops resolve IDs through the service, never trust a dragged path.
-document.addEventListener('dragover', e => {if(e.dataTransfer.types.includes('application/x-reelet-library')&&editable()){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
+document.addEventListener('dragover', e => {if(e.dataTransfer.types.includes('application/x-afclip-library')&&editable()){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
 document.addEventListener('drop', async e => {
-  const raw=e.dataTransfer.getData('application/x-reelet-library');if(!raw)return;e.preventDefault();
-  try{const data=JSON.parse(raw);await window.reelet.command({command:'library-import',id:data.rangeId||data.assetId,libraryId:data.libraryId,sourceId:data.sourceId});}
+  const raw=e.dataTransfer.getData('application/x-afclip-library');if(!raw)return;e.preventDefault();
+  try{const data=JSON.parse(raw);await window.afclip.command({command:'library-import',id:data.rangeId||data.assetId,libraryId:data.libraryId,sourceId:data.sourceId});}
   catch(error){console.error(error);alert(error.message);}
 });
 
 // Dropping media from the bin
-let dragMedia = null, dropGhost = null;
+let dragMedia = null, dragSource = null, dropGhost = null;
+function sourceRangeLength(payload) {
+  return Math.max(0, Math.floor(payload.range.end * fps() + 1e-6) - Math.ceil(payload.range.start * fps() - 1e-6));
+}
 function clearDropGhost() { dropGhost?.remove(); dropGhost = null; for (const el of document.querySelectorAll('.drop-target')) el.classList.remove('drop-target'); }
 function dropPlan(e) {
   const lane = e.target.closest?.('.lane'), m = dragMedia; if (!m) return null;
-  const len = mediaLength(m);
+  const len = dragSource ? sourceRangeLength(dragSource) : mediaLength(m);
   let f = Math.max(0, laneFrame(e.clientX));
   if (prefs.snap && !e.altKey) f += snapFrame([f, f + len], snapTargets(), e);
   f = Math.max(0, f);
@@ -2254,9 +2295,9 @@ for (const zone of [$('tracks'), $('tl-empty')]) {
   zone.addEventListener('dragleave', e => { if (!zone.contains(e.relatedTarget)) { clearDropGhost(); $('drag-readout').hidden = true; $('snapline').hidden = true; } });
   zone.addEventListener('drop', e => {
     e.preventDefault();
-    const plan = dropPlan(e), m = dragMedia;
-    clearDropGhost(); $('drag-readout').hidden = true; $('snapline').hidden = true; dragMedia = null;
-    if (plan && m) addMediaAt(m, plan.fits ? plan.trackId : null, plan.f);
+    const plan = dropPlan(e), m = dragMedia, sourceRange = dragSource;
+    clearDropGhost(); $('drag-readout').hidden = true; $('snapline').hidden = true; dragMedia = null; dragSource = null;
+    if (plan && m) addMediaAt(m, plan.fits ? plan.trackId : null, plan.f, sourceRange);
   });
 }
 
@@ -2282,6 +2323,10 @@ function buildChrome() {
     sourceButton('back', 'step-back', 'Back 1 frame', 'Left', () => source.step(-1)), sourceButton('play', 'play', 'Play / pause source', 'Space', () => source.togglePlay()),
     sourceButton('forward', 'step-forward', 'Forward 1 frame', 'Right', () => source.step(1)), sourceButton('jump', 'next-edit', 'Next range or take', 'Down', () => source.jump(1)),
     sourceButton('end', 'to-end', 'Go to source end', 'End', () => source.toEnd()));
+  for (const [name, label, title, click] of [
+    ['mark-in','I','Mark source In',()=>source.mark()], ['mark-out','O','Mark source Out',()=>source.mark(true)],
+    ['clear','Clear','Clear temporary marks',()=>source.clearMarks()], ['insert','Insert','Insert at timeline playhead',insertMonitoredSource],
+  ]) $('source-buttons').append(h('button', {class:'chip-button', dataset:{source:name}, disabled:true, onclick:click, tip:{title}}, label));
   for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'export' ? playExport() : tab.dataset.view === 'source' ? openSource(mediaById(source.mediaId)) : setMonitorView('frame');
   $('source-tab').tip = { title: 'Source monitor', desc: 'Preview bin media and its library annotations without touching the timeline.' };
   // Working on the timeline returns the monitor to Program.
@@ -2323,10 +2368,12 @@ function buildChrome() {
 // While the Source monitor is up, transport keys drive the source and timeline keys stay inert.
 const SOURCE_SAFE = new Set(['import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
 function sourceShortcut(combo, e) {
+  if (combo === 'Enter' && e.target.closest?.('button')) return false;
   const keys = {
     Space: () => { if (!e.repeat) source.togglePlay(); }, Left: () => source.step(-1), Right: () => source.step(1),
     'Shift+Left': () => source.step(-5), 'Shift+Right': () => source.step(5), Home: () => source.toStart(), End: () => source.toEnd(),
     Up: () => source.jump(-1), Down: () => source.jump(1), Escape: () => setMonitorView('frame'),
+    I: () => source.mark(), O: () => source.mark(true), 'Alt+X': () => source.clearMarks(), Enter: insertMonitoredSource,
   };
   // Waveform zoom while previewing audio; other sources fall through to the usual handling.
   const zoom = { '=': 1.6, '-': 1 / 1.6, '\\': 0 }[combo];
@@ -2424,7 +2471,7 @@ document.addEventListener('pointerdown', () => {
 
 // ---------------------------------------------------------------- Events and startup
 window.addEventListener('beforeunload', () => source.clear());
-window.reeletPrepareReload = () => {
+window.afclipPrepareReload = () => {
   if (graphicTextEdit || !connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();

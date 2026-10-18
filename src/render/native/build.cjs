@@ -5,7 +5,7 @@ const { execFileSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 async function build() {
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('Shared-texture benchmark requires Windows x64.');
-  const out = path.resolve(__dirname, '../../../.cache/reelet-native'); fs.mkdirSync(out, { recursive: true });
+  const out = path.resolve(__dirname, '../../../.cache/afclip-native'); fs.mkdirSync(out, { recursive: true });
   const executable = path.join(out, 'texture-encoder.exe');
   if (fs.existsSync(executable) && fs.statSync(executable).mtimeMs >= Math.max(fs.statSync(__filename).mtimeMs, fs.statSync(path.join(__dirname, 'texture-encoder.cpp')).mtimeMs)) return executable;
   const header = path.join(out, 'nvEncodeAPI.h');

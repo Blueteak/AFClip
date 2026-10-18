@@ -9,13 +9,18 @@ export class Operations {
   constructor(db:Catalog) {this.db=db;}
   asset(id:string) {const a=this.db.resolve(id);assert(a.recordType==='asset','Expected an asset');return a;}
   source(a:any) {return this.db.get(a.sourceId,'source');}
+  sourceMatches(a:any,id:string) {
+    if(a.sourceId===id)return true;
+    try {const saved=this.db.get(id,'source'),current=this.source(a);return !!saved.hash&&saved.hash===current.hash;}
+    catch {return false;}
+  }
   location(s:any) {return s.locations.find((p:string)=>{try{const st=fs.statSync(p);return st.size===s.size&&st.mtimeMs===(s.locationTimes?.[p]??s.mtimeMs);}catch{return false;}});}
   inspect(id:string,options:any={}):any {
     const o=this.db.resolve(id);
     if(o.recordType==='range')return {...o,libraryId:this.db.meta('id'),parent:this.inspect(o.assetId,{relationships:false})};
     if(o.recordType!=='asset')return o;
     const source=this.source(o),file=this.location(source);
-    return {...o,libraryId:this.db.meta('id'),source,availability:file?'available':'unavailable',path:file||source.locations[0],...(options.relationships===false?{}:this.relationships(o.id,options))};
+    return {...o,libraryId:this.db.meta('id'),source,...(options.sourceId?{sourceMatches:this.sourceMatches(o,options.sourceId)}:{}),availability:file?'available':'unavailable',path:file||source.locations[0],...(options.relationships===false?{}:this.relationships(o.id,options))};
   }
   summary(id:string) {
     const o=this.db.resolve(id),a=o.recordType==='range'?this.asset(o.assetId):o,s=this.source(a);

@@ -8,7 +8,7 @@ coverage/
 
 # Local caches, logs, and generated editing data
 .cache/
-.reelet/
+.afclip/
 examples/*/project.json
 examples/*/cache/
 examples/*/graphics/graphic_*/

@@ -1,6 +1,6 @@
-# Reelet Technical Overview
+# AFClip Technical Overview
 
-Reelet targets Windows first. The [MVP Overview](Reelet-MVP-Overview.md) defines product behavior; this document records the agreed architecture and the prototype needed to validate it. These are implementation decisions, not claims that the editor already exists.
+AFClip targets Windows first. The [MVP Overview](AFClip-MVP-Overview.md) defines product behavior; this document records the agreed architecture and the prototype needed to validate it. These are implementation decisions, not claims that the editor already exists.
 
 ## Architecture
 
@@ -20,26 +20,26 @@ Put decoding, graphic rendering, frame composition, audio mixing and encoding be
 
 Provisionally use Chromium for HTML/CSS composition, sharing composition code and browser-engine version between preview and export. Chromium runs as part of the rendering backend without requiring the Electron GUI. The backend remains replaceable without rewriting project operations.
 
-Graphic text uses stable `data-reelet-text` IDs on static plain-text HTML elements. The project stores per-clip `text` overrides separately from graphic source. GUI and CLI submit revision-checked edits through the shared engine. A sandbox-local bridge applies the same values during native preview and Chromium export; editing controls are enabled only in the GUI preview. Source animation continues to use explicit Reelet time. Field elements must remain stable and must not generate or replace their own text. Embedded code editing and arbitrary source rewriting remain out of scope.
+Graphic text uses stable `data-afclip-text` IDs on static plain-text HTML elements. The project stores per-clip `text` overrides separately from graphic source. GUI and CLI submit revision-checked edits through the shared engine. A sandbox-local bridge applies the same values during native preview and Chromium export; editing controls are enabled only in the GUI preview. Source animation continues to use explicit AFClip time. Field elements must remain stable and must not generate or replace their own text. Embedded code editing and arbitrary source rewriting remain out of scope.
 
 Bundle pinned FFmpeg and ffprobe builds for inspection, conversion and export. Users should not need to install them separately. Keep their command syntax inside the worker implementation. The precise decoding, capture and GPU frame-transfer paths remain subject to prototype results.
 
 ### Content Library and shared media infrastructure
 
-The standalone [Content Library](content-library-overview.md) lives in this monorepo and owns reusable video/audio asset identity, source versions, annotations, ranges and organization. Its headless service, GUI, CLI, state and history remain separate from Reelet's project engine. Both applications share media processing code as workflows require it.
+The standalone [Content Library](content-library-overview.md) lives in this monorepo and owns reusable video/audio asset identity, source versions, annotations, ranges and organization. Its headless service, GUI, CLI, state and history remain separate from AFClip's project engine. Both applications share media processing code as workflows require it.
 
-Use versioned local operations and change subscriptions across the application boundary. Neither application accesses the other's database internals. Reelet may register sources and retain or withdraw durable project-bin references; it cannot author library annotations or folders. Inbox lifetime and promotion are enforced by the library. Registration and project insertion are separate transactions with idempotent, retryable reconciliation, including failed insertion and project undo.
+Use versioned local operations and change subscriptions across the application boundary. Neither application accesses the other's database internals. AFClip may register sources and retain or withdraw durable project-bin references; it cannot author library annotations or folders. Inbox lifetime and promotion are enforced by the library. Registration and project insertion are separate transactions with idempotent, retryable reconciliation, including failed insertion and project undo.
 
-Persist library provenance, source-version identity, usable source locations and selected source timing in Reelet projects. Existing edits remain playable and exportable without the library service if their originals are present. Preserve library source-frame/PTS and audio-sample boundaries independently of the project frame grid. Library range changes update browser metadata without rewriting timeline cuts or swapping source versions.
+Persist library provenance, source-version identity, usable source locations and selected source timing in AFClip projects. Existing edits remain playable and exportable without the library service if their originals are present. Preserve library source-frame/PTS and audio-sample boundaries independently of the project frame grid. Library range changes update browser metadata without rewriting timeline cuts or swapping source versions.
 
-The current prototype has project-local media identities and caches. Durable library identity, service integration and shared artifact ownership are planned work. Extract existing decoding, indexing, waveform and proxy code as the first library workflows need it rather than replacing the editor architecture upfront.
+The prototype now persists library identities alongside project-local media IDs and coordinates project references through a durable outbox. The source monitor and headless CLI share source inspection and insertion code. Library preparation owns reusable source indexes, seek proxies and playback artifacts; project-local fallback caches still support independent editing. Continue extracting shared media work as workflows need it rather than replacing the editor architecture upfront. See [the integration guide](docs/content-library.md) for implemented operations and verification limits.
 
 ## Project representation and persistence
 
 - Store authoritative times as exact integer fractions, independently of project frame rate. Frame numbers serve snapping and display. Changing frame rate must not rewrite clip positions.
 - Use a project folder containing a readable manifest, graphic source files and bounded history. Save committed state atomically so interruption cannot leave a half-written manifest.
 - Reference original media by default. Provide a per-project setting to copy newly imported media into the project folder. Changing that setting affects future imports; Collect project brings existing references into the folder.
-- Store disposable artifacts separately from authoritative data, with configurable cache limits and protection for active readers. The Content Library owns reusable source proxies, waveforms, frame-color barcodes and indexes; Reelet owns timeline-specific compositions and mixed audio. Until library integration is implemented, the prototype's source caches remain project-local. Imported originals and graphic assets are not disposable cache data.
+- Store disposable artifacts separately from authoritative data, with configurable cache limits and protection for active readers. The Content Library owns reusable source proxies, waveforms, frame-color barcodes and indexes; AFClip owns timeline-specific compositions and mixed audio. Until library integration is implemented, the prototype's source caches remain project-local. Imported originals and graphic assets are not disposable cache data.
 - Require project edits to go through GUI or CLI while the project is open. Direct manifest editing is supported only while it is closed. Graphic-code hot reload is the explicit exception.
 
 ### Transactions and conflicts
@@ -56,7 +56,7 @@ Graphic code runs without filesystem, process or unrestricted network access. Su
 
 Each graphic accepts an explicit playback time and reports when its frame is ready. Required assets and rendering must finish before capture. A timeout becomes a graphic error rather than an unfinished captured frame.
 
-The result at a requested time must be independent of previously rendered times. Support arbitrary seeking through a deterministic render interface and helpers that drive CSS animation from Reelet time. Ordinary timers and accumulated animation state must not determine output.
+The result at a requested time must be independent of previously rendered times. Support arbitrary seeking through a deterministic render interface and helpers that drive CSS animation from AFClip time. Ordinary timers and accumulated animation state must not determine output.
 
 Export advances through explicit project-frame times. The prototype must prove correct source-frame selection using actual timestamps, including variable-frame-rate footage, rather than assuming evenly spaced frames.
 

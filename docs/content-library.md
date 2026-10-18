@@ -1,6 +1,6 @@
 # Content Library MVP
 
-The library is a standalone local application in this repository. It shares Reelet's visual styling, media probing, frame indexing, seek-cache generation, timeline evaluator and native video presentation component. It does not require an editor project or an open Reelet window.
+The library is a standalone local application in this repository. It shares AFClip's visual styling, media probing, frame indexing, seek-cache generation, timeline evaluator and native video presentation component. It does not require an editor project or an open AFClip window.
 
 ## Start
 
@@ -11,23 +11,25 @@ npm run library -- --help
 node src/library/cli.ts search --kind audio
 ```
 
-Node 24 and the repository's installed dependencies are required. The GUI and CLI automatically start the same headless service. Its default catalog is `%LOCALAPPDATA%\Reelet\Library`. `REELET_LIBRARY_HOME` selects another active catalog; individual CLI commands can also use `--catalog PATH`. SQLite stores annotations, identity records, project references, jobs and bounded history. Disposable artifacts live in the catalog's `cache` directory. Media stays at its original path.
+Node 24 and the repository's installed dependencies are required. The GUI and CLI automatically start the same headless service. Its default catalog is `%LOCALAPPDATA%\AFClip\Library`. `AFCLIP_LIBRARY_HOME` selects another active catalog; individual CLI commands can also use `--catalog PATH`. SQLite stores annotations, identity records, project references, jobs and bounded history. Disposable artifacts live in the catalog's `cache` directory. Media stays at its original path.
 
-`npm run library:dev` or `npm run library -- gui --dev` watches the library HTML, CSS and JavaScript plus shared Reelet styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
+`npm run library:dev` or `npm run library -- gui --dev` watches the library HTML, CSS and JavaScript plus shared AFClip styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
 
-The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. Reelet's library browser uses a separate read-only capability and session; annotation writes through that capability are rejected by the service.
+The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. AFClip's library browser uses a separate read-only capability and session; annotation writes through that capability are rejected by the service.
 
 ## Workflow
 
 1. Import files or a directory into a logical home folder. Imports return before background hashing and probing finish. Exact duplicates eventually resolve to the same asset, retaining provisional IDs as aliases.
-2. Choose **Prepare for review** to generate source audio, exact video frame indexes and the existing Reelet fast-seek cache. MKV/AVI video gets a container-only MP4 remux for native playback. No edited media export is created.
+2. Choose **Prepare for review** to generate source audio, exact video frame indexes and the existing AFClip fast-seek cache. MKV/AVI video gets a container-only MP4 remux for native playback. No edited media export is created.
 3. Select a source in the left Content Browser. Preview appears above its annotation timeline. Click the full-clip block for its Tags and Notes popup. Edits to names, tags and notes save automatically, including when the popover closes. CLI and GUI edits appear through the same change stream. Unsaved GUI annotations are retained when external changes arrive; saving a stale revision produces a conflict.
 4. Drag across an empty annotation track to create a named range. The playhead and source preview follow the mouse while hovering or dragging over timeline lanes. With a prepared video, hover and drag starts snap to the displayed source frame. On release, the annotation is saved immediately with empty tags and notes, and its popover opens for editing. Clicking outside closes it without removing the annotation. **Delete** in the popover, or the `Del` key while hovering or selecting an annotation, removes it; Undo restores it. Hover takes priority over selection, and the shortcut does not run while typing in a field. Alternatively, mark In/Out with `I` and `O` and choose **+ Annotation**. Click a range for its Tags and Notes popup. Drag a block to move it in time or between tracks; drag its edges to trim. **+ Track** adds a track; double-click a track name or use its menu to rename, reorder, or delete an empty track. Tracks and range placement are saved in the catalog and support Undo. Video ranges store source frame indices, integer PTS and a rational time base. Audio ranges store integer sample boundaries. End boundaries are exclusive. Whole-file audio remains useful without a range.
 The **Takes** track sits above the full clip. Drag to create a take immediately without opening its popover; its label is derived from timestamp order, so inserting or deleting takes renumbers later ones. Click a take to open its popover containing only optional text, saved automatically, and Delete. Takes with text show a shortened preview on the right side of the block at 50% opacity. Drag blocks or edges to move or trim; `Del` works on hovered or selected takes and Undo restores them. Each asset stores only `takes: [{start, end, text?}]`, with start/end in seconds, sorted by start then end. Names and numbers are not stored. Structured `annotate` accepts the same array; timestamps must be within the source, with distinct spans. Source replacement clears takes.
 
 5. Search names and notes; filter by folder, media type, tag or duration. Assets and ranges appear in the results. Collections can reference either, independently of home folders.
 
-`Space` plays/pauses, `Ctrl+Z` undoes and `Ctrl+Shift+Z` redoes. Right-click a folder or collection in the sidebar to rename, move or delete it. Use the CLI for collection membership, explicit replacement media and catalog purge.
+`Space` plays/pauses, `Ctrl+Z` undoes and `Ctrl+Shift+Z` redoes. Right-click a folder or collection in the sidebar to rename, move or delete it. Select an asset and use **Organize** to change its home folder or collection memberships. When a named range is selected, collection membership applies to that range; the home folder still belongs to its asset. Inbox items offer **Keep in library** before annotation. Folder and membership changes publish as one undoable batch. Organize also offers recoverable catalog removal; select an item in Trash to restore it. Use the CLI for explicit replacement media and permanent catalog purge.
+
+The desktop library also offers **Reveal original** and **Drag original** beside the source preview. Drag original hands over the full original file even when a range is selected. Asset/range cards retain their structured AFClip drag payload. These controls are hidden in an ordinary web browser, which cannot initiate Electron's native file drag.
 
 ## CLI review and agent workflow
 
@@ -114,9 +116,9 @@ Search uses a disposable SQLite projection and trigram full-text index maintaine
 
 Cache eviction protects sources used by active streams, preparation jobs and recently selected previews. The GUI renews its selected preview lease every 20 seconds. Unused source artifacts remain eligible for eviction while another source is playing. Shared index entries are conservatively protected while any reader is active. Missing artifacts can be prepared again. Metadata-only edits do not regenerate them.
 
-## Reelet integration
+## AFClip integration
 
-Reelet's normal import registers audio/video and persists library identity, source version and known locations inside the project media record. Project-bin references are reconciled through a project-owned durable outbox. Removing a timeline clip does not release its bin reference. Removing unused media from the bin does. Closing the project does neither. Promotion makes an Inbox item independent of project references.
+AFClip's normal import registers audio/video and persists library identity, source version and known locations inside the project media record. Project-bin references are reconciled through a project-owned durable outbox. Removing a timeline clip does not release its bin reference. Removing unused media from the bin does. Closing the project does neither. Promotion makes an Inbox item independent of project references.
 
 Open **File > Browse content library**, or `Ctrl+L`, to browse, preview and add an asset or named range to the project bin. **Edit in library** opens the standalone writer. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
 
@@ -125,9 +127,9 @@ node src/cli.ts library-sync PROJECT_DIR
 node src/cli.ts library-import PROJECT_DIR ASSET_OR_RANGE_ID
 ```
 
-Agents can find clips with `node src/library/cli.ts search --q "impact" --kind audio`, then pass a result's `id` directly to `node src/cli.ts library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `REELET_LIBRARY_HOME` when overriding the default.
+Agents can find clips with `node src/library/cli.ts search --q "impact" --kind audio`, then pass a result's `id` directly to `node src/cli.ts library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `AFCLIP_LIBRARY_HOME` when overriding the default.
 
-Reelet's Media List shows current library names grouped by home folder. Search includes filenames, tags, notes, parent asset context and folder names. Hover a row for tags, notes, take counts and source details. Range rows show the saved selection duration; changed ranges, replaced sources and removed library records are flagged without changing saved project timing or paths. Metadata refreshes every five seconds and when the window gains focus. If the library is unavailable, the list retains its last metadata and project editing remains available. Older projects register audio/video in the background when the editor opens. Images and graphics stay under Project media.
+AFClip's Media List shows current library names grouped by home folder. Search includes filenames, tags, notes, parent asset context and folder names. Hover a row for tags, notes, take counts and source details. Range rows show the saved selection duration; changed ranges, replaced sources and removed library records are flagged without changing saved project timing or paths. Metadata refreshes every five seconds and when the window gains focus. If the library is unavailable, the list retains its last metadata and project editing remains available. Older projects register audio/video in the background when the editor opens. Images and graphics stay under Project media.
 
 In the Media List, the row tooltip shows the Library ID and the context menu offers **Copy library ID**. Temporary editorial selections offer **Copy source library ID**, since those selections are not saved library ranges. Pasting an ID into Media List search finds matching project items.
 
@@ -136,6 +138,40 @@ Media rows include cached video thumbnails, image previews or audio waveforms. S
 Audio source previews in both apps draw channel peaks and RMS levels from cached sample data at the display's pixel density. They preserve stereo channels, including opposite-phase signals. The waveform can seek independently of annotation editing. Library CLI consumers can request the same data with `waveform --id ID`, optionally supplying `--start`, `--duration` and `--bins` from 1 to 32768. Default output covers the whole source with up to 16384 bins per channel. Each channel has signed `min`/`max` and `rms` arrays; any visual gain in the viewer does not change the audio samples or playback volume.
 
 The read-only browser also allows temporary In/Out marks, which are inserted without creating library annotations. CLI callers use `library-import PROJECT ASSET --selection '{"revision":N,"sourceId":"SOURCE_ID","startSample":0,"endSample":22050}'`, or `startFrame`/`endFrame` for prepared video. The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
+
+## Source monitor and CLI integration, 2026-10-18
+
+In AFClip's Source monitor, **I** marks In and **O** marks Out. Video Out includes the displayed frame; stored end frame indices are exclusive. Audio marks use source samples. **Clear marks** or `Alt+X` returns to the bin item's saved selection. Select an annotation or take and choose **Use as In/Out** to copy its boundaries into a temporary selection. **Insert at playhead** or Enter inserts on a new track. **Edit in library** opens the standalone annotation writer.
+
+Temporary selections stay in the monitor until insertion. Insertion saves a separate bin item with exact source timing and adds its timeline clip in one project undo step. It does not change library annotations, the original bin item or existing clips. Source In rounds up and Out rounds down to the project frame grid for placement; selections shorter than one complete project frame are rejected. New marks require the matching library source and a prepared video index. Saved bin selections remain insertable without library reads.
+
+**Prepare source** runs library-owned background preparation directly from the Source inspector, with progress and cancellation. When it finishes, the monitor adopts the index and prepared playback resources at the same source time, retaining temporary marks. A failed source preview offers **Retry source** and preparation, so a source requiring container conversion can recover in place. Preparation reuses complete immutable artifacts and publishes new audio/container files atomically; cancellation leaves existing readers and completed artifacts intact.
+
+The CLI uses the same source inspection, waveform implementation and insertion operation:
+
+```powershell
+node src/cli.ts source-inspect PROJECT_DIR MEDIA_ID
+node src/cli.ts source-prepare PROJECT_DIR MEDIA_ID --wait
+node src/cli.ts source-jobs PROJECT_DIR MEDIA_ID
+node src/cli.ts source-cancel PROJECT_DIR MEDIA_ID JOB_ID
+node src/cli.ts source-waveform PROJECT_DIR MEDIA_ID --start 0 --duration 2 --bins 512
+node src/cli.ts source-insert PROJECT_DIR MEDIA_ID --at 2
+node src/cli.ts source-insert PROJECT_DIR MEDIA_ID --at 2 --track TRACK_ID --selection '{"revision":3,"sourceId":"SOURCE_ID","startSample":11025,"endSample":55125}'
+```
+
+Use `selectionContext` from `source-inspect` for selection revision and source ID. Video selections supply `startFrame` and `endFrame` instead. Inspection includes range IDs, revisions, exact boundaries, tags, notes, takes and parent asset context. `source-waveform` reads the project's saved original and returns per-channel signed peaks and RMS data.
+
+`source-insert` returns `result.clip` and `result.media`. A specified track must be unlocked and have room; the command never overwrites clips. For an agent pass, save `inspect.result.revisions` as JSON and pass `--preconditions FILE --fps 24`, using the inspected FPS. Otherwise the CLI reads project revisions just before insertion. Conflicts reject the entire insertion. Unrelated edits do not invalidate unchanged media and destination relationships.
+
+Duplicate verification can resolve provisional assets to a canonical asset with another source ID. Consumers now compare verified hashes through the library contract. Identical bytes retain annotation access and selection support; changed bytes still produce a source-version warning and cannot replace existing project selections implicitly.
+
+Scratch verification covered 44.1 kHz stereo selections and 30 fps video inserted into a 24 fps project, CLI waveform/inspection, preparation and cancellation, locked and stale destinations, stale library selections, atomic undo/redo, duplicate resolution and insertion of saved selections without library reads.
+
+Project reference updates are persisted to `.afclip/library-outbox.json` before an edit returns and sent to the library in the background. Failed delivery retries every 15 seconds and on reopening the project. Registration first persists the previous reference set so interrupted imports can be reconciled. `node src/cli.ts library-status PROJECT` reports `pending`, `syncing`, `error` and `lastSyncedAt`; `library-sync PROJECT` registers legacy bin media and explicitly waits for reconciliation. Ordinary edits and exports do not wait for delivery. Source inspection, waveform and preparation requests also run outside the project edit queue.
+
+`node benchmarks/windows/library-offline.ts` checks a deliberately stalled catalog, including a pending source-inspection request. On 2026-10-18, the project edit returned in 7 ms and a software export completed while delivery was stalled. Killing and restarting that scratch project's engine preserved the edit and delivered its saved references when the catalog responded again. The check uses generated audio and a local stub service; it never changes the active library.
+
+`node benchmarks/windows/source-monitor.cjs` generates disposable media, a catalog and a project, then exercises the actual Electron editor. Add `--mkv` for a source requiring a prepared playback container. Both checks passed on 2026-10-18: an unprepared 640×360, 60 fps source gained 240 indexed frames without manually reopening; source playback left the timeline playhead unchanged; frames 30 through 90 inserted into a 24 fps project; CLI notes appeared live without changing the saved clip; one undo removed both the temporary bin selection and clip. The short playback samples reported zero dropped frames and no renderer errors. Results and a source screenshot are saved under `.temp/source-monitor/`. These are functional integration checks, not a sustained 1080p performance measurement or desktop drag acceptance check.
 
 ## Local verification, 2026-10-17
 
@@ -146,7 +182,7 @@ The [verification record](content-library-validation.json) stores counts, exact 
 Verified manually:
 
 - CLI imports and preparation, GUI preview/annotation/save-and-next, tag creation and keyword search across assets and ranges.
-- Video frame range `0..90` preserves PTS `21/1000..3021/1000`. Audio range preserves samples `0..22050` at 44.1 kHz. The video range imports into a 24 fps Reelet project with its original exact timing in provenance.
+- Video frame range `0..90` preserves PTS `21/1000..3021/1000`. Audio range preserves samples `0..22050` at 44.1 kHz. The video range imports into a 24 fps AFClip project with its original exact timing in provenance.
 - Two project references share one Inbox asset; first withdrawal retains it, last withdrawal hides it, undo restores the same ID, and promotion survives the final withdrawal.
 - Inbox annotation is rejected. Stale batches roll back completely. An in-use tag requires confirmation, clears assignments, and undo restores them.
 - A copied source resolves to the same asset with two verified locations, retaining its annotations.
@@ -168,6 +204,6 @@ These measurements do not include a flushed Windows disk cache, first-paint timi
 
 ## Current limitations
 
-Drag asset/range cards into Reelet for structured identity and range context. **Drag original** uses Electron's native file handoff for generic Windows destinations; dragging a selected range this way hands over its whole original. **Add to Reelet** provides the explicit insertion route. Native cross-application drop acceptance remains unverified because the desktop automation tool rejected a destination outside the source window bounds. The structured card-drop handler also still needs a physical desktop drag check.
+Drag asset/range cards into AFClip for structured identity and range context. **Drag original** uses Electron's native file handoff for generic Windows destinations; dragging a selected range this way hands over its whole original. **Add to AFClip** provides the explicit insertion route. The native drag and reveal controls were restored on 2026-10-18 after the UI no longer exposed their existing bridges. Inbox promotion plus collection membership was verified through the GUI, including atomic undo/redo. Native cross-application drop acceptance remains unverified: the earlier desktop tool rejected a destination outside the source window bounds, and the current Windows capture returned blank client-area screenshots. The structured card-drop handler still needs a physical desktop drag check.
 
 The library is an MVP, not a claim that every acceptance condition in the full overview has been measured. Full disk-cold search, search under large concurrent ingestion, long-source preparation cost and cross-application desktop drag acceptance remain follow-up validation. Images, cloud sync, managed copies, semantic search and permanent modified-media exports remain outside this release.

@@ -11,7 +11,7 @@ module.exports = function watchRenderer(window, beforeReload = () => {}, options
     if (!window.isEnabled() || window.webContents.isLoading()) return schedule();
     const version = dirty;
     try {
-      if (!await window.webContents.executeJavaScript('window.reeletPrepareReload?.() === true')) return schedule();
+      if (!await window.webContents.executeJavaScript('window.afclipPrepareReload?.() === true')) return schedule();
       if (closed) return;
       beforeReload();
       dirty = dirty === version ? 0 : dirty;

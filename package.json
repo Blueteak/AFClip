@@ -1,14 +1,14 @@
 {
-  "name": "reelet-prototypes",
+  "name": "afclip-prototypes",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Reelet project engine and Windows editing prototype",
+  "description": "AFClip project engine and Windows editing prototype",
   "scripts": {
     "library": "node src/library/cli.ts",
     "library:gui": "node src/library/cli.ts gui",
     "library:dev": "node src/library/cli.ts gui --dev",
-    "reelet": "node src/cli.ts",
+    "afclip": "node src/cli.ts",
     "start": "node src/gui/launch.cjs",
     "dev": "node src/gui/launch.cjs --dev",
     "edit:example": "node /path/to/project/build.mjs",
