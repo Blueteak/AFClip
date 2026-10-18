@@ -57,7 +57,7 @@ Edits are atomic batches. Save a JSON file and pass it to `af-clip apply <projec
 }
 ```
 
-`put` patches supplied fields of an existing object or creates a new object. Supported collections are `media`, `tracks`, `clips` and `transitions`. `remove` takes a collection and ID. A project operation accepts `name`, `resolution` or `fps` and requires the current `project` revision:
+`put` patches supplied fields of an existing object or creates a new object. Supported collections are `media`, `tracks`, `folders`, `clips`, `transitions` and `markers`. `remove` takes a collection and ID. A project operation accepts `name`, `resolution` or `fps` and requires the current `project` revision:
 
 ```json
 { "op": "project", "value": { "fps": { "num": 30000, "den": 1001 } } }
@@ -70,6 +70,26 @@ Times are integer fractions `{num,den}`. CLI time arguments accept decimal secon
 Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional transforms are `x`, `y`, `scale`, `rotation`, `opacity` and `fit: "fit" | "fill"`. Position offsets are pixels from the centered layout. Fade durations use project seconds. Higher tracks composite over lower tracks. Disabled tracks hide and silence their content. Locked tracks reject changes until explicitly unlocked.
 
 Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
+
+## Track folders
+
+Select track headers, or clips on the tracks to group, and press `Ctrl+G`. The dialog lets you choose membership. `Ctrl+Alt+G` edits a folder's tracks, `Ctrl+Shift+G` ungroups, and `Ctrl+Shift+F` collapses or expands. Drag headers or use `Alt+Up/Down` to reorder. Double-click a name or press `F2` to rename; double-click a collapsed overview to expand. `Ctrl+Shift+T` adds a track inside the selected expanded folder. The folder inspector exposes its Output, Lock and View settings.
+
+One level of folders groups adjacent tracks. Collapsed folders show read-only clip occupancy; expand to edit their clips. Moving a folder preserves internal track order and clip times while changing visual stacking. Folder Disable hides picture and silences audio; folder Lock blocks child edits, including ripple operations. Both preserve each track's individual flags. Disabled tracks still participate in ripple edits. Collapse, grouping, naming and lock changes preserve a ready playback session.
+
+```powershell
+af-clip folder-create <project-dir> --name Audio --tracks music,sfx
+af-clip folders <project-dir>
+af-clip folder-set <project-dir> <folder-id> --collapsed true
+af-clip folder-set <project-dir> <folder-id> --disabled true
+af-clip folder-members <project-dir> <folder-id> --tracks music,sfx,voice
+af-clip folder-move <project-dir> <folder-id> --before titles
+af-clip folder-remove <project-dir> <folder-id>
+```
+
+`folder-members` replaces membership with an adjacent, nonempty set. `folder-remove` ungroups tracks without removing content. `folder-move` without `--before` moves to the end of the stored bottom-to-top track order. These commands inspect revisions and submit one undoable batch.
+
+For explicit agent batches, `put`/`remove` support the `folders` collection, and tracks accept `folderId`, or `null` to ungroup. Create a folder and assign its children together; clear assignments and remove the folder together when ungrouping its last track. Nested, empty, or nonadjacent folders are rejected. `{op:"reorder-tracks",trackIds:[...]}` supplies every track exactly once, requiring `project`, `order:tracks`, track and parent-folder revisions. Child edits require their parent folder revision as well as existing track/occupancy dependencies. Save/reopen, undo/redo and checkpoints retain folder structure and settings.
 
 ## Detach Audio
 
@@ -243,7 +263,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: folders, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 

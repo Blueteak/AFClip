@@ -49,7 +49,8 @@ function automationExpression(points, source) {
 }
 function compile(project) {
   const media = new Map(project.media.map(m => [m.id, m]));
-  const tracks = new Map(project.tracks.map((t, index) => [t.id, { ...t, index }]));
+  const folders = new Map((project.folders || []).map(f => [f.id, f]));
+  const tracks = new Map(project.tracks.map((t, index) => [t.id, { ...t, disabled: t.disabled || !!folders.get(t.folderId)?.disabled, index }]));
   const clips = project.clips.filter(c => !tracks.get(c.trackId)?.disabled).map(c => {
     const start = seconds(c.start), duration = seconds(c.duration);
     return { ...c, media: media.get(c.mediaId), track: tracks.get(c.trackId), start, duration, end: start + duration,

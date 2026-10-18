@@ -561,3 +561,44 @@ kbd, .kbd {
 .source-overview::before { top: 0; bottom: 0; height: auto; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), var(--bg-3) calc(10% - 1px), var(--bg-3) 10%); pointer-events: none; }
 .source-range-drag { position: absolute; top: 2px; bottom: 2px; background: rgba(79,157,255,.28); border: 1px solid var(--accent); border-radius: 3px; cursor: grab; overflow: hidden; white-space: nowrap; text-align: center; padding-top: 7px; color: var(--text); }
 .source-lanes, .source-wave { touch-action: none; }
+
+/* Track folders: a compact header row, indented members, and a read-only overview when collapsed. */
+.track.selected > .track-head { background: #222833; box-shadow: inset 2px 0 var(--accent); }
+.track.selected > .track-head .track-name { color: var(--text); }
+.track.reordering { opacity: .45; }
+.track.in-folder > .track-head { padding-left: 20px; }
+.track.in-folder > .track-head::before { content: ""; position: absolute; left: 10px; top: 0; bottom: 0; width: 1px; background: var(--line-2); }
+.track.in-folder.folder-end > .track-head::before { bottom: 6px; }
+.track.in-folder > .lane { background: rgba(255, 255, 255, .012); }
+.track.folder-row { height: 26px; }
+.track.folder-row.collapsed { height: max(30px, calc(var(--track-h) * .64)); }
+.folder-head { padding-left: 2px; background: #1f2126; }
+.folder-head .track-name { color: var(--text); font-weight: 600; }
+.folder-head .folder-glyph { color: var(--text-3); margin-right: 4px; }
+.folder-row.selected .folder-glyph { color: var(--accent); }
+.folder-head .folder-toggle .icon { transition: transform .12s; }
+.folder-row.collapsed .folder-toggle .icon { transform: rotate(-90deg); }
+.folder-count { font: 10px/14px var(--mono); color: var(--text-3); padding: 0 5px; margin-right: 2px; border-radius: 7px; background: var(--bg-1); flex: none; }
+.track-head .icon-button.inherit { color: var(--warn); opacity: .5; }
+.folder-lane { background: #18191c; }
+.folder-overview { position: absolute; inset: 5px 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; pointer-events: none; }
+.folder-strip { position: relative; flex: 1; min-height: 2px; max-height: 6px; }
+.folder-strip.disabled { opacity: .4; }
+.folder-seg { position: absolute; top: 0; bottom: 0; min-width: 1px; border-radius: 1px; background: var(--video-edge); opacity: .85; }
+.folder-seg.audio { background: var(--audio-edge); }
+.folder-seg.graphic { background: var(--graphic-edge); }
+.folder-seg.image { background: var(--image-edge); }
+.folder-seg.missing { background: var(--danger); }
+.folder-row.disabled .folder-overview { opacity: .38; }
+.reorder-line { position: absolute; left: 0; right: 0; height: 2px; margin-top: -1px; background: var(--accent); border-radius: 1px; z-index: 6; pointer-events: none; }
+.reorder-line.into { left: 20px; }
+.annotation-item.folder-member { display: flex; }
+.annotation-item.folder-member .label { flex: 1; min-width: 0; }
+.annotation-item.folder-member .icon { color: var(--warn); }
+.folder-pick-list { margin: 8px 0 4px; max-height: 300px; overflow: auto; padding: 3px; background: var(--bg-1); border: 1px solid var(--line); border-radius: 4px; }
+.folder-pick { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 6px; border-radius: 3px; color: var(--text-2); cursor: pointer; }
+.folder-pick:hover, .folder-pick:focus-within { background: var(--bg-3); color: var(--text); }
+.dialog .folder-pick input { width: 14px; height: 14px; margin: 0; padding: 0; flex: none; accent-color: var(--accent); }
+.folder-pick .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-pick .where { display: inline-flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 11px; }
+.folder-pick > .icon { color: var(--text-3); }

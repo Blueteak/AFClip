@@ -19,6 +19,7 @@ let graphicTextEdit = null, textCommit = null;
 const project = () => snapshot?.project;
 const clips = () => project()?.clips || [];
 const tracks = () => project()?.tracks || [];
+const folders = () => project()?.folders || [];
 const transitions = () => project()?.transitions || [];
 const markers = () => project()?.markers || [];
 const displayTracks = () => [...tracks()].reverse();
@@ -63,6 +64,23 @@ function parseTime(text, base) {
 const byId = (list, id) => list.find(item => item.id === id);
 const clipById = id => byId(clips(), id);
 const trackById = id => byId(tracks(), id);
+const folderById = id => byId(folders(), id);
+// Folders are one level deep and hold adjacent tracks. Their Disable and Lock apply on top of each
+// track's own settings, which stay untouched. A collapsed folder hides its tracks from editing.
+const folderOf = t => t?.folderId ? folderById(t.folderId) || null : null;
+const folderMembers = id => displayTracks().filter(t => t.folderId === id);
+const lockedTrack = id => { const t = trackById(id); return !!(t?.locked || folderOf(t)?.locked); };
+const disabledTrack = id => { const t = trackById(id); return !!(t?.disabled || folderOf(t)?.disabled); };
+const hiddenTrack = id => !!folderOf(trackById(id))?.collapsed;
+const visibleTracks = () => displayTracks().filter(t => !hiddenTrack(t.id));
+function blockReason(trackId) {
+  const t = trackById(trackId), f = folderOf(t);
+  if (!t) return 'The track no longer exists';
+  if (t.locked) return `“${t.name}” is locked`;
+  if (f?.locked) return `Folder “${f.name}” is locked`;
+  if (f?.collapsed) return `Expand folder “${f.name}” to edit its clips`;
+  return null;
+}
 const mediaById = id => byId(project()?.media || [], id);
 const transitionById = id => byId(transitions(), id);
 const markerById = id => byId(markers(), id);
@@ -110,6 +128,7 @@ function applyLayout() {
 
 // ---------------------------------------------------------------- UI state
 let playF = 0, inF = null, outF = null, tool = 'select', pps = 40, fitZoom = true;
+let selTracks = new Set(), selFolder = null;
 let selection = new Set(), selTransition = null, selPoint = null, selMarker = null, binSelection = null, clipboard = null;
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', finishedExport = null, monitorView = 'frame';
@@ -188,7 +207,7 @@ function explain(error) {
   const [, code, rest] = raw.match(/^([A-Z_]+): ([\s\S]*)$/) || [null, null, raw];
   if (code === 'CONFLICT') return 'The project changed before this edit landed (another client or agent edited it). Nothing was applied. Try again.';
   if (code === 'RENDER_LOCKED') return 'Edits are paused while a render holds the project. Try again when it finishes.';
-  if (code === 'TRACK_LOCKED') return 'That track is locked. Unlock it in the track header to edit it.';
+  if (code === 'TRACK_LOCKED') return 'That track or its folder is locked. Unlock it in the track header to edit it.';
   return rest;
 }
 function report(error, title = 'Edit not applied') { const message = explain(error); say(message, 'error'); toast({ title, body: message, kind: 'error' }); }
@@ -281,7 +300,7 @@ function run(id, via = 'mouse') {
   return true;
 }
 const editable = () => !!project() && !exportJobId;
-const hasSelection = () => selection.size > 0 || !!selTransition || !!selMarker;
+const hasSelection = () => selection.size > 0 || !!selTransition || !!selMarker || selTracks.size > 0 || !!selFolder;
 
 action('import', { menu: 'File', group: 1, label: 'Import media…', icon: 'import', keys: ['Ctrl+I'], desc: 'Add footage, music, sound effects or images. Originals stay where they are.', enabled: editable, run: () => importMedia() });
 action('library', { menu: 'File', group: 1, label: 'Browse content library…', icon: 'folder', keys: ['Ctrl+L'], desc: 'Browse and preview reusable assets and ranges. Edit annotations in the standalone library.', run: () => api.library() });
@@ -295,9 +314,9 @@ action('undo', { menu: 'Edit', group: 1, label: 'Undo', icon: 'undo', keys: ['Ct
 action('redo', { menu: 'Edit', group: 1, label: 'Redo', icon: 'redo', keys: ['Ctrl+Shift+Z', 'Ctrl+Y'], enabled: () => editable() && !!snapshot?.history?.redo, run: () => history('redo') });
 action('copy', { menu: 'Edit', group: 2, label: 'Copy', icon: 'copy', keys: ['Ctrl+C'], enabled: () => selection.size > 0, run: copySelection });
 action('paste', { menu: 'Edit', group: 2, label: 'Paste at playhead', icon: 'paste', keys: ['Ctrl+V'], enabled: () => editable() && !!clipboard, run: paste });
-action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys: ['Delete', 'Backspace'], desc: 'Remove the selected clips, dissolve, volume point or marker. Clips leave a gap.', enabled: () => editable() && hasSelection(), run: deleteSelection });
+action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys: ['Delete', 'Backspace'], desc: 'Remove the selected clips, dissolve, volume point or marker. Clips leave a gap.', enabled: () => editable() && (selection.size > 0 || !!selTransition || !!selMarker), run: deleteSelection });
 action('rippleDelete', { menu: 'Edit', group: 2, label: 'Ripple delete In/Out range', icon: 'trash', keys: ['Shift+Delete'], desc: 'Remove the marked range across all tracks and close the gap. Out includes its frame. Affected locked tracks block the edit.', enabled: () => editable() && inF != null && outF != null && outF >= inF, run: () => rippleDelete(inF, outF + 1) });
-action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().map(c => c.id)) });
+action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().filter(c => !hiddenTrack(c.trackId)).map(c => c.id)) });
 action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl+Shift+A'], enabled: hasSelection, run: () => select([]) });
 
 action('split', { menu: 'Clip', group: 1, label: 'Split at playhead', icon: 'scissors', keys: ['Ctrl+K'], desc: 'Cut the selected clips (or every unlocked clip) under the playhead.', enabled: editable, run: splitAtPlayhead });
@@ -322,7 +341,15 @@ action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker', i
 action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Right-click or double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerPopover(markerById(selMarker)) });
 action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Down'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
 action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Up'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
-action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top. Any media can go on any track.', enabled: editable, run: () => addTrack() });
+action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top, or at the top of the selected folder. Any media can go on any track.', enabled: editable, run: () => addTrack() });
+action('groupTracks', { menu: 'Timeline', group: 'folders', label: 'Group into folder…', icon: 'folder', keys: ['Ctrl+G'], desc: 'Put the selected tracks, or the tracks of the selected clips, in a collapsible folder. Folder Disable and Lock apply on top of each track’s own settings.', enabled: () => editable() && tracks().length > 0, run: () => folderDialog(null) });
+action('editFolder', { menu: 'Timeline', group: 'folders', label: 'Edit folder…', icon: 'sliders', keys: ['Ctrl+Alt+G'], desc: 'Rename the selected folder and choose its tracks.', enabled: () => editable() && !!folderTarget(), run: () => folderDialog(folderTarget()) });
+action('ungroup', { menu: 'Timeline', group: 'folders', label: 'Ungroup folder', icon: 'x', keys: ['Ctrl+Shift+G'], desc: 'Remove the folder. Its tracks stay where they are with their own settings.', enabled: () => editable() && !!folderTarget(), run: () => ungroupFolder() });
+action('removeFromFolder', { menu: 'Timeline', group: 'folders', label: 'Remove from folder', desc: 'Take the selected tracks out of their folder. Removing the last track removes the folder.', enabled: () => editable() && trackTargets().some(id => trackById(id)?.folderId), run: () => removeFromFolder() });
+action('toggleFolder', { menu: 'Timeline', group: 'folders', label: 'Collapse / expand folder', icon: 'chevron-down', keys: ['Ctrl+Shift+F'], desc: 'A collapsed folder shows a read-only overview of its clips. Expand it to edit them.', enabled: () => editable() && !!folderTarget(), checked: () => !!folderTarget()?.collapsed, run: () => toggleCollapsed() });
+action('moveTrackUp', { menu: 'Timeline', group: 'folders', label: 'Move track or folder up', keys: ['Alt+Up'], desc: 'Reorder the selected tracks or folder. Clip times stay the same; higher tracks draw on top.', enabled: () => editable() && (!!selFolder || selTracks.size > 0), run: () => moveStep(-1) });
+action('moveTrackDown', { menu: 'Timeline', group: 'folders', label: 'Move track or folder down', keys: ['Alt+Down'], enabled: () => editable() && (!!selFolder || selTracks.size > 0), run: () => moveStep(1) });
+action('rename', { menu: 'Timeline', group: 'folders', label: 'Rename track or folder', keys: ['F2'], enabled: () => editable() && (!!selFolder || selTracks.size === 1), run: renameSelected });
 action('snap', { menu: 'Timeline', group: 3, label: 'Snapping', icon: 'magnet', keys: ['S'], desc: 'Snap moves and trims to clip edges, markers, the playhead and In/Out. Hold Alt while dragging to bypass.', checked: () => prefs.snap, run: () => { prefs.snap = !prefs.snap; savePrefs(); say(`Snapping ${prefs.snap ? 'on' : 'off'}`); syncChrome(); } });
 action('selectTool', { menu: 'Timeline', group: 4, label: 'Selection tool', icon: 'pointer', keys: ['V'], desc: 'Select, move and trim clips.', checked: () => tool === 'select', run: () => setTool('select') });
 action('razorTool', { menu: 'Timeline', group: 4, label: 'Razor tool', icon: 'scissors', keys: ['C'], desc: 'Click a clip to split it at that frame.', checked: () => tool === 'razor', run: () => setTool('razor') });
@@ -479,7 +506,7 @@ function openShortcuts() {
   groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
-    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Right-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
+    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Right-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['Select tracks', ['#Click header']], ['Reorder tracks and folders', ['#Drag header']], ['More actions', ['#Right-click']],
   ], joined: true });
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
@@ -571,11 +598,32 @@ const selectedClips = () => [...selection].map(clipById).filter(Boolean);
 function select(ids, mode = 'replace') {
   if (mode === 'replace') selection = new Set(ids);
   else for (const id of ids) mode === 'toggle' && selection.has(id) ? selection.delete(id) : selection.add(id);
-  selTransition = null; selPoint = null; selMarker = null;
+  selTransition = null; selPoint = null; selMarker = null; selTracks = new Set(); selFolder = null;
   drawTimeline(); drawInspector(); syncChrome();
 }
-function selectTransition(id) { selection = new Set(); selTransition = id; selPoint = null; selMarker = null; drawTimeline(); drawInspector(); syncChrome(); }
-function selectMarker(id) { selection = new Set(); selTransition = null; selPoint = null; selMarker = id; drawTimeline(); drawInspector(); syncChrome(); }
+function selectTransition(id) { selection = new Set(); selTransition = id; selPoint = null; selMarker = null; selTracks = new Set(); selFolder = null; drawTimeline(); drawInspector(); syncChrome(); }
+function selectMarker(id) { selection = new Set(); selTransition = null; selPoint = null; selMarker = id; selTracks = new Set(); selFolder = null; drawTimeline(); drawInspector(); syncChrome(); }
+// Track and folder headers select without rebuilding the timeline, so a double-click can still rename.
+let trackAnchor = null;
+function selectTracks(ids, mode = 'replace') {
+  const hadClips = selection.size || selTransition || selMarker;
+  selection = new Set(); selTransition = null; selPoint = null; selMarker = null; selFolder = null;
+  if (mode === 'range' && trackAnchor && trackById(trackAnchor)) {
+    const disp = visibleTracks().map(t => t.id), a = disp.indexOf(trackAnchor), b = disp.indexOf(ids[0]);
+    if (a >= 0 && b >= 0) ids = disp.slice(Math.min(a, b), Math.max(a, b) + 1);
+    selTracks = new Set(ids);
+  } else if (mode === 'toggle') { for (const id of ids) selTracks.has(id) ? selTracks.delete(id) : selTracks.add(id); trackAnchor = ids[0]; }
+  else { selTracks = new Set(ids); trackAnchor = ids[0] ?? null; }
+  hadClips ? drawTimeline() : paintHeads(); drawInspector(); syncChrome();
+}
+function selectFolder(id) {
+  const hadClips = selection.size || selTransition || selMarker;
+  selection = new Set(); selTransition = null; selPoint = null; selMarker = null; selTracks = new Set(); selFolder = id;
+  hadClips ? drawTimeline() : paintHeads(); drawInspector(); syncChrome();
+}
+function paintHeads() {
+  for (const row of document.querySelectorAll('#tracks > .track')) row.classList.toggle('selected', row.dataset.folder ? row.dataset.folder === selFolder : selTracks.has(row.dataset.track));
+}
 function setTool(next) { tool = next; syncChrome(); drawTimeline(); idleHint(); }
 function seek(f, render = false) {
   playF = Math.max(0, Math.min(Math.round(f), navEndF()));
@@ -619,7 +667,8 @@ function showTab(name) {
 
 // ---------------------------------------------------------------- Edit commands
 function transitionsTouching(ids) { return transitions().filter(t => ids.has(t.fromClipId) || ids.has(t.toClipId)); }
-function lockedIn(list) { return list.find(c => trackById(c.trackId)?.locked); }
+// Clips that cannot be edited: locked directly or by their folder, or hidden in a collapsed folder.
+function lockedIn(list) { return list.find(c => blockReason(c.trackId)); }
 function fadeClamp(c, duration) {
   const out = {};
   if (secs(c.fadeIn) > secs(duration)) out.fadeIn = duration;
@@ -635,7 +684,7 @@ function splitOps(c, f) {
   return { ops, pre: { [`clip:${id}`]: 0 }, id };
 }
 const refuse = (message, kind = 'warn') => { say(message, kind); return null; };
-const lockedRefusal = list => { const c = lockedIn(list); return c ? refuse(`“${trackById(c.trackId).name}” is locked`) : false; };
+const lockedRefusal = list => { const c = lockedIn(list); return c ? refuse(blockReason(c.trackId)) : false; };
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function splitAt(ids, f, fallback) {
@@ -795,7 +844,7 @@ function paste() {
     for (const c of board.clips) if (c.linkId) counts.set(c.linkId, (counts.get(c.linkId) || 0) + 1);
     for (const [linkId, n] of counts) links.set(linkId, n > 1 ? uid('link') : null);
     const placed = board.clips.map(c => ({ c, s: at + c.offset - board.base, e: at + c.offset - board.base + toF(c.duration) }));
-    const fits = placed.every(p => trackById(p.c.trackId) && !trackById(p.c.trackId).locked && free(p.c.trackId, p.s, p.e));
+    const fits = placed.every(p => trackById(p.c.trackId) && !blockReason(p.c.trackId) && free(p.c.trackId, p.s, p.e));
     for (const { c, s } of placed) {
       let trackId = c.trackId;
       if (!fits) {
@@ -812,11 +861,12 @@ function paste() {
 
 function moveOps(list, dF, dTrack) {
   list = withLinked(list);
-  const disp = displayTracks(), ids = new Set(list.map(c => c.id)), dest = new Map();
+  const disp = visibleTracks(), ids = new Set(list.map(c => c.id)), dest = new Map();
   for (const c of list) {
+    const why = blockReason(c.trackId); if (why) return { error: why };
     const t = disp[disp.findIndex(x => x.id === c.trackId) + dTrack];
     if (!t) return { error: 'No track there' };
-    if (t.locked || trackById(c.trackId)?.locked) return { error: `“${(t.locked ? t : trackById(c.trackId)).name}” is locked` };
+    if (blockReason(t.id)) return { error: blockReason(t.id) };
     dest.set(c.id, t.id);
   }
   for (const c of list) {
@@ -868,7 +918,7 @@ function detachRefusal() {
   if (list.length !== 1) return list.length ? 'Select a single clip to detach its audio' : 'Select a video clip with audio';
   if (c.stream || c.linkId) return 'Audio is already detached';
   if (m?.kind !== 'video' || m.metadata?.hasAudio !== true) return 'The clip has no audio to detach';
-  if (trackById(c.trackId)?.locked) return `“${trackById(c.trackId).name}” is locked`;
+  if (blockReason(c.trackId)) return blockReason(c.trackId);
   if (transitionsTouching(new Set([c.id])).length) return 'Remove the clip’s dissolves before detaching audio';
   return null;
 }
@@ -876,7 +926,7 @@ function unlinkRefusal() {
   const groups = new Set(selectedClips().map(c => c.linkId).filter(Boolean));
   if (groups.size !== 1) return groups.size ? 'Select clips from a single linked pair' : 'Select a linked clip';
   const c = selectedClips().find(c => c.linkId), locked = lockedIn(withLinked([c]));
-  return locked ? `“${trackById(locked.trackId).name}” is locked` : null;
+  return locked ? blockReason(locked.trackId) : null;
 }
 // Detach and Unlink must be the only operation in their batch and assert the whole project revision.
 function linkCommand(op, refusal, message) {
@@ -915,7 +965,7 @@ function addDissolve() {
     for (const a of clips()) for (const b of clipsOn(a.trackId)) {
       if (a.id === b.id || secs(endOf(a)) !== secs(b.start)) continue;
       if (scope && !scope.has(a.id) && !scope.has(b.id)) continue;
-      if (transitions().some(t => t.fromClipId === a.id && t.toClipId === b.id) || trackById(a.trackId)?.locked) continue;
+      if (transitions().some(t => t.fromClipId === a.id && t.toClipId === b.id) || blockReason(a.trackId)) continue;
       cuts.push({ a, b, f: startF(b) });
     }
     if (!cuts.length) return refuse(scope ? 'The selected clips have no open cut to dissolve' : 'No open cut between adjacent clips');
@@ -928,11 +978,191 @@ function addDissolve() {
   }).then(ok => { if (ok) selectTransition(id); });
 }
 
+// With an expanded folder (or one of its tracks) selected, the new track goes in at the folder's top.
 function addTrack(name) {
+  const into = selFolder ? folderById(selFolder) : selTracks.size ? folderOf(trackById([...selTracks][0])) : null;
+  const fid = into && !into.collapsed ? into.id : null;
   return edit(() => {
     const t = { id: uid('track'), name: name || `Track ${tracks().length + 1}`, disabled: false, locked: false };
-    return { ops: [put('tracks', t)], pre: { [`track:${t.id}`]: 0, [`occupancy:${t.id}`]: 0 }, message: `Added “${t.name}”` };
+    const pre = { [`track:${t.id}`]: 0, [`occupancy:${t.id}`]: 0 }, f = folderById(fid);
+    if (!f || !folderMembers(f.id).length) return { ops: [put('tracks', t)], pre, message: `Added “${t.name}”` };
+    const disp = displayTracks().map(x => x.id);
+    disp.splice(disp.indexOf(folderMembers(f.id)[0].id), 0, t.id);
+    return layoutPlan({ disp, before: [put('tracks', { ...t, folderId: f.id })], pre, message: `Added “${t.name}” to “${f.name}”` });
   });
+}
+
+// ---------------------------------------------------------------- Track folders
+// Display order is top first; the engine stores tracks bottom first (higher index composites on top).
+// Every layout change is one atomic batch: reorder, folder puts and membership, empty folders removed.
+// `disp` is the wanted display order, `assign` maps track IDs to a folder ID or null, `before` adds new tracks.
+function layoutPlan({ disp, assign = new Map(), before = [], pre = {}, folder = null, message }) {
+  const added = before.filter(op => op.collection === 'tracks').map(op => op.value);
+  const cur = [...tracks().map(t => t.id), ...added.map(t => t.id)], order = [...disp].reverse();
+  if (order.length !== cur.length || new Set(order).size !== cur.length) return refuse('The tracks changed. Try again.');
+  for (const [id, fid] of [...assign]) {
+    const t = trackById(id);
+    if (!t || (t.folderId || null) === fid) { assign.delete(id); continue; }
+    const from = folderOf(t), to = fid && folderById(fid);
+    if (t.locked) return refuse(`Unlock “${t.name}” to change its folder`);
+    if (from?.locked) return refuse(`Unlock folder “${from.name}” first`);
+    if (to?.locked) return refuse(`Unlock folder “${to.name}” first`);
+  }
+  // The engine keeps locked tracks at their index, so any shift past one is refused here first.
+  for (const [i, id] of cur.entries()) if (order[i] !== id && trackById(id) && lockedTrack(id)) return refuse(`${blockReason(id)}. Unlock it to reorder tracks.`);
+  const final = id => assign.has(id) ? assign.get(id) : (added.find(t => t.id === id) || trackById(id))?.folderId || null;
+  const spans = new Map();
+  order.forEach((id, i) => { const f = final(id); if (f) spans.set(f, [...(spans.get(f) || []), i]); });
+  for (const idx of spans.values()) if (idx.at(-1) - idx[0] + 1 !== idx.length) return refuse('A folder’s tracks must stay together');
+  const emptied = folders().filter(f => !spans.has(f.id));
+  for (const f of emptied) if (f.locked) return refuse(`Unlock folder “${f.name}” first`);
+  const ops = [...before];
+  if (order.some((id, i) => id !== cur[i])) ops.push({ op: 'reorder-tracks', trackIds: order });
+  if (folder) ops.push(put('folders', folder));
+  for (const [id, fid] of assign) ops.push(put('tracks', { id, folderId: fid }));
+  for (const f of emptied) ops.push(remove('folders', f.id));
+  return ops.length ? { ops, pre, message } : null;
+}
+const sameFolderAt = (disp, i) => { const a = trackById(disp[i - 1]), b = trackById(disp[i]); return !!a?.folderId && a.folderId === b?.folderId; };
+// Sets folder `fid` to exactly `ids`, gathered at its topmost remaining member. Tracks may come from
+// other folders; members not listed leave the folder just outside it. An empty list ungroups it.
+function membershipPlan(fid, ids, { name, create = false, message } = {}) {
+  const disp = displayTracks().map(t => t.id), want = new Set(ids.filter(id => trackById(id)));
+  const old = create ? [] : folderMembers(fid).map(t => t.id), f = folderById(fid);
+  if (!create && !f) return refuse('The folder no longer exists');
+  const leaving = old.filter(id => !want.has(id));
+  const assign = new Map([...leaving.map(id => [id, null]), ...[...want].map(id => [id, fid])]);
+  const folder = create ? { id: fid, name, disabled: false, locked: false, collapsed: false } : name && name !== f.name ? { id: fid, name } : null;
+  const label = name || f?.name;
+  if (!want.size) return layoutPlan({ disp, assign, message: message || `Ungrouped “${label}”` });
+  const anchor = disp.find(id => want.has(id) && old.includes(id)) || disp.find(id => want.has(id)), at = disp.indexOf(anchor);
+  const moving = new Set([...want, ...leaving]), rest = disp.filter(id => !moving.has(id));
+  let pos = disp.slice(0, at).filter(id => !moving.has(id)).length;
+  while (pos > 0 && pos < rest.length && sameFolderAt(rest, pos)) pos++;
+  rest.splice(pos, 0, ...disp.filter(id => leaving.includes(id) && disp.indexOf(id) < at), ...disp.filter(id => want.has(id)), ...disp.filter(id => leaving.includes(id) && disp.indexOf(id) > at));
+  return layoutPlan({ disp: rest, assign, folder, pre: create ? { [`folder:${fid}`]: 0 } : {}, message: message || (create ? `Grouped ${plural(want.size, 'track')} into “${label}”` : `Updated folder “${label}”`) });
+}
+function newFolderName() {
+  const n = Math.max(0, ...folders().map(f => Number(/^Folder (\d+)$/.exec(f.name)?.[1] || 0)));
+  return `Folder ${Math.max(n, folders().length) + 1}`;
+}
+// Selected track headers win; otherwise the tracks of the selected clips.
+function trackTargets() {
+  const ids = selTracks.size ? [...selTracks] : selectedClips().map(c => c.trackId);
+  return displayTracks().map(t => t.id).filter(id => ids.includes(id));
+}
+function folderTarget() {
+  if (selFolder) return folderById(selFolder);
+  const owners = new Set(trackTargets().map(id => trackById(id)?.folderId).filter(Boolean));
+  return owners.size === 1 ? folderById([...owners][0]) : null;
+}
+function setFolderMembers(fid, ids, options) {
+  return edit(() => membershipPlan(fid, ids, options)).then(ok => { if (ok && folderById(fid)) selectFolder(fid); return ok; });
+}
+function addToFolder(fid, ids) { const f = folderById(fid); if (f) setFolderMembers(fid, [...folderMembers(fid).map(t => t.id), ...ids], { message: `Moved ${plural(ids.length, 'track')} into “${f.name}”` }); }
+function removeFromFolder(ids = trackTargets()) {
+  const f = folderOf(trackById(ids.find(id => trackById(id)?.folderId)));
+  if (!f) return refuse('Select tracks inside a folder');
+  const out = new Set(ids.filter(id => trackById(id)?.folderId === f.id));
+  edit(() => membershipPlan(f.id, folderMembers(f.id).map(t => t.id).filter(id => !out.has(id)), { message: `Removed ${plural(out.size, 'track')} from “${f.name}”` }));
+}
+function ungroupFolder(f = folderTarget()) {
+  if (!f) return refuse('Select a folder');
+  const ids = folderMembers(f.id).map(t => t.id);
+  edit(() => membershipPlan(f.id, [])).then(ok => { if (ok) selectTracks(ids.filter(id => trackById(id))); });
+}
+// Collapse and expand stay available on a locked folder. Collapsing drops selections that would become hidden.
+function setCollapsed(f, collapsed) {
+  if (collapsed) {
+    for (const c of selectedClips()) if (trackById(c.trackId)?.folderId === f.id) selection.delete(c.id);
+    if (selTransition && trackById(transitionById(selTransition)?.trackId)?.folderId === f.id) selTransition = null;
+    for (const id of [...selTracks]) if (trackById(id)?.folderId === f.id) selTracks.delete(id);
+    if (!hasSelection()) selFolder = f.id;
+    drawInspector(); syncChrome();
+  }
+  edit(() => folderById(f.id) ? { ops: [put('folders', { id: f.id, collapsed })], message: `${collapsed ? 'Collapsed' : 'Expanded'} “${f.name}”` } : null);
+}
+function toggleCollapsed(f = folderTarget()) { if (!f) return refuse('Select a folder'); setCollapsed(f, !f.collapsed); }
+function toggleFolder(f, key) {
+  edit(() => {
+    const fresh = folderById(f.id); if (!fresh) return null;
+    const on = !fresh[key];
+    return { ops: [put('folders', { id: fresh.id, [key]: on })], message: `${key === 'locked' ? on ? 'Locked' : 'Unlocked' : on ? 'Disabled' : 'Enabled'} folder “${fresh.name}”` };
+  });
+}
+// The unit to move: the selected folder, or selected tracks that sit together in one folder (or none).
+function moveUnit(ids = null) {
+  if (!ids && selFolder && folderById(selFolder)) return { folder: selFolder, ids: folderMembers(selFolder).map(t => t.id) };
+  const disp = displayTracks().map(t => t.id), want = new Set(ids || selTracks), list = disp.filter(id => want.has(id));
+  if (!list.length) return null;
+  const first = disp.indexOf(list[0]), fid = trackById(list[0]).folderId || null;
+  if (list.some((id, i) => disp[first + i] !== id || (trackById(id).folderId || null) !== fid)) return { error: 'Select adjacent tracks in the same folder to move them together' };
+  return { ids: list, inFolder: fid };
+}
+const unitName = u => u.folder ? `“${folderById(u.folder).name}”` : u.ids.length === 1 ? `“${trackById(u.ids[0]).name}”` : plural(u.ids.length, 'track');
+// Moves one row in the expanded view. Tracks step into and out of expanded folders at their edges and jump
+// past collapsed ones; folders jump past whole folders. Clip times never change.
+function movePlan(u, dir) {
+  const disp = displayTracks().map(t => t.id), first = disp.indexOf(u.ids[0]), last = disp.indexOf(u.ids.at(-1));
+  const n = trackById(disp[dir < 0 ? first - 1 : last + 1]), g = folderOf(n);
+  const message = `Moved ${unitName(u)} ${dir < 0 ? 'up' : 'down'}`;
+  const shift = past => {
+    const rest = disp.filter(id => !u.ids.includes(id)), i = dir < 0 ? rest.indexOf(past[0]) : rest.indexOf(past.at(-1)) + 1;
+    rest.splice(i, 0, ...u.ids);
+    return layoutPlan({ disp: rest, message });
+  };
+  if (u.inFolder && n?.folderId !== u.inFolder) return layoutPlan({ disp, assign: new Map(u.ids.map(id => [id, null])), message: `Moved ${unitName(u)} out of “${folderById(u.inFolder).name}”` });
+  if (!n) return refuse(`Already at the ${dir < 0 ? 'top' : 'bottom'}`);
+  if (u.inFolder || !g) return shift([n.id]);
+  if (!u.folder && !g.collapsed) return layoutPlan({ disp, assign: new Map(u.ids.map(id => [id, g.id])), message: `Moved ${unitName(u)} into “${g.name}”` });
+  return shift(folderMembers(g.id).map(t => t.id));
+}
+function moveStep(dir) {
+  edit(() => {
+    const u = moveUnit();
+    if (!u) return refuse('Select a track or folder header first');
+    if (u.error) return refuse(u.error);
+    return movePlan(u, dir);
+  });
+}
+function renameSelected() {
+  if (selFolder) { renameFolder(folderById(selFolder), document.querySelector(`.track[data-folder="${selFolder}"] .track-name`)); return; }
+  const t = trackById([...selTracks][0]); if (t) renameTrack(t, document.querySelector(`.track[data-track="${t.id}"] .track-name`));
+}
+// One dialog creates a folder or edits an existing folder's name and tracks.
+function folderDialog(f) {
+  const fid = f?.id || uid('folder'), preset = new Set(f ? folderMembers(f.id).map(t => t.id) : trackTargets());
+  const name = h('input', { value: f?.name || newFolderName(), maxlength: 256, spellcheck: 'false', 'aria-label': 'Folder name', disabled: !!f?.locked });
+  const boxes = [];
+  const rows = displayTracks().map(t => {
+    const other = t.folderId && t.folderId !== f?.id ? folderOf(t) : null;
+    const box = h('input', { type: 'checkbox', checked: preset.has(t.id) });
+    box.trackId = t.id; boxes.push(box);
+    const row = h('label', { class: 'folder-pick' }, box, h('span', { class: 'track-index' }, trackLabel(t)), h('span', { class: 'label' }, t.name),
+      other ? h('span', { class: 'where' }, icon('folder', 'sm'), other.name) : null, lockedTrack(t.id) ? icon('lock', 'sm') : null);
+    if (other) row.tip = { title: `In “${other.name}”`, desc: 'Checking it moves the track into this folder.' };
+    return row;
+  });
+  const count = h('span', {});
+  const recount = () => { count.textContent = plural(boxes.filter(b => b.checked).length, 'track'); };
+  for (const b of boxes) b.onchange = recount;
+  recount();
+  const body = h('div', { class: 'dialog-body' }, field('Name', name), h('div', { class: 'folder-pick-list' }, rows));
+  dialog({ title: f ? 'Edit folder' : 'New folder', iconName: 'folder', body, foot: [count],
+    onKey: e => {
+      const i = boxes.indexOf(document.activeElement);
+      if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (i >= 0 || e.target === name)) {
+        e.preventDefault(); boxes[Math.max(0, Math.min(boxes.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus(); return true;
+      }
+      return false;
+    },
+    buttons: [{ label: 'Cancel' }, ...(f ? [{ label: 'Ungroup', run: () => ungroupFolder(f) }] : []),
+      { label: f ? 'Apply' : 'Create', kind: 'primary', keys: 'Enter', run: () => {
+        const v = name.value.trim(), ids = boxes.filter(b => b.checked).map(b => b.trackId);
+        if (!v) { say('Name the folder', 'warn'); name.focus(); return false; }
+        if (!f && !ids.length) { say('Choose at least one track', 'warn'); return false; }
+        setFolderMembers(fid, ids, { name: v, create: !f });
+      } }] });
 }
 function mediaLength(m) { const range=m.metadata?.library; return m.kind === 'graphic' || m.kind === 'image' ? 5 * nominal() : range?.end ? Math.max(1, Math.floor(secs(range.end)*fps()+1e-6)-Math.ceil(secs(range.start)*fps()-1e-6)) : Math.max(1, Math.floor(secs(m.duration) * fps() + 1e-6)); }
 function applyAsset(m){
@@ -948,7 +1178,7 @@ function addMediaAt(m, trackId, f, sourceRange = null) {
   if(m.metadata.asset&&m.metadata.asset.role!=='content')return applyAsset(m);
   return perform(() => {
     const len = sourceRange ? sourceRangeLength(sourceRange) : mediaLength(m), target = trackId && trackById(trackId);
-    const chosen = target && !target.locked && free(target.id, f, f + len) ? trackId : undefined;
+    const chosen = target && !blockReason(target.id) && free(target.id, f, f + len) ? trackId : undefined;
     return api.command({command:'source-insert', id:m.id, trackId:chosen, at:fromF(Math.max(0,f)),
       fps:project().fps, selection:sourceRange?.selection,
       range:sourceRange && !sourceRange.selection ? sourceRange.range : undefined,
@@ -964,7 +1194,15 @@ function toggleTrack(t, key) {
   });
 }
 function changeTrack(t, changes, message) { edit(() => trackById(t.id) ? { ops: [put('tracks', { id: t.id, ...changes })], message } : null); }
-function deleteTrack(t) { edit(() => clipsOn(t.id).length ? refuse('Remove the track’s clips first') : { ops: [remove('tracks', t.id)], message: `Deleted “${t.name}”` }); }
+// Deleting a folder's last track removes the folder in the same batch.
+function deleteTrack(t) {
+  edit(() => {
+    if (!trackById(t.id)) return null;
+    if (clipsOn(t.id).length) return refuse('Remove the track’s clips first');
+    const f = folderOf(trackById(t.id)), last = f && folderMembers(f.id).length === 1;
+    return { ops: [remove('tracks', t.id), ...(last ? [remove('folders', f.id)] : [])], message: `Deleted “${t.name}”${last ? ` and folder “${f.name}”` : ''}` };
+  });
+}
 
 // ---------------------------------------------------------------- Rendering jobs
 const isDone = s => ['complete', 'completed', 'succeeded'].includes(s);
@@ -1107,10 +1345,13 @@ function draw() {
     const saved = prefs.marks[p.id];
     if (saved) { inF = saved.in ?? null; outF = saved.out ?? null; playF = saved.play ?? 0; } else if (p.clips.length) playF = Math.min(2 * nominal(), lastFrame());
   }
-  for (const id of [...selection]) if (!clipById(id)) selection.delete(id);
-  if (selTransition && !transitionById(selTransition)) selTransition = null;
+  // Clips inside collapsed folders cannot stay selected, whoever collapsed them.
+  for (const id of [...selection]) if (!clipById(id) || hiddenTrack(clipById(id).trackId)) selection.delete(id);
+  if (selTransition && (!transitionById(selTransition) || hiddenTrack(transitionById(selTransition).trackId))) selTransition = null;
+  for (const id of [...selTracks]) if (!trackById(id) || hiddenTrack(id)) selTracks.delete(id);
+  if (selFolder && !folderById(selFolder)) selFolder = null;
   if (selMarker && !markerById(selMarker)) selMarker = null;
-  if (firstLoad && !selection.size && p.clips.length) selection.add([...p.clips].sort((a, b) => secs(a.start) - secs(b.start))[0].id);
+  if (firstLoad && !selection.size && p.clips.some(c => !hiddenTrack(c.trackId))) selection.add([...p.clips].filter(c => !hiddenTrack(c.trackId)).sort((a, b) => secs(a.start) - secs(b.start))[0].id);
   playF = Math.min(playF, navEndF());
   $('project-name').textContent = p.name;
   document.title = `${p.name} · AFClip`;
@@ -1532,7 +1773,10 @@ function drawInspector() {
     drawSourceInspector(box); box.scrollTop = scroll; return;
   }
   const list = selectedClips(), tr = selTransition && transitionById(selTransition), mk = selMarker && markerById(selMarker);
-  const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}` : `p:${p.revision}`;
+  const fo = selFolder && folderById(selFolder), heads = displayTracks().filter(t => selTracks.has(t.id));
+  const layout = () => `${p.revision}`;
+  const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}`
+    : fo ? `f:${fo.id}:${layout()}` : heads.length ? `r:${heads.map(t => t.id).join()}:${layout()}` : `p:${p.revision}`;
   if (box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join()) return;
   inspectorKey = key;
   const scroll = box.scrollTop;
@@ -1547,11 +1791,13 @@ function drawInspector() {
       h('div', { class: 'insp-note' }, `${tc(Math.min(...list.map(startF)))} → ${tc(Math.max(...list.map(endF)))}`),
       h('div', { class: 'insp-actions' }, chip('copy'), chip('mute', 'Mute'), chip('nudgeLeft', 'Nudge'), chip('delete', null, 'danger')),
       h('div', { class: 'insp-note' }, 'Drag any selected clip to move them together. Alt + arrows nudge by a frame.'));
-  } else drawSequenceInspector(box, p);
+  } else if (fo) drawFolderInspector(box, fo);
+  else if (heads.length) drawTracksInspector(box, heads);
+  else drawSequenceInspector(box, p);
   box.scrollTop = scroll;
 }
 function drawClipInspector(box, c) {
-  const m = mediaById(c.mediaId), locked = !!trackById(c.trackId)?.locked || !editable();
+  const m = mediaById(c.mediaId), locked = !!lockedTrack(c.trackId) || !editable();
   const durF = endF(c) - startF(c), speed = secs(c.speed);
   // `changes` may be a function of the clip as it is when the edit runs.
   // The engine carries timing to linked companions; their fades are clamped here so a shorter pair stays valid.
@@ -1568,7 +1814,7 @@ function drawClipInspector(box, c) {
   name.onkeydown = e => { if (e.key === 'Enter') name.blur(); if (e.key === 'Escape') { name.value = clipName(c); name.blur(); } };
   name.onblur = () => { const v = name.value.trim(); if (v && v !== clipName(c)) putClip({ name: v }, 'Clip renamed'); else name.value = clipName(c); };
   box.append(h('div', { class: 'insp-head' }, icon(kindIcon(kind)), name), h('div', { class: 'insp-source', tip: { title: mediaName(m), desc: peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”. Moves, trims and splits act on both.` : null, meta: m?.metadata?.authoringPath || m?.path } }, `${mediaName(m)} · track “${trackById(c.trackId)?.name}”`, peers.length ? h('span', { class: 'insp-link' }, icon('link', 'sm'), 'Linked') : null));
-  if (locked && editable()) box.append(h('div', { class: 'insp-note warn' }, 'This track is locked. Unlock it in the track header to edit.'));
+  if (locked && editable()) box.append(h('div', { class: 'insp-note warn' }, `${trackById(c.trackId)?.locked ? 'This track' : 'This track’s folder'} is locked. Unlock it in the track header to edit.`));
 
   const timingLocked = locked || !!lockedIn(peers);
   const maxDur = sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.sourceIn)) / speed * fps() + 1e-6) : undefined;
@@ -1648,7 +1894,7 @@ function assetSelect(role,value,locked,change){
   select.onchange=()=>change(select.value);return select;
 }
 function drawTransitionInspector(box, t) {
-  const a=clipById(t.fromClipId),b=clipById(t.toClipId),locked=!!trackById(t.trackId)?.locked||!editable(),asset=mediaById(t.assetId);
+  const a=clipById(t.fromClipId),b=clipById(t.toClipId),locked=!!lockedTrack(t.trackId)||!editable(),asset=mediaById(t.assetId);
   const update=value=>edit([put('transitions',{id:t.id,...value})],'Transition updated');
   $('inspector-title').textContent='Transition';$('inspector-kind').append(icon('dissolve','sm'),asset?.metadata.asset?.name||'HTML');
   const room=alignment=>dissolveRoom(a,b,alignment,t.id);
@@ -1695,6 +1941,46 @@ function drawMarkerInspector(box, m) {
     ...(beyond ? [h('div', { class: 'insp-note' }, 'After the last clip. Exports are unaffected.')] : []),
     h('div', { class: 'insp-actions' }, chip('prevMarker', 'Previous'), chip('nextMarker', 'Next'), chip('delete', null, 'danger')));
 }
+// Toggles show the object's own state; a folder's state is listed separately because it applies on top.
+const stateField = (label, on, labels, onPick, disabled, tip) => field(label, segmented([[false, labels[0]], [true, labels[1]]], !!on, onPick, disabled), { tip });
+function nameInput(value, disabled, title, commit) {
+  const input = h('input', { value, maxlength: 256, disabled, spellcheck: 'false', tip: { title, keys: 'F2' } });
+  input.onkeydown = e => { if (e.key === 'Enter') input.blur(); if (e.key === 'Escape') { input.value = value; input.blur(); } };
+  input.onblur = () => { const v = input.value.trim(); if (v && v !== value) commit(v); else input.value = value; };
+  return input;
+}
+function drawFolderInspector(box, f) {
+  $('inspector-title').textContent = 'Folder';
+  $('inspector-kind').append(icon('folder', 'sm'), f.collapsed ? 'Collapsed' : 'Expanded');
+  const off = !editable(), members = folderMembers(f.id);
+  box.append(h('div', { class: 'insp-head' }, icon('folder'), nameInput(f.name, off || f.locked, 'Folder name', v => edit(() => folderById(f.id) ? { ops: [put('folders', { id: f.id, name: v })], message: `Renamed folder to “${v}”` } : null))));
+  if (f.locked && !off) box.append(h('div', { class: 'insp-note warn' }, 'Locked. Unlock to edit its tracks, membership or order.'));
+  box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Folder'),
+      stateField('Output', f.disabled, ['On', 'Off'], () => toggleFolder(f, 'disabled'), off || f.locked, 'Off hides the picture and silences the audio of every track inside. Their own settings return when it is back on.'),
+      stateField('Lock', f.locked, ['Unlocked', 'Locked'], () => toggleFolder(f, 'locked'), off, 'Locked folders reject edits to their tracks and clips, including membership and reordering.'),
+      stateField('View', f.collapsed, ['Expanded', 'Collapsed'], () => setCollapsed(f, !f.collapsed), off, 'Collapsed folders show a read-only clip overview.')),
+    h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Tracks', h('span', { class: 'tab-spacer' }), String(members.length)),
+      members.map(t => h('button', { class: 'annotation-item folder-member', disabled: f.collapsed, onclick: () => selectTracks([t.id]), tip: { title: t.name, meta: [t.disabled ? 'Own setting: disabled' : null, t.locked ? 'Own setting: locked' : null].filter(Boolean).join('\n') || null } },
+        h('span', { class: 'track-index' }, trackLabel(t)), h('span', { class: 'label' }, t.name), t.disabled ? icon('eye-off', 'sm') : null, t.locked ? icon('lock', 'sm') : null))),
+    h('div', { class: 'insp-actions' }, chip('editFolder', 'Tracks…'), chip('moveTrackUp', 'Up'), chip('moveTrackDown', 'Down'), chip('ungroup', 'Ungroup', 'danger')));
+}
+function drawTracksInspector(box, list) {
+  const off = !editable(), t = list[0], f = folderOf(t);
+  $('inspector-title').textContent = list.length > 1 ? 'Tracks' : 'Track';
+  if (list.length > 1) {
+    box.append(h('div', { class: 'insp-head' }, icon('layers'), h('strong', {}, `${list.length} tracks selected`)),
+      h('div', { class: 'insp-actions' }, chip('groupTracks', 'Group'), chip('moveTrackUp', 'Up'), chip('moveTrackDown', 'Down'), can('removeFromFolder') ? chip('removeFromFolder', 'Remove from folder') : null));
+    return;
+  }
+  const locked = lockedTrack(t.id);
+  box.append(h('div', { class: 'insp-head' }, icon('add-track'), nameInput(t.name, off || locked, 'Track name', v => changeTrack(t, { name: v }, `Renamed track to “${v}”`))));
+  if (f?.locked && !off) box.append(h('div', { class: 'insp-note warn' }, `Folder “${f.name}” is locked.`));
+  box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Track'),
+      stateField('Output', t.disabled, ['On', 'Off'], () => toggleTrack(t, 'disabled'), off || locked, 'Off hides the picture and silences the audio. Clips stay editable.'),
+      stateField('Lock', t.locked, ['Unlocked', 'Locked'], () => toggleTrack(t, 'locked'), off || !!f?.locked, 'Locked tracks reject every GUI and CLI edit.'),
+      field('Folder', f ? h('button', { class: 'chip-button', onclick: () => selectFolder(f.id), tip: { title: 'Select folder' } }, icon('folder', 'sm'), f.name, f.disabled ? icon('eye-off', 'sm') : null, f.locked ? icon('lock', 'sm') : null) : h('span', { class: 'field-static' }, '—'))),
+    h('div', { class: 'insp-actions' }, f ? chip('removeFromFolder', 'Remove from folder') : chip('groupTracks', 'Group'), chip('moveTrackUp', 'Up'), chip('moveTrackDown', 'Down')));
+}
 function drawSequenceInspector(box, p) {
   $('inspector-title').textContent = 'Sequence';
   const disabled = !editable();
@@ -1715,7 +2001,7 @@ function drawSequenceInspector(box, p) {
       field('Frame rate', rateSelect, { tip: 'Changing it keeps every cut at the same time in seconds. Later edits snap to the new frame grid.' }),
       field('Duration', h('span', { class: 'numeric', style: { font: '11.5px var(--mono)', color: 'var(--text-2)' } }, tc(timelineEndF())))),
     h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Contents'),
-      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${p.clips.length} clips · ${p.transitions.length} dissolves · ${markers().length} markers · ${p.media.length} media`)),
+      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${folders().length ? `${plural(folders().length, 'folder')} · ` : ''}${p.clips.length} clips · ${p.transitions.length} dissolves · ${markers().length} markers · ${p.media.length} media`)),
     h('div', { class: 'insp-note' }, 'Select a clip to edit its timing, audio and framing.'));
 }
 
@@ -1780,7 +2066,12 @@ function drawTimeline() {
   const host = $('tracks'), overlay = $('tl-overlay');
   host.replaceChildren(overlay);
   overlay.style.width = `${width}px`;
-  for (const t of displayTracks()) host.append(trackRow(t, width));
+  const headed = new Set();
+  for (const t of displayTracks()) {
+    const f = folderOf(t);
+    if (f && !headed.has(f.id)) { headed.add(f.id); host.append(folderRow(f, width)); }
+    if (!f?.collapsed) host.append(trackRow(t, width, f));
+  }
   if (!p.tracks.length) host.append(h('div', { class: 'tl-empty-note' }, 'Drag media here from the bin, or double-click it to add it at the playhead.'));
   $('tl-empty').style.width = `${HEAD_W + width}px`;
   drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover();
@@ -1793,16 +2084,19 @@ function pinLabels() {
     body.style.left = left > x ? `${7 + Math.min(left - x, Math.max(0, w - 60))}px` : '';
   }
 }
-function trackRow(t, width) {
-  const nameEl = h('span', { class: 'track-name', ondblclick: () => renameTrack(t, nameEl) }, t.name);
-  nameEl.tip = { title: t.name, desc: `Track ${trackLabel(t)} of ${tracks().length}. Higher tracks draw over lower ones; audio from every enabled track is mixed.`, hint: [{ keys: '#Double-click', text: 'rename' }, { keys: '#Right-click', text: 'track options' }] };
-  const locked = !editable();
-  const head = h('div', { class: 'track-head', oncontextmenu: e => contextMenu(e, trackMenu(t)) },
+const HEAD_HINT = [{ keys: '#Click', text: 'select' }, { keys: '#Drag', text: 'reorder' }, { keys: '#Double-click name', text: 'rename' }, { keys: ['Alt+Up', 'Alt+Down'], text: 'move' }, { keys: 'Ctrl+G', text: 'group' }];
+// Track buttons show the track's own setting. A folder's Disable dims it on top; a folder's Lock freezes it.
+function trackRow(t, width, f = folderOf(t)) {
+  const nameEl = h('span', { class: 'track-name' }, t.name);
+  nameEl.tip = { title: t.name, desc: `Track ${trackLabel(t)} of ${tracks().length}${f ? ` in “${f.name}”` : ''}. Higher tracks draw over lower ones; audio from every enabled track is mixed.`, hint: HEAD_HINT };
+  const off = !editable(), held = !!f?.locked;
+  const head = h('div', { class: 'track-head', oncontextmenu: e => { if (!selTracks.has(t.id)) selectTracks([t.id]); contextMenu(e, trackMenu(t)); } },
     h('span', { class: 'track-index' }, trackLabel(t)), nameEl,
-    h('button', { class: `icon-button ${t.disabled ? 'off' : ''}`, disabled: locked || t.locked, onclick: () => toggleTrack(t, 'disabled'),
-      tip: { title: t.disabled ? 'Enable track' : 'Disable track', desc: 'Disabling hides the picture and silences the audio. Clips stay editable.' } }, icon(t.disabled ? 'eye-off' : 'eye')),
-    h('button', { class: `icon-button ${t.locked ? 'off' : ''}`, disabled: locked, onclick: () => toggleTrack(t, 'locked'),
-      tip: { title: t.locked ? 'Unlock track' : 'Lock track', desc: 'Locked tracks reject every GUI and CLI edit, including agent batches.' } }, icon(t.locked ? 'lock' : 'unlock')));
+    h('button', { class: `icon-button ${t.disabled ? 'off' : f?.disabled ? 'inherit' : ''}`, disabled: off || lockedTrack(t.id), onclick: () => toggleTrack(t, 'disabled'),
+      tip: { title: t.disabled ? 'Enable track' : 'Disable track', desc: 'Disabling hides the picture and silences the audio. Clips stay editable.', meta: f?.disabled ? `Folder “${f.name}” is disabled` : null } }, icon(t.disabled || f?.disabled ? 'eye-off' : 'eye')),
+    h('button', { class: `icon-button ${t.locked ? 'off' : held ? 'inherit' : ''}`, disabled: off || held, onclick: () => toggleTrack(t, 'locked'),
+      tip: { title: t.locked ? 'Unlock track' : 'Lock track', desc: 'Locked tracks reject every GUI and CLI edit, including agent batches.', meta: held ? `Folder “${f.name}” is locked` : null } }, icon(t.locked || held ? 'lock' : 'unlock')));
+  head.onpointerdown = e => headDown(e, { track: t.id });
   const lane = h('div', { class: `lane ${tool === 'razor' ? 'razor' : ''}`, style: { width: `${width}px` }, dataset: { track: t.id } });
   lane.tip = { title: 'Track', hint: tool === 'razor' ? [{ text: 'Click a clip to split it' }] : [{ keys: '#Click', text: 'move playhead' }, { keys: '#Drag', text: 'box select' }, { keys: '#Right-click', text: 'paste / add track' }] };
   lane.oncontextmenu = e => {
@@ -1821,25 +2115,60 @@ function trackRow(t, width) {
     el.oncontextmenu = e => { selectTransition(tr.id); contextMenu(e, [{ action: 'delete' }]); };
     lane.append(el);
   }
-  return h('div', { class: `track ${t.disabled ? 'disabled' : ''} ${t.locked ? 'locked' : ''}`, dataset: { track: t.id } }, head, lane);
+  const members = f ? folderMembers(f.id) : [];
+  return h('div', { class: `track ${disabledTrack(t.id) ? 'disabled' : ''} ${lockedTrack(t.id) ? 'locked' : ''} ${f ? 'in-folder' : ''} ${members.at(-1) === t ? 'folder-end' : ''} ${selTracks.has(t.id) ? 'selected' : ''}`, dataset: { track: t.id } }, head, lane);
+}
+// Folder header. Collapsed, its lane is a read-only overview of the clips inside, one strip per track.
+let lastFolderOverviewDown = null;
+function folderRow(f, width) {
+  const members = folderMembers(f.id), off = !editable();
+  const nameEl = h('span', { class: 'track-name' }, f.name);
+  nameEl.tip = { title: f.name, desc: `Folder with ${plural(members.length, 'track')}. Its Disable and Lock apply to every track inside and keep their own settings.`, hint: HEAD_HINT };
+  const head = h('div', { class: 'track-head folder-head', oncontextmenu: e => { selectFolder(f.id); contextMenu(e, folderMenu(f)); } },
+    h('button', { class: 'icon-button folder-toggle', disabled: off, onclick: () => setCollapsed(f, !f.collapsed), tip: { title: f.collapsed ? 'Expand folder' : 'Collapse folder', keys: 'Ctrl+Shift+F' } }, icon('chevron-down')),
+    icon('folder', 'sm folder-glyph'), nameEl, h('span', { class: 'folder-count' }, members.length),
+    h('button', { class: `icon-button ${f.disabled ? 'off' : ''}`, disabled: off || f.locked, onclick: () => toggleFolder(f, 'disabled'),
+      tip: { title: f.disabled ? 'Enable folder' : 'Disable folder', desc: 'Hides the picture and silences the audio of every track inside. Their own Disable settings return when re-enabled.' } }, icon(f.disabled ? 'eye-off' : 'eye')),
+    h('button', { class: `icon-button ${f.locked ? 'off' : ''}`, disabled: off, onclick: () => toggleFolder(f, 'locked'),
+      tip: { title: f.locked ? 'Unlock folder' : 'Lock folder', desc: 'Rejects edits to every track inside, including membership and reordering. Collapse still works.' } }, icon(f.locked ? 'lock' : 'unlock')));
+  head.onpointerdown = e => headDown(e, { folder: f.id });
+  const lane = h('div', { class: 'lane folder-lane', style: { width: `${width}px` }, dataset: { folder: f.id } });
+  if (f.collapsed) {
+    lane.append(h('div', { class: 'folder-overview' }, members.map(t => h('div', { class: `folder-strip ${t.disabled ? 'disabled' : ''}` },
+      clipsOn(t.id).map(c => h('i', { class: `folder-seg ${mediaById(c.mediaId) ? clipKind(c) : 'missing'}`, style: { left: `${secs(c.start) * pps}px`, width: `${Math.max(1, secs(c.duration) * pps)}px` } }))))));
+    // Selection redraws rows, so native dblclick cannot survive the first click.
+    lane.onpointerdown = e => {
+      if (e.button !== 0) return;
+      e.stopPropagation(); e.preventDefault();
+      const previous = lastFolderOverviewDown, now = performance.now();
+      lastFolderOverviewDown = { id: f.id, time: now, x: e.clientX, y: e.clientY };
+      if (previous?.id === f.id && now - previous.time < 500 && Math.hypot(e.clientX - previous.x, e.clientY - previous.y) < 5) {
+        lastFolderOverviewDown = null; setCollapsed(f, false);
+      } else { selectFolder(f.id); seek(laneFrame(e.clientX), true); }
+    };
+  }
+  lane.tip = { title: f.name, desc: f.collapsed ? 'Clip overview. Expand the folder to edit its clips.' : null, hint: f.collapsed ? [{ keys: '#Double-click', text: 'expand' }, { keys: 'Ctrl+Shift+F', text: 'expand' }] : [{ keys: '#Click', text: 'move playhead' }] };
+  lane.oncontextmenu = e => { selectFolder(f.id); contextMenu(e, folderMenu(f)); };
+  return h('div', { class: `track folder-row ${f.collapsed ? 'collapsed' : ''} ${f.disabled ? 'disabled' : ''} ${f.locked ? 'locked' : ''} ${selFolder === f.id ? 'selected' : ''}`, dataset: { folder: f.id } }, head, lane);
 }
 function clipBlock(c, t) {
+  const locked = lockedTrack(t.id);
   const m = mediaById(c.mediaId), left = secs(c.start) * pps, width = Math.max(2, secs(c.duration) * pps), speed = secs(c.speed);
   const kind = clipKind(c), audible = clipHasAudio(c), peers = linkedPeers(c), peerSelected = peers.some(o => selection.has(o.id));
   const badges = [];
   if (Math.abs(speed - 1) > 1e-9) badges.push(h('span', { class: 'clip-badge' }, icon('speed'), pct(speed)));
   if (c.mute) badges.push(h('span', { class: 'clip-badge' }, icon('mute')));
   if (peers.length) badges.push(h('span', { class: 'clip-badge' }, icon('link')));
-  const el = h('div', { class: `clip ${m ? kind : 'missing'} ${selection.has(c.id) ? 'selected' : peerSelected ? 'link-peer' : ''} ${t.locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
+  const el = h('div', { class: `clip ${m ? kind : 'missing'} ${selection.has(c.id) ? 'selected' : peerSelected ? 'link-peer' : ''} ${locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
     width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
     !audible && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
     !audible && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
     !audible && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
-    t.locked ? null : h('i', { class: 'handle l' }), t.locked ? null : h('i', { class: 'handle r' }));
+    locked ? null : h('i', { class: 'handle l' }), locked ? null : h('i', { class: 'handle r' }));
   if (audible) addAudioControls(el, c, t);
   el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(kind)} · ${mediaName(m)}`,
     meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, audible ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   '), peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”` : null].filter(Boolean).join('\n'),
-    hint: t.locked ? [{ text: 'Track is locked' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
+    hint: locked ? [{ text: blockReason(t.id) }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
       ...(audible ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
   el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', peers.length ? { action: 'unlink' } : { action: 'detachAudio' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
@@ -1917,7 +2246,7 @@ function addAudioControls(el, c, t) {
   const area = h('div', { class: 'clip-audio' }, canvas, envelope,
     h('div', { class: 'audio-fade in', dataset: { audio: 'fadeIn' }, title: 'Drag to set fade in (Ease In/Out)' }),
     h('div', { class: 'audio-fade out', dataset: { audio: 'fadeOut' }, title: 'Drag to set fade out (Ease In/Out)' }));
-  if (t.locked || !editable()) area.classList.add('audio-locked');
+  if (lockedTrack(t.id) || !editable()) area.classList.add('audio-locked');
   el.append(area);
   paintAudioControls(el, c);
   const m = mediaById(c.mediaId);
@@ -1994,27 +2323,110 @@ function audioDrag(e) {
   paintAudioControls(d.el, { ...d.c, ...d.changes });
 }
 function trackMenu(t) {
+  const f = folderOf(t), off = !editable(), locked = lockedTrack(t.id), ids = selTracks.has(t.id) ? trackTargets() : [t.id];
   return [
-    { label: 'Rename…', icon: 'sliders', disabled: !editable() || t.locked, run: () => renameTrack(t, document.querySelector(`.track[data-track="${t.id}"] .track-name`)) },
-    { label: t.disabled ? 'Enable track' : 'Disable track', icon: t.disabled ? 'eye' : 'eye-off', disabled: !editable() || t.locked, run: () => toggleTrack(t, 'disabled') },
-    { label: t.locked ? 'Unlock track' : 'Lock track', icon: t.locked ? 'unlock' : 'lock', disabled: !editable(), run: () => toggleTrack(t, 'locked') },
+    { label: 'Rename…', icon: 'sliders', keys: ['F2'], disabled: off || locked, run: () => renameTrack(t, document.querySelector(`.track[data-track="${t.id}"] .track-name`)) },
+    { label: t.disabled ? 'Enable track' : 'Disable track', icon: t.disabled ? 'eye' : 'eye-off', disabled: off || locked, run: () => toggleTrack(t, 'disabled') },
+    { label: t.locked ? 'Unlock track' : 'Lock track', icon: t.locked ? 'unlock' : 'lock', disabled: off || !!f?.locked, run: () => toggleTrack(t, 'locked') },
+    '-', { action: 'groupTracks' },
+    ...folders().filter(g => g.id !== t.folderId).map(g => ({ label: `Move into “${g.name}”`, icon: 'folder', disabled: off || g.locked || locked, run: () => addToFolder(g.id, ids) })),
+    f ? { label: `Remove from “${f.name}”`, icon: 'x', disabled: off || locked, run: () => removeFromFolder(ids) } : null,
+    { action: 'moveTrackUp' }, { action: 'moveTrackDown' },
     '-', { action: 'addTrack' },
-    { label: 'Delete track', icon: 'trash', disabled: !editable() || t.locked || clipsOn(t.id).length > 0, run: () => deleteTrack(t) }];
+    { label: 'Delete track', icon: 'trash', disabled: off || locked || clipsOn(t.id).length > 0, run: () => deleteTrack(t) }].filter(Boolean);
 }
-function renameTrack(t, nameEl) {
-  if (!nameEl || t.locked || !editable()) return;
-  editingTrack = t.id;
-  const input = h('input', { class: 'track-name-input', value: t.name, maxlength: 80, spellcheck: 'false' });
+function folderMenu(f) {
+  const off = !editable();
+  return [
+    { label: 'Rename…', icon: 'sliders', keys: ['F2'], disabled: off || f.locked, run: () => renameFolder(f, document.querySelector(`.track[data-folder="${f.id}"] .track-name`)) },
+    { label: f.collapsed ? 'Expand' : 'Collapse', icon: 'chevron-down', keys: ['Ctrl+Shift+F'], disabled: off, run: () => setCollapsed(f, !f.collapsed) },
+    { label: f.disabled ? 'Enable folder' : 'Disable folder', icon: f.disabled ? 'eye' : 'eye-off', disabled: off || f.locked, run: () => toggleFolder(f, 'disabled') },
+    { label: f.locked ? 'Unlock folder' : 'Lock folder', icon: f.locked ? 'unlock' : 'lock', disabled: off, run: () => toggleFolder(f, 'locked') },
+    '-', { action: 'editFolder' }, { action: 'moveTrackUp' }, { action: 'moveTrackDown' }, { action: 'addTrack' },
+    '-', { action: 'ungroup' }];
+}
+// Shared inline rename for track and folder headers. Timeline redraws wait until it finishes.
+function inlineRename(nameEl, value, maxlength, save) {
+  editingTrack = true;
+  const input = h('input', { class: 'track-name-input', value, maxlength, spellcheck: 'false' });
   nameEl.replaceWith(input); input.focus(); input.select();
   let done = false;
-  const finish = save => {
+  const finish = ok => {
     if (done) return; done = true; editingTrack = null;
     const v = input.value.trim();
-    if (save && v && v !== t.name) changeTrack(t, { name: v }, `Renamed track to “${v}”`); else drawTimeline();
+    if (ok && v && v !== value) save(v); else drawTimeline();
     if (deferredDraw) drawTimeline();
   };
   input.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') finish(true); if (e.key === 'Escape') finish(false); };
   input.onblur = () => finish(true);
+}
+function renameTrack(t, nameEl) {
+  if (!nameEl || lockedTrack(t.id) || !editable()) return;
+  inlineRename(nameEl, t.name, 80, v => changeTrack(t, { name: v }, `Renamed track to “${v}”`));
+}
+function renameFolder(f, nameEl) {
+  if (!nameEl || !f || f.locked || !editable()) return;
+  inlineRename(nameEl, f.name, 256, v => edit(() => folderById(f.id) ? { ops: [put('folders', { id: f.id, name: v })], message: `Renamed folder to “${v}”` } : null));
+}
+
+// Header gestures: click selects, drag reorders. A dragged track drops between rows and joins the
+// folder it lands in; a dragged folder, or a track over a collapsed folder, lands beside whole folders.
+let lastHeaderClick = null;
+function headDown(e, unit) {
+  if (e.button !== 0 || e.target.closest('button, input')) return;
+  const nameEl = e.target.closest('.track-name'), key = unit.folder || unit.track;
+  if (nameEl && lastHeaderClick?.key === key && performance.now() - lastHeaderClick.time < 500 && Math.hypot(e.clientX - lastHeaderClick.x, e.clientY - lastHeaderClick.y) < 5) {
+    lastHeaderClick = null; e.preventDefault(); e.stopPropagation();
+    if (unit.folder) renameFolder(folderById(unit.folder), nameEl); else renameTrack(trackById(unit.track), nameEl);
+    return;
+  }
+  const ids = unit.folder ? folderMembers(unit.folder).map(t => t.id) : selTracks.has(unit.track) && !selFolder ? moveUnit()?.ids || [unit.track] : [unit.track];
+  startDrag({ type: 'reorder', unit: { ...unit, ids }, ids, x0: e.clientX, y0: e.clientY, moved: false, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, drop: null, line: null });
+}
+function headClick(d) {
+  lastHeaderClick = { key: d.unit.folder || d.unit.track, time: performance.now(), x: d.x0, y: d.y0 };
+  if (d.unit.folder) selectFolder(d.unit.folder);
+  else selectTracks([d.unit.track], d.shift ? 'range' : d.ctrl ? 'toggle' : 'replace');
+}
+function reorderDrop(d, clientY) {
+  const rows = [...$('tracks').querySelectorAll(':scope > .track')].map(el => ({ r: el.getBoundingClientRect(), track: el.dataset.track, folder: el.dataset.folder }));
+  if (!rows.length) return null;
+  const row = rows.find(x => clientY < x.r.bottom) || rows.at(-1), upper = clientY < row.r.top + row.r.height / 2;
+  const fid = row.folder || trackById(row.track)?.folderId;
+  let drop;
+  if (fid && (d.unit.folder || folderById(fid)?.collapsed)) {
+    const block = rows.filter(x => x.folder === fid || trackById(x.track)?.folderId === fid), m = folderMembers(fid);
+    const top = block[0].r.top, bottom = block.at(-1).r.bottom, up = clientY < (top + bottom) / 2;
+    drop = { anchor: up ? m[0].id : m.at(-1).id, after: !up, folder: null, y: up ? top : bottom };
+  } else if (row.folder) drop = { anchor: folderMembers(row.folder)[0]?.id, after: false, folder: upper ? null : row.folder, y: upper ? row.r.top : row.r.bottom };
+  else drop = { anchor: row.track, after: !upper, folder: d.unit.folder ? null : trackById(row.track)?.folderId || null, y: upper ? row.r.top : row.r.bottom };
+  const joins = !d.unit.folder && drop.folder !== (trackById(d.ids[0])?.folderId || null);
+  return drop.anchor && (joins || !d.ids.includes(drop.anchor)) ? drop : null;
+}
+function reorderDrag(e) {
+  const d = drag;
+  if (!d.moved && Math.abs(e.clientY - d.y0) < 4) return;
+  if (!d.moved) {
+    d.moved = true;
+    for (const row of document.querySelectorAll('#tracks > .track')) if (d.ids.includes(row.dataset.track) || (d.unit.folder && row.dataset.folder === d.unit.folder)) row.classList.add('reordering');
+  }
+  d.drop = reorderDrop(d, e.clientY);
+  d.line?.remove(); d.line = null;
+  if (!d.drop) { $('drag-readout').hidden = true; return; }
+  d.line = h('div', { class: `reorder-line ${d.drop.folder ? 'into' : ''}`, style: { top: `${d.drop.y - $('tracks').getBoundingClientRect().top}px` } });
+  $('tracks').append(d.line);
+  readout(d.drop.folder ? `Into “${folderById(d.drop.folder)?.name}”` : 'Move here', '');
+}
+// Rebuilt from the project as it is when the edit runs.
+function reorderPlan(unit, drop) {
+  const u = unit.folder ? folderById(unit.folder) && { folder: unit.folder, ids: folderMembers(unit.folder).map(t => t.id) } : moveUnit(unit.ids);
+  if (!u || u.error) return refuse(u?.error || 'The tracks changed. Try again.');
+  if (!trackById(drop.anchor)) return null;
+  const disp = displayTracks().map(t => t.id), at = disp.indexOf(drop.anchor) + (drop.after ? 1 : 0);
+  const rest = disp.filter(id => !u.ids.includes(id));
+  rest.splice(disp.slice(0, at).filter(id => !u.ids.includes(id)).length, 0, ...u.ids);
+  const into = drop.folder && folderById(drop.folder);
+  return layoutPlan({ disp: rest, assign: u.folder ? new Map() : new Map(u.ids.map(id => [id, drop.folder])), message: into && u.inFolder !== into.id ? `Moved ${unitName(u)} into “${into.name}”` : `Moved ${unitName(u)}` });
 }
 
 // Pointer gestures on the timeline
@@ -2043,7 +2455,7 @@ function readout(text, bad, at = pointer) {
   r.style.top = `${at.y + 18}px`;
 }
 function endDrag() {
-  drag?.transitionPreview?.remove();
+  drag?.transitionPreview?.remove(); drag?.line?.remove();
   drag = null;
   $('drag-readout').hidden = true; $('snapline').hidden = true; $('marquee').hidden = true;
   document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragUp); document.removeEventListener('pointercancel', onDragCancel);
@@ -2068,7 +2480,7 @@ $('tracks').addEventListener('pointerdown', e => {
       e.preventDefault();
       const addPoint = (e.ctrlKey || e.metaKey) && field === 'volume';
       if (!editable()) return;
-      if (trackById(c.trackId)?.locked) { if (addPoint) refuse(`“${trackById(c.trackId).name}” is locked`); return; }
+      if (blockReason(c.trackId)) { if (addPoint) refuse(blockReason(c.trackId)); return; }
       select([c.id]);
       if (field === 'point' || addPoint) beginPointDrag(e, c, field === 'point' ? Number(audio.dataset.index) : null);
       else beginAudioDrag(e, c, field);
@@ -2077,21 +2489,25 @@ $('tracks').addEventListener('pointerdown', e => {
     if (e.ctrlKey || e.metaKey) { select([c.id], 'toggle'); return; }
     if (e.shiftKey && !handle) select([c.id], 'add');
     else if (!selection.has(c.id) || handle) select([c.id]);
-    if (trackById(c.trackId)?.locked || !editable()) return;
+    if (blockReason(c.trackId) || !editable()) return;
     if (handle) beginTrim(e, c, handle.classList.contains('l') ? 'l' : 'r');
     else beginMove(e, c);
     return;
   }
   startDrag({ type: 'marquee', x0: e.clientX, y0: e.clientY, moved: false, additive: e.shiftKey || e.ctrlKey, base: new Set(selection) });
 });
+// Rows are measured from the DOM because folder headers sit between tracks and are not drop targets.
 function beginMove(e, primary) {
-  const list = withLinked(selectedClips()), disp = displayTracks();
+  const list = withLinked(selectedClips()), disp = visibleTracks();
+  const hidden = list.find(c => hiddenTrack(c.trackId)); if (hidden) { refuse(blockReason(hidden.trackId)); return; }
   const rows = list.map(c => disp.findIndex(t => t.id === c.trackId));
   const ids = new Set(list.map(c => c.id));
+  const lanes = disp.map(t => document.querySelector(`.track[data-track="${t.id}"]`)).map(el => ({ top: el?.offsetTop ?? 0, h: el?.offsetHeight ?? prefs.trackH }));
+  const pairs = list.map((c, i) => [document.querySelector(`.clip[data-id="${c.id}"]`), rows[i]]).filter(p => p[0]);
   startDrag({ type: 'move', x0: e.clientX, y0: e.clientY, primary, list, ids, horizontal: false, dF: 0, dTrack: 0, res: null,
-    pre: { ...snapshot.revisions }, transitionId: uid('transition'),
+    pre: { ...snapshot.revisions }, transitionId: uid('transition'), lanes, primaryRow: disp.findIndex(t => t.id === primary.trackId),
     minRow: Math.min(...rows), maxRow: Math.max(...rows), minStart: Math.min(...list.map(startF)), targets: snapTargets(ids),
-    els: list.map(c => document.querySelector(`.clip[data-id="${c.id}"]`)).filter(Boolean) });
+    els: pairs.map(p => p[0]), elRows: pairs.map(p => p[1]) });
   hintItems([{ text: 'Push past a neighbour to crossfade' }, { keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
 }
 function beginTrim(e, c, edge) {
@@ -2107,7 +2523,7 @@ function beginTrim(e, c, edge) {
 function onDragMove(e) {
   if (!drag) return;
   if (drag.type === 'audio') { audioDrag(e); return; }
-  if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
+  if (drag.type === 'reorder') reorderDrag(e); else if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
 }
 function moveDrag(e) {
   const d = drag, dx = e.clientX - d.x0;
@@ -2116,8 +2532,10 @@ function moveDrag(e) {
   let dF = d.horizontal ? xFrame(dx) : 0;
   if (d.horizontal) dF += snapFrame([startF(d.primary) + dF, endF(d.primary) + dF], d.targets, e);
   dF = Math.max(dF, -d.minStart);
-  const rowH = prefs.trackH;
-  const dTrack = Math.max(-d.minRow, Math.min(displayTracks().length - 1 - d.maxRow, Math.round((e.clientY - d.y0) / rowH)));
+  const home = d.lanes[d.primaryRow], y = home.top + home.h / 2 + e.clientY - d.y0;
+  let row = 0, best = Infinity;
+  for (const [i, r] of d.lanes.entries()) { const dist = Math.abs(r.top + r.h / 2 - y); if (dist < best) { best = dist; row = i; } }
+  const dTrack = Math.max(-d.minRow, Math.min(d.lanes.length - 1 - d.maxRow, row - d.primaryRow));
   let contact = null, neighbour = null, right = dx > 0, pushed = 0;
   if (d.horizontal && d.list.length === 1 && dTrack === 0) {
     const others = clipsOn(d.primary.trackId).filter(c => c.id !== d.primary.id);
@@ -2147,7 +2565,7 @@ function moveDrag(e) {
       d.els[0].parentElement.append(d.transitionPreview);
     } else d.res.limit = 'No spare source footage for a crossfade';
   }
-  for (const el of d.els) { el.classList.add('dragging'); el.classList.toggle('invalid', !!d.res.error); el.style.transform = `translate(${frameX(dF)}px, ${dTrack * rowH}px)`; }
+  for (const [i, el] of d.els.entries()) { const r = d.elRows[i]; el.classList.add('dragging'); el.classList.toggle('invalid', !!d.res.error); el.style.transform = `translate(${frameX(dF)}px, ${(d.lanes[r + dTrack]?.top ?? 0) - (d.lanes[r]?.top ?? 0)}px)`; }
   if (d.crossfade) readout(`Crossfade ${shortTc(d.crossfade.frames)}`, d.crossfade.limited ? 'Limited by neighbouring transitions' : 'Release to apply');
   else if (dF || dTrack || contact != null) readout(`${dF >= 0 ? '+' : '−'}${shortTc(Math.abs(dF))}   ${tc(startF(d.primary) + dF)}`, d.res.error || d.res.limit || (d.res.dropped ? `Removes ${d.res.dropped} dissolve${d.res.dropped > 1 ? 's' : ''}` : '')); else $('drag-readout').hidden = true;
 }
@@ -2206,10 +2624,17 @@ function onDragUp(e) {
     if (d.changes) edit(() => {
       const current = clipById(d.c.id);
       if (!current || current.revision !== d.c.revision) return refuse('The clip changed during the drag. Nothing was applied.');
-      if (trackById(current.trackId)?.locked) return refuse(`“${trackById(current.trackId).name}” is locked`);
+      if (blockReason(current.trackId)) return refuse(blockReason(current.trackId));
       const message = d.field === 'point' ? `${d.added ? 'Added' : 'Moved'} volume point · ${toDb(d.cur.value)} dB` : d.field === 'volume' ? `Volume ${toDb(d.changes.volume)} dB` : 'Adjusted fade';
       return { ops: [put('clips', { id: current.id, ...d.changes })], message };
     });
+    return;
+  }
+  if (d.type === 'reorder') {
+    endDrag();
+    if (!d.moved) { headClick(d); return; }
+    drawTimeline();
+    if (d.drop) edit(() => reorderPlan(d.unit, d.drop)).then(ok => { if (ok) { if (d.unit.folder) selectFolder(d.unit.folder); else selectTracks(d.ids); } });
     return;
   }
   if (d.type === 'marker') {
@@ -2330,13 +2755,13 @@ function sourceRangeLength(payload) {
 }
 function clearDropGhost() { dropGhost?.remove(); dropGhost = null; for (const el of document.querySelectorAll('.drop-target')) el.classList.remove('drop-target'); }
 function dropPlan(e) {
-  const lane = e.target.closest?.('.lane'), m = dragMedia; if (!m) return null;
+  const lane = e.target.closest?.('.lane[data-track]'), m = dragMedia; if (!m) return null;
   const len = dragSource ? sourceRangeLength(dragSource) : mediaLength(m);
   let f = Math.max(0, laneFrame(e.clientX));
   if (prefs.snap && !e.altKey) f += snapFrame([f, f + len], snapTargets(), e);
   f = Math.max(0, f);
   const t = lane ? trackById(lane.dataset.track) : null;
-  return { lane, f, len, trackId: t?.id || null, fits: !!t && !t.locked && free(t.id, f, f + len) };
+  return { lane, f, len, trackId: t?.id || null, fits: !!t && !blockReason(t.id) && free(t.id, f, f + len) };
 }
 for (const zone of [$('tracks'), $('tl-empty')]) {
   zone.addEventListener('dragover', e => {
@@ -2506,7 +2931,7 @@ function commitGraphicText(edit, value) {
 $('native-preview').addEventListener('graphic-text-start', event => {
   if (graphicTextEdit || (editsInFlight && !textCommit) || !editable()) return;
   const {clipId, field, activate} = event.detail, clip = clipById(clipId);
-  if (!clip || trackById(clip.trackId)?.locked) return;
+  if (!clip || blockReason(clip.trackId)) return;
   clearTimeout(frameTimer); playback.pause(false);
   graphicTextEdit = {clipId,field,revision:clip.revision,mediaRevision:mediaById(clip.mediaId).revision,predecessor:textCommit};
   selection = new Set([clipId]); selTransition = selPoint = selMarker = null;
