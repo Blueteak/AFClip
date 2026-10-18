@@ -1,6 +1,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHash, randomUUID } = require('node:crypto');
+const fragmentSampleCount = require('./fragment-samples.cjs');
 
 const VERSION = 3;
 const DEFAULT_LIMIT = 64 * 1024 * 1024;
@@ -102,8 +103,20 @@ async function getFrameIndex({ file, cacheDir, probe, packetProbe, maxBytes = DE
   // to cache. The directory need not exist on a project's first render.
   await prune(cacheDir, maxBytes).catch(() => {});
 
-  let pts = packetProbe ? packetFrameTimestamps(await packetProbe()) : null;
-  const method = pts ? 'packet' : 'decoded';
+  const packets = packetProbe ? await packetProbe() : null;
+  let pts = packets ? packetFrameTimestamps(packets) : null;
+  let method = pts ? 'packet' : 'decoded';
+  const stream = packets?.streams?.[0];
+  if (!pts && stream && (stream.nb_frames == null || stream.nb_frames === 'N/A')) {
+    // Keep every existing packet guard. Only replace the absent sample count
+    // with an independently read total from this track's fragment tables.
+    const candidate = packetFrameTimestamps({ ...packets,
+      streams: packets.streams.map(s => ({ ...s, nb_frames: packets.packets?.length })) });
+    if (candidate && await fragmentSampleCount(file, stream.id == null ? undefined : Number(stream.id)) === candidate.length) {
+      pts = candidate;
+      method = 'packet-fragment';
+    }
+  }
   if (!pts) pts = await probe();
   if (!valid(pts)) throw new Error(`Missing or unordered decoded presentation timestamps: ${file}`);
   if (JSON.stringify(await identity(file)) !== fingerprint) {

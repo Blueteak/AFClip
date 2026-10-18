@@ -68,7 +68,15 @@ class TimelinePlayback {
     const ready = new Promise((resolve, reject) => { this.resolveReady = resolve; this.rejectReady = reject; });
     // Attach rejection immediately: replacing a project can happen during IPC.
     ready.catch(() => {});
-    const timer = setTimeout(() => { if (generation === this.generation) this.rejectReady?.(new Error('Preview preparation timed out')); }, 120000);
+    let timer;
+    // A long project's source scans can exceed two minutes in total. Only fail
+    // when the worker stops making progress, not while it finishes each source.
+    const refreshTimeout = () => {
+      if (generation !== this.generation) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (generation === this.generation) this.rejectReady?.(new Error('Preview preparation timed out')); }, 120000);
+    };
+    this.refreshPreparationTimeout = refreshTimeout; refreshTimeout();
     this.opening = (async () => {
       if (this.audioDirty) {
         const result = await this.api.previewAudio({ sessionId: this.sessionId, revision: this.revision });
@@ -83,7 +91,11 @@ class TimelinePlayback {
       if (session.revision !== this.revision) throw new Error('Project changed while opening preview. Seek again to retry.');
       this.sessionId = session.id;
       await ready;
-    })().finally(() => { clearTimeout(timer); if (generation === this.generation) this.opening = null; });
+    })().finally(() => {
+      clearTimeout(timer);
+      if (this.refreshPreparationTimeout === refreshTimeout) this.refreshPreparationTimeout = null;
+      if (generation === this.generation) this.opening = null;
+    });
     return this.opening;
   }
   async seek(time, resume = this.wantsPlay) {
@@ -140,6 +152,7 @@ class TimelinePlayback {
   }
   async receive(event) {
     if (event.sessionId !== this.sessionId) return;
+    if (event.type === 'progress') { this.refreshPreparationTimeout?.(); return; }
     if (event.type === 'seek-cache') {
       if (event.seekProxy && this.native?.setup.media[event.mediaId]) this.native.setup.media[event.mediaId].seekProxy = event.seekProxy;
       if (event.seekCache && this.native) this.native.setup.seekCache = event.seekCache;
