@@ -2,6 +2,8 @@
 
 Prepared seeking meets the 25 ms p95 target and all 300 scrub requests delivered the correct picture at the display's nominal 60 Hz cadence. Playback is near 60 fps after warmup, but **consistent drop-free playback is not established**: the first full run stalled during title animations, and both runs reported clip-start drops. GPU export remains Windows-only.
 
+The startup follow-up below reduces cold worker readiness from **137.2 seconds to 4.61 seconds**, using the same four recordings and empty application caches. It replaces full decoding with validated fragment sample counts. The original measurements remain below for comparison.
+
 The checkout was fast-forwarded from `26603f6` to `82c8090`, bringing in 39 commits. [Recorded measurements](macos-performance.json) retain per-shot playback metrics, seek timestamps, preparation timings, controls and verification results. [Run instructions](../benchmarks/macos/README.md) use the existing Windows playback/seek diagnostic against the production editor.
 
 ## Workload and comparison
@@ -17,7 +19,7 @@ Runs were serial. Generated caches were empty for the cold preparation measureme
 ## Fixes
 
 1. **Native Apple Silicon probing.** `ffprobe-static` 3.1.0 contains an x86_64 executable in its `darwin/arm64` directory. It failed to launch with system error -86. The shared resolver now selects pinned `@ffprobe-installer/darwin-arm64` 5.0.1 on Apple Silicon. Its executable reports ffprobe 4.4.1 and runs natively. The optional package is restricted to macOS ARM64; other platforms keep the original binary. Engine imports, rendering and library jobs share the resolver. The package comes from [node-ffprobe-installer](https://github.com/SavageCore/node-ffprobe-installer).
-2. **Threaded Mac timestamp scanning.** These fragmented MP4 files lack `nb_frames`, so the existing conservative indexer decodes every source frame. A 600-frame control took 10,792 ms with default threading, 3,693 ms with four threads and 2,020 ms with automatic threading. All 600 timestamps matched exactly. Mac rendering preparation now supplies `-threads 0` for that decoded-index fallback. Packet-index validation and Windows probe arguments are unchanged.
+2. **Threaded Mac timestamp scanning.** These fragmented MP4 files lack `nb_frames`, so the original conservative indexer decoded every source frame. A 600-frame control took 10,792 ms with default threading, 3,693 ms with four threads and 2,020 ms with automatic threading. All 600 timestamps matched exactly. Mac rendering preparation supplies `-threads 0` for that decoded-index fallback. The startup follow-up avoids this fallback for validated fragmented MP4.
 3. **Progress-based preparation timeout.** Even with threading, the full worker took 137.2 seconds to become ready. The old GUI deadline was 120 seconds for the entire operation. It now allows 120 seconds without current-session progress, so completing each source keeps a healthy preparation alive. A stalled source can still time out. The diagnostic has an explicit startup deadline override for long projects.
 
 The Windows DirectComposition workaround, decoder/export settings and D3D11/NVENC helper were not changed. A resolver check confirmed the Windows branch still selects the existing binary. Windows execution was not available on this Mac, so this is not a Windows runtime regression certification.
@@ -65,7 +67,19 @@ The first diagnostic attempt exceeded its old 90-second startup limit while scan
 
 After worker readiness, the first seek range arrived 8.37 seconds later and all four finished after 32.31 seconds of background encoding. They occupy 239.3 MiB within the 256 MiB disk budget. Warm cache lookup took about 1.9 ms in the first full playback run. The worker benchmark measured generation without concurrent GUI playback; it is not a measurement of playback under background encoding load.
 
-The timeout fix permits long preparation; it does not make full-file indexing cheap. Faster cold open for fragmented recordings needs an equally trustworthy timestamp path that avoids decoding every unused frame, or more incremental preparation. The current conservative fallback was retained rather than weakening frame selection correctness.
+### Startup follow-up
+
+The old fast path required `nb_frames`, which these fragmented recordings do not provide. The indexer now reads sample counts directly from the selected track's `trun` fragment tables, without reading or decoding the `mdat` picture payloads in that count pass. FFprobe still demuxes the file to supply integer PTS/DTS. This uses the same sample-count agreement as regular MP4, with all existing timestamp, codec, opening-keyframe and packet-flag guards retained. The [FFmpeg MOV demuxer](https://github.com/FFmpeg/FFmpeg/blob/n4.4/libavformat/mov.c) describes the corresponding track-run fields.
+
+The extension requires an empty initial sample table, a matching fragment track and structurally complete boxes and run tables. Older probes omit MOV track IDs; those files must have exactly one video track. Ambiguous tracks, malformed/truncated boxes, count mismatches and unsupported layouts retain the decoded fallback. Regular MP4 with declared frame counts takes the existing path. No Windows rendering, decoding or encoding settings changed.
+
+On the same project, with timestamp indexes and seek packets absent, production worker readiness fell from 137,204 ms to **4,612 ms**, a **29.7× speedup**. The four sources finished indexing by 3,404 ms; the remaining time includes graphics and audio preparation. The first seek range arrived at 12,812 ms from open, and all four at 36,498 ms. Seek-cache generation still took 31.89 seconds in the background and used the same 250,947,170 bytes. Until those ranges arrive, seeks use original media and can exceed the 25 ms target. OS filesystem caches were not flushed.
+
+All **41,887** source timestamps exactly match the previous full-decode indexes. Small H.264 and HEVC controls, both regular and fragmented MP4, also matched every decoded timestamp with B-frame reordering and variable 33/100 ms intervals. Focused malformed-input and track-selection checks exercised the fallback. These were opt-in local checks, not an always-run suite. [Startup measurements](macos-startup-performance.json) preserve the results.
+
+A fresh GUI run with empty application caches became ready in **5.43 seconds**, then played all 64 seconds while building seek ranges in the background. Every shot sustained 59.94–59.96 presented fps after its first 0.6 seconds, with zero reported source-frame drops, a 22.4 ms maximum GUI update interval and no large clock resyncs. This one clean run does not establish a fix for the earlier intermittent playback stalls. Reopening with the new caches took 1.95 seconds.
+
+Prepared seeking still passed: 120 seeded seeks had **20.9 ms p95**, and all **300/300** scrub updates selected the correct source timestamps at nominal 60 Hz. The one-second dissolve export passed full verification and was **byte-for-byte identical** to the previous export made using decoded timestamp indexes. Windows was not executed here; regular AVC/HEVC MP4 controls verified that the original packet path remains selected.
 
 ## Correctness and export
 
@@ -91,3 +105,6 @@ Clean `npm ci`, native probe execution, changed-file syntax checks and diff whit
 - Rejected graphics control: `.cache/playback/2026-10-18T00-35-29-192Z/error.json`
 - Lifecycle/refined capture: `.cache/playback/2026-10-18T00-37-59-663Z/`
 - Worker preparation, threading control, reference PNG and export results: `.cache/macos/`
+- Startup follow-up controls, preparation and export: `.cache/macos/startup/`
+- Cold GUI playback after indexing fix: `.cache/playback/2026-10-18T00-51-05-839Z/results.json`
+- Prepared seeking after indexing fix: `.cache/playback/2026-10-18T00-52-22-152Z/seeks.json`
