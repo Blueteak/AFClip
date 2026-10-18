@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
-const ffmpeg = require('ffmpeg-static'), ffprobe = require('ffprobe-static').path;
+const ffmpeg = require('ffmpeg-static'), ffprobe = require('../shared/ffprobe.cjs');
 const { compile, seconds, automationPoints, automationExpression } = require('./timeline.cjs');
 const { getFrameIndex, decodeFrameTimestamps } = require('./frame-index.cjs');
 const { verifyOutput } = require('./verify.cjs');
@@ -92,7 +92,9 @@ async function main() {
       const indexed = m.kind === 'image' ? { pts: [0], cacheHit: false, method: 'image' } : await getFrameIndex({
         file, cacheDir: path.join(config.projectDir, 'cache', 'frame-index'),
         packetProbe: async () => JSON.parse((await run(`packets-${m.id}`, ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_packets', '-show_entries', 'packet=pts,dts,flags:stream=codec_name,codec_tag_string,time_base,nb_frames,field_order,start_pts:format=format_name', '-of', 'json', file], true)).toString()),
-        probe: async () => decodeFrameTimestamps(JSON.parse((await run(`index-${m.id}`, ffprobe, ['-v', 'error', '-select_streams', 'v:0', '-show_frames', '-show_entries', 'frame=best_effort_timestamp:stream=time_base', '-of', 'json', file], true)).toString()))
+        // The Apple Silicon probe defaults to one decode thread. Keep exact
+        // decoded timestamps, but let it use the available cores on macOS.
+        probe: async () => decodeFrameTimestamps(JSON.parse((await run(`index-${m.id}`, ffprobe, ['-v', 'error', ...(process.platform === 'darwin' ? ['-threads', '0'] : []), '-select_streams', 'v:0', '-show_frames', '-show_entries', 'frame=best_effort_timestamp:stream=time_base', '-of', 'json', file], true)).toString()))
       });
       indexing.push({ mediaId: m.id, method: indexed.method, cacheHit: indexed.cacheHit, frames: indexed.pts.length, ms: performance.now() - indexStarted });
       const index = indexed.pts; if (indexed.cacheHit) indexCacheHits++;

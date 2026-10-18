@@ -7,7 +7,7 @@ import {Catalog,uid,now} from './store.ts';
 import {Operations} from './operations.ts';
 import {inspectMedia} from '../engine/probe.ts';
 import {assert,seconds,parseTime} from '../shared/project.ts';
-const require=createRequire(import.meta.url),ffmpeg=require('ffmpeg-static'),ffprobe=require('ffprobe-static').path;
+const require=createRequire(import.meta.url),ffmpeg=require('ffmpeg-static'),ffprobe=require('../shared/ffprobe.cjs');
 const prepareSeekCache=require('../render/seek-cache.cjs');
 const {getFrameIndex,decodeFrameTimestamps}=require('../render/frame-index.cjs');
 

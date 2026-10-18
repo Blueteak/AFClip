@@ -33,6 +33,8 @@ Exports use fast container and timestamp verification by default. Choose **Thoro
 
 The playback target is sustained **1080p60**; seeking targets 25 ms at p95 with 60 fps updates during scrubbing. The prepared seek cache now meets those targets on the representative Windows edit: 20.7 ms p95 across 120 randomized seeks and 300/300 correct scrub updates at 60 Hz. Scrubbing uses bounded 540p proxies built in the background. After 75 ms idle, paused video refines to the original source resolution; playback and full-resolution inspection also use originals. Unprepared ranges use slower original decoding. GPU preview presents native Chromium video layers directly, removing the previous 540p JPEG transfer path. The representative Windows edit now measures 60 fps steady-state playback, with an opening startup interval still present. See the [playback notes](docs/timeline-playback.md) for measurements and limits, or run `node benchmarks/windows/playback.cjs` to measure a disposable 1080p60 copy of the example edit.
 
+Mac measurements and setup are in [macOS performance](docs/macos-performance.md). Prepared seeking passes on the M4; playback still has intermittent startup/title misses, and GPU export remains Windows-only.
+
 ## Content Library
 
 Run `npm run library:gui` for the standalone library, or `npm run library -- --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares Reelet's native media presentation and fast-seek implementation.
