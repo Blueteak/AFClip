@@ -21,22 +21,28 @@ export class Jobs {
     for(const r of db.db.prepare("SELECT id FROM jobs WHERE json_extract(data,'$.status')='running'").all() as any[]){const j=db.getJob(r.id);j.status='queued';db.job(j);}
     setTimeout(()=>this.pump(),100);
   }
-  enqueue(kind:string,assetId:string) {
+  enqueue(kind:string,assetId:string,level='preview') {
     const a=this.ops.asset(assetId);
-    const row:any=this.db.db.prepare("SELECT data FROM jobs WHERE json_extract(data,'$.kind')=? AND json_extract(data,'$.sourceId')=? AND json_extract(data,'$.status') IN ('queued','running') LIMIT 1").get(kind,a.sourceId);if(row)return JSON.parse(row.data);
-    const j=this.db.job({id:uid('job'),kind,assetId:a.id,sourceId:a.sourceId,status:'queued',progress:0,createdAt:now()});this.changed();setTimeout(()=>this.pump(),0);return j;
+    const row:any=this.db.db.prepare("SELECT data FROM jobs WHERE json_extract(data,'$.kind')=? AND json_extract(data,'$.sourceId')=? AND json_extract(data,'$.status') IN ('queued','running') AND (?!='prepare' OR COALESCE(json_extract(data,'$.level'),'preview')=?) LIMIT 1").get(kind,a.sourceId,kind,level);if(row)return JSON.parse(row.data);
+    const j=this.db.job({id:uid('job'),kind,assetId:a.id,sourceId:a.sourceId,...(kind==='prepare'?{level}:{}),status:'queued',progress:0,createdAt:now()});this.changed();setTimeout(()=>this.pump(),0);return j;
   }
   enqueueTask(kind:string,options:any){const j=this.db.job({id:uid('job'),kind,options,status:'queued',progress:0,createdAt:now()});this.changed();setTimeout(()=>this.pump(),0);return j;}
-  cancel(id:string) {const j=this.db.getJob(id);if(['queued','running'].includes(j.status)){j.status='cancelled';this.db.job(j);if(this.active?.id===id){this.active.status='cancelled';this.child?.kill();}}this.changed();return j;}
+  cancel(id:string) {const j=this.db.getJob(id);if(['queued','running'].includes(j.status)){j.status='cancelled';j.finishedAt=now();this.db.job(j);if(this.active?.id===id){this.active.status='cancelled';this.child?.kill();}}this.changed();return j;}
   update(j:any,phase:string,progress:number) {Object.assign(j,{phase,progress});this.db.job(j);this.changed();}
-  run(j:any,program:string,args:string[],capture=true):Promise<Buffer> {
+  run(j:any,program:string,args:string[],capture=true,onStderr?:(text:string)=>void):Promise<Buffer> {
     assert(j.status!=='cancelled','Job cancelled');
-    return new Promise((resolve,reject)=>{const child=spawn(program,args,{windowsHide:true,stdio:['ignore',capture?'pipe':'ignore','pipe']});this.child=child;const chunks:Buffer[]=[];let size=0,err='';child.stdout?.on('data',b=>{chunks.push(b);size+=b.length;if(size>128*1024**2)child.kill();});child.stderr.on('data',b=>err=(err+b).slice(-4000));child.on('error',reject);child.on('close',code=>{this.child=null;if(j.status==='cancelled')reject(Object.assign(new Error('Job cancelled'),{code:'CANCELLED'}));else if(code)reject(new Error(err||`Media process exited ${code}`));else resolve(Buffer.concat(chunks));});});
+    return new Promise((resolve,reject)=>{const child=spawn(program,args,{windowsHide:true,stdio:['ignore',capture?'pipe':'ignore','pipe']});this.child=child;const chunks:Buffer[]=[];let size=0,err='';child.stdout?.on('data',b=>{chunks.push(b);size+=b.length;if(size>128*1024**2)child.kill();});child.stderr.on('data',b=>{err=(err+b).slice(-4000);onStderr?.(b.toString());});child.on('error',reject);child.on('close',code=>{this.child=null;if(j.status==='cancelled')reject(Object.assign(new Error('Job cancelled'),{code:'CANCELLED'}));else if(code)reject(new Error(err||`Media process exited ${code}`));else resolve(Buffer.concat(chunks));});});
+  }
+  describe(j:any,queue=this.db.queuedJobs()) {
+    const position=queue.findIndex((q:any)=>q.id===j.id);
+    const end=Date.parse(j.finishedAt||now()),created=Date.parse(j.createdAt);
+    return {...j,queuePosition:j.status==='queued'?position+1:null,
+      elapsedMs:Math.max(0,end-created),runningMs:j.startedAt?Math.max(0,end-Date.parse(j.startedAt)):0};
   }
   async pump() {
     if(this.active)return;
     const j=this.db.nextJob();if(!j)return;
-    this.active=j;j.status='running';this.update(j,'Starting',0);
+    this.active=j;j.status='running';j.startedAt=now();this.update(j,'Starting',0);
     try {
       if(j.kind==='scan')await this.scan!(j);else if(j.kind==='verify')await this.verify(j);else if(j.kind==='artifact')await this.artifact(j);else if(j.kind==='thumbnail')await this.thumbnail(j);else await this.prepare(j);
       if(j.status!=='cancelled'){j.status='completed';j.progress=1;j.phase='Ready';}
@@ -77,7 +83,7 @@ export class Jobs {
   async prepare(j:any) {
     const a=this.ops.asset(j.assetId),s=this.db.get(j.sourceId,'source'),file=this.ops.location(s);assert(a.sourceId===s.id,'Source version changed; request preparation again');assert(s.status==='verified','Verify source before review preparation');assert(file,'Source unavailable or changed');
     const cache=path.join(this.db.dir,'cache');
-    if(!fs.existsSync(path.join(cache,`${s.id}.png`)))await this.thumbnail(j);
+    if(j.level!=='index'&&!fs.existsSync(path.join(cache,`${s.id}.png`)))await this.thumbnail(j);
     if(a.kind==='video') {
       this.update(j,'Indexing source presentation timestamps',.1);
       let exact:any;
@@ -88,6 +94,7 @@ export class Jobs {
       const frameFile=path.join(cache,`${s.id}.frames.json`);
       if(!exact&&!fs.existsSync(frameFile)){const base=s.metadata.streams.find((x:any)=>x.codec_type==='video').time_base.split('/').map(Number);exact={timeBase:{num:base[0],den:base[1]},ticks:index.pts.map((t:number)=>Math.round(t*base[1]/base[0]))};}
       if(exact)fs.writeFileSync(frameFile,JSON.stringify(exact));
+      if(j.level==='index'){j.result={level:'index',frames:index.pts.length};return;}
       const media:any={[a.id]:{kind:'video',file,pts:index.pts}};
       this.update(j,'Preparing shared fast-seek cache',.35);
       const seekDirectory=path.join(cache,s.id); // Separate source ownership prevents eviction of other assets by the shared helper.
@@ -97,6 +104,7 @@ export class Jobs {
       // Native video decoding uses original pixels. Container-only remux makes MKV accessible to Chromium.
       if(/\.(mkv|avi)$/i.test(file)) {this.update(j,'Preparing native playback container',.8);await this.run(j,ffmpeg,['-v','error','-y','-i',file,'-map','0:v:0','-an','-c:v','copy','-movflags','+faststart',path.join(cache,`${s.id}.mp4`)],false);}
     }
+    if(j.level==='index'){j.result={level:'index',sampleRate:Number(s.metadata?.streams?.find((x:any)=>x.codec_type==='audio')?.sample_rate)||null};return;}
     if(s.metadata.hasAudio){this.update(j,'Preparing source audio',.9);await this.run(j,ffmpeg,['-v','error','-y','-i',file,'-vn','-c:a','pcm_s16le',path.join(cache,`${s.id}.wav`)],false);}
     this.evict();
   }
@@ -112,34 +120,44 @@ export class Jobs {
     assert(c.type!=='excerpt'||end-start<=60,'Analysis excerpts are limited to 60 seconds');
     assert(time>=0&&time<a.duration,'Frame time must lie inside the source');
     assert(Number.isInteger(width)&&width>=64&&width<=1920&&Number.isInteger(count)&&count>=1&&count<=48&&Number.isInteger(columns)&&columns>=1&&columns<=8,'Invalid artifact dimensions');
-    const options={assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:1};
+    const options={assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:2};
     if(options.frame!==null)assert(Number.isSafeInteger(options.frame)&&options.frame>=0,'Frame index must be a nonnegative integer');
     const key=createHash('sha256').update(JSON.stringify(options)).digest('hex'),extension=c.type==='excerpt'?(a.kind==='audio'?'wav':'mp4'):'png';
     const output=path.join(this.db.dir,'cache','artifacts',`${s.id}.${key}.${extension}`),url=`/v1/artifacts/${s.id}/${key}.${extension}`;
-    if(fs.existsSync(output)){this.readers.set(s.id,Date.now());return {artifact:{key,type:c.type,path:output,url,sourceId:s.id},cacheHit:true,jobs:[]};}
+    const artifact={key,type:c.type,path:output,url,sourceId:s.id,sourceName:a.name,start,end};
+    if(fs.existsSync(output)&&(c.type!=='contact-sheet'||fs.existsSync(output+'.json'))){this.readers.set(s.id,Date.now());return {artifact:{...artifact,...(c.type==='contact-sheet'?JSON.parse(fs.readFileSync(output+'.json','utf8')):{})},cacheHit:true,jobs:[]};}
     const pending=this.db.db.prepare("SELECT data FROM jobs WHERE json_extract(data,'$.kind')='artifact' AND json_extract(data,'$.options.key')=? AND json_extract(data,'$.status') IN ('queued','running')").get(key) as any;
     const job=pending?JSON.parse(pending.data):this.enqueueTask('artifact',{...options,key,output,url});
-    return {artifact:{key,type:c.type,path:output,url,sourceId:s.id},cacheHit:false,jobs:[job]};
+    return {artifact,cacheHit:false,jobs:[job]};
   }
   async artifact(j:any){
     const o=j.options,s=this.db.get(o.sourceId,'source'),file=this.ops.location(s);assert(file&&s.hash===o.sourceHash,'Artifact source changed or is unavailable');
     fs.mkdirSync(path.dirname(o.output),{recursive:true});const temporary=o.output+'.partial'+path.extname(o.output);
     this.update(j,`Generating ${o.type}`,0.1);
     try{
-      const args=['-v','error','-y'];
+      const args=['-v',o.type==='contact-sheet'?'info':'error','-y'];
+      const frames:any[]=[];let stderr='';
       if(o.type==='frame'){
         if(o.frame===null)args.push('-ss',String(o.time));
         args.push('-i',file,'-an','-vf',`${o.frame===null?'':`select=eq(n\\,${o.frame}),`}scale=${o.width}:-2`,'-frames:v','1',temporary);
       }else if(o.type==='contact-sheet'){
-        args.push('-ss',String(o.start),'-t',String(o.end-o.start),'-i',file,'-an','-vf',`fps=${o.count/(o.end-o.start)},scale=${o.width}:-2,tile=${o.columns}x${Math.ceil(o.count/o.columns)}:nb_frames=${o.count}:padding=4:margin=4:color=0x16171a`,'-frames:v','1',temporary);
+        args.push('-ss',String(o.start),'-t',String(o.end-o.start),'-i',file,'-an','-vf',`select='gte(t,selected_n*${(o.end-o.start)/o.count})',scale=${o.width}:-2,showinfo,tile=${o.columns}x${Math.ceil(o.count/o.columns)}:nb_frames=${o.count}:padding=4:margin=4:color=0x16171a`,'-frames:v','1',temporary);
       }else{
         args.push('-ss',String(o.start),'-i',file,'-t',String(o.end-o.start));
         if(path.extname(o.output)==='.wav')args.push('-vn','-c:a','pcm_s16le');
         else args.push('-vf',`scale=${o.width}:-2`,'-c:v','libx264','-preset','veryfast','-crf','20','-pix_fmt','yuv420p','-c:a','aac','-movflags','+faststart');
         args.push(temporary);
       }
-      await this.run(j,ffmpeg,args,false);assert(fs.existsSync(temporary)&&fs.statSync(temporary).size>0,'Requested source frame was not found');fs.renameSync(temporary,o.output);
-      j.result={key:o.key,type:o.type,sourceId:o.sourceId,path:o.output,url:o.url};
+      await this.run(j,ffmpeg,args,false,chunk=>{
+        stderr+=chunk;const lines=stderr.split(/\r?\n/);stderr=lines.pop()||'';
+        for(const line of lines){const match=/Parsed_showinfo.*\bn:\s*(\d+).*\bpts_time:([\d.e+-]+)/.exec(line);if(match&&frames.length<o.count)frames.push({tile:Number(match[1]),timeSeconds:o.start+Number(match[2])});}
+      });
+      if(o.type==='contact-sheet'){
+        assert(frames.length>0,'Contact sheet contains no sampled frames');
+        fs.writeFileSync(o.output+'.json',JSON.stringify({columns:o.columns,frames}));
+      }
+      assert(fs.existsSync(temporary)&&fs.statSync(temporary).size>0,'Requested source frame was not found');fs.renameSync(temporary,o.output);
+      j.result={key:o.key,type:o.type,sourceId:o.sourceId,sourceName:this.ops.asset(o.assetId).name,start:o.start,end:o.end,path:o.output,url:o.url,...(o.type==='contact-sheet'?{columns:o.columns,frames}:{})};
     }finally{fs.rmSync(temporary,{force:true});}
   }
   files():any[] {

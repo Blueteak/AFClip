@@ -116,6 +116,9 @@ export class Catalog {
   }
   job(j:any) {this.db.prepare('INSERT INTO jobs VALUES (?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data').run(j.id,JSON.stringify(j));return j;}
   getJob(id:string){const r:any=this.db.prepare('SELECT data FROM jobs WHERE id=?').get(id);assert(r,'Unknown job');return JSON.parse(r.data);}
-  nextJob(){const r:any=this.db.prepare("SELECT data FROM jobs WHERE json_extract(data,'$.status')='queued' ORDER BY rowid LIMIT 1").get();return r?JSON.parse(r.data):null;}
+  queuedJobs() {return this.db.prepare(`SELECT data FROM jobs WHERE json_extract(data,'$.status')='queued'
+    ORDER BY CASE json_extract(data,'$.kind') WHEN 'verify' THEN 0 WHEN 'artifact' THEN 1
+      WHEN 'prepare' THEN CASE json_extract(data,'$.level') WHEN 'index' THEN 2 ELSE 4 END ELSE 3 END, rowid`).all().map((r:any)=>JSON.parse(r.data));}
+  nextJob(){return this.queuedJobs()[0]||null;}
   jobs() {return this.db.prepare('SELECT data FROM jobs ORDER BY rowid DESC LIMIT 200').all().map((r:any)=>JSON.parse(r.data));}
 }
