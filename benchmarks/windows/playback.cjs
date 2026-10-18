@@ -1,5 +1,7 @@
 // Opt-in, visible playback measurement. Uses a disposable 60 fps project copy.
-// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds] [1080|1440|2160] [--seek]
+// Also runs on macOS. --reuse-cache copies only the source project's disposable
+// timestamp/seek caches; omit it to measure cold preparation.
+// Run: node benchmarks/windows/playback.cjs [project-directory] [seconds] [1080|1440|2160] [--seek] [--reuse-cache]
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execFileSync } = require('node:child_process');
@@ -17,6 +19,10 @@ if (!process.versions.electron) {
   project.fps = { num: 60, den: 1 }; project.resolution = { width, height };
   for (const media of project.media) media.path = path.resolve(source, media.path);
   fs.writeFileSync(path.join(projectDir, 'project.json'), JSON.stringify(project, null, 2));
+  if (process.argv.includes('--reuse-cache')) for (const name of ['frame-index', 'seek-preview']) {
+    const cache = path.join(source, 'cache', name);
+    if (fs.existsSync(cache)) fs.cpSync(cache, path.join(projectDir, 'cache', name), { recursive:true });
+  }
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
   console.log(`Playback artifacts: ${output}`);
   const child = spawn(require('electron'), [__filename, '--measure', output, process.argv[3] || '64', ...(process.argv.includes('--seek') ? ['--seek'] : [])], { env, windowsHide: true, stdio: 'inherit' });
@@ -47,11 +53,13 @@ if (!process.versions.electron) {
     win.webContents.debugger.on('message', (_event, method, params) => { if (method === 'Media.playerPropertiesChanged') mediaEvents.push(params); });
     await win.webContents.debugger.sendCommand('Media.enable');
     let ready = false;
-    for (let i = 0; i < 180; i++) {
+    const prepareSeconds = Number(process.env.REELET_PREPARE_TIMEOUT_SECONDS || 120);
+    if (!(prepareSeconds > 0 && prepareSeconds <= 600)) throw new Error('Preparation deadline must be between 0 and 600 seconds');
+    for (let i = 0; i < prepareSeconds * 2; i++) {
       try { ready = await win.webContents.executeJavaScript('typeof playback !== "undefined" && playback.ready && !!playback.native'); } catch {}
       if (ready) break; await sleep(500);
     }
-    if (!ready) throw new Error('Native preview did not become ready');
+    if (!ready) throw new Error(`Native preview did not become ready within ${prepareSeconds} seconds`);
     const previewReadyMs = performance.now() - openedAt;
     const display = screen.getAllDisplays().find(d => d.workArea.width >= width && d.workArea.height >= height + 40);
     if (!display) throw new Error('No display can fit the requested viewport at device-pixel ratio 1');
@@ -131,6 +139,8 @@ if (!process.versions.electron) {
         stage:document.getElementById('native-preview').getBoundingClientRect().toJSON(), devicePixelRatio, fps:playback.fps };
     })()`);
     result.mediaEvents = mediaEvents; result.gpu = await app.getGPUInfo('complete');
+    result.previewReadyMs = previewReadyMs;
+    result.seekCache = await win.webContents.executeJavaScript('playback.native.setup.seekCache');
     result.displays = screen.getAllDisplays().map(d => ({ bounds:d.bounds, frequency:d.displayFrequency }));
     result.versions = process.versions;
     result.presentation = {
@@ -143,9 +153,11 @@ if (!process.versions.electron) {
       const gaps = values.slice(1).map((s, i) => s.wall - values[i].wall).sort((a, b) => a - b);
       const quality = result.quality.filter(s => s.clip === clip);
       const errors = values.map(s => Math.abs(s.clockError) * 1000).sort((a, b) => a - b);
+      const steady = values.filter(s => s.audio >= first.audio + .6), steadyFirst = steady[0], steadyLast = steady.at(-1);
       return { clip, callbacks:values.length, seconds:(last.wall - first.wall) / 1000,
         callbackFps:(values.length - 1) * 1000 / (last.wall - first.wall),
         presentedFps:(last.presented - first.presented) * 1000 / (last.wall - first.wall),
+        steadyPresentedFps:steady.length > 1 ? (steadyLast.presented-steadyFirst.presented)*1000/(steadyLast.wall-steadyFirst.wall) : null,
         p95GapMs:gaps[Math.floor(gaps.length * .95)], maxGapMs:gaps.at(-1),
         droppedWhileVisible:quality.length ? quality.at(-1).dropped - quality[0].dropped : null,
         p95ClockErrorMs:errors[Math.floor(errors.length * .95)], maxClockErrorMs:errors.at(-1) };
@@ -154,5 +166,10 @@ if (!process.versions.electron) {
     console.log(JSON.stringify({ time:result.time, stats:result.stats, byClip:result.byClip }, null, 2));
     await win.webContents.executeJavaScript('playback.pause(false); reelet.previewClose()');
     await sleep(300); app.exit(0);
-  })().catch(error => { console.error(error); app.exit(1); });
+  })().catch(async error => {
+    fs.writeFileSync(path.join(output, 'error.json'), JSON.stringify({error:error.message,versions:process.versions},null,2));
+    console.error(error);
+    for (const window of BrowserWindow.getAllWindows()) await window.webContents.executeJavaScript('reelet.previewClose()').catch(()=>{});
+    await sleep(300); app.exit(1);
+  });
 }
