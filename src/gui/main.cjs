@@ -1,9 +1,9 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } = require('electron');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
@@ -13,10 +13,32 @@ const projectDir = path.resolve(args[0] || '.');
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
 let window, endpoint, streamController, captureTimer, captured = false;
 let previewSession, previewGeneration = 0;
+let mediaLibraryEndpoint;
 const previewFiles = new Map();
 const previewGraphics = { graphics: {} };
 const files = new Map();
+const sourceFiles = new Map(), libraryResources = new Map();
 const outputs = new Set();
+function grantSourceFile(file) {
+  const id = createHash('sha256').update(path.resolve(file)).digest('hex');
+  sourceFiles.set(id, path.resolve(file));
+  return `reelet-media://${id}/source`;
+}
+function grantLibraryResource(route, ep) {
+  const url = new URL(route, ep.url), base = new URL(ep.url);
+  if (url.origin !== base.origin || !/^\/v1\/(media|artifacts)\//.test(url.pathname)) throw new Error('Invalid library media resource');
+  const token = new URL(ep.readerGui).searchParams.get('token');
+  const id = createHash('sha256').update(url.href + token).digest('hex');
+  libraryResources.set(id, { url: url.href, token });
+  return `reelet-media://${id}/library`;
+}
+async function getMediaLibraryEndpoint() {
+  if (!mediaLibraryEndpoint) {
+    mediaLibraryEndpoint = execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true, timeout:15000 })
+      .then(result => JSON.parse(result.stdout).result).catch(error => { mediaLibraryEndpoint = null; throw error; });
+  }
+  return mediaLibraryEndpoint;
+}
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
 // Chromium 152's DirectComposition VSync fallback sleeps for a rounded-up 17 ms
 // on this Windows setup, delivering only ~56 fps. Use the GPU-backed EGL window
@@ -103,7 +125,19 @@ app.whenReady().then(async () => {
 
   protocol.handle('reelet-media', async req => {
     const id = new URL(req.url).hostname;
-    const file = files.get(id) || previewFiles.get(id);
+    const remote = libraryResources.get(id);
+    if (remote) {
+      try {
+        const headers = { Authorization: `Bearer ${remote.token}` };
+        if (req.headers.has('range')) headers.Range = req.headers.get('range');
+        const response = await fetch(remote.url, { method: req.method, headers, signal: req.signal });
+        const forwarded = new Headers();
+        for (const name of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']) if (response.headers.has(name)) forwarded.set(name, response.headers.get(name));
+        forwarded.set('Access-Control-Allow-Origin', 'file://');
+        return new Response(response.body, { status: response.status, headers: forwarded });
+      } catch { return new Response('Library media unavailable', { status: 502 }); }
+    }
+    const file = files.get(id) || previewFiles.get(id) || sourceFiles.get(id);
     if (!file) return new Response('Not found', { status: 404 });
     // Chromium needs real byte-range responses to seek a mixed WAV or export.
     let stat;
@@ -117,7 +151,7 @@ app.whenReady().then(async () => {
       else { start = Number(match[1]); if (match[2]) end = Math.min(end, Number(match[2])); }
       if (start > end || start >= stat.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } });
     }
-    const type = { '.wav': 'audio/wav', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const type = { '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.mkv': 'video/x-matroska', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
     const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1), 'Access-Control-Allow-Origin':'file://',
       ...(range ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}) };
     const stream = req.method === 'HEAD' ? null : require('node:stream').Readable.toWeb(require('node:fs').createReadStream(file, { start, end }));
@@ -154,6 +188,18 @@ app.whenReady().then(async () => {
   });
   ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
+  const sourceMedia = require('./source-media.cjs')({
+    projectDir, inspect: () => request('/inspect'), libraryEndpoint: getMediaLibraryEndpoint,
+    grantFile: grantSourceFile, grantLibrary: grantLibraryResource,
+    invalidateLibrary: () => { mediaLibraryEndpoint = null; },
+  });
+  handle('media-thumbnail', id => sourceMedia.thumbnail(id));
+  handle('source-preview', id => sourceMedia.preview(id));
+  handle('source-waveform', (id, options) => sourceMedia.waveform(id, options));
+  handle('copy-text', text => {
+    if (typeof text !== 'string' || text.length > 10000) throw new Error('Invalid clipboard text');
+    clipboard.writeText(text);
+  });
   handle('waveform', async id => {
     const { project } = await request('/inspect');
     const clip = project.clips.find(c => c.id === id);
@@ -170,8 +216,15 @@ app.whenReady().then(async () => {
     const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, ep.gui+(id?'&asset='+encodeURIComponent(id):'')], { windowsHide:true, detached:true, stdio:'ignore', env });
     child.unref(); return {opened:true};
   });
+  handle('library-media', async () => {
+    const { project } = await request('/inspect');
+    if (!project.media.some(m => m.metadata?.library)) return {};
+    try {
+      return await require('./library-media.cjs')(project.media, await getMediaLibraryEndpoint());
+    } catch (error) { mediaLibraryEndpoint = null; throw error; }
+  });
   handle('command', payload => {
-    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('import', async kind => {

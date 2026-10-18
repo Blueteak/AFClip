@@ -30,7 +30,7 @@ app.whenReady().then(async()=>{
   await window.loadURL(url.toString());window.show();window.focus();
   if(dev)require('../gui/dev-reload.cjs')(window,undefined,{files:[
     ...['index.html','app.js','review-tools.js','annotation-timeline.js','styles.css'].map(name=>path.join(__dirname,'gui',name)),
-    path.join(__dirname,'../gui/styles.css'),path.join(__dirname,'../gui/native-preview.js'),path.join(__dirname,'../render/timeline.cjs'),
+    path.join(__dirname,'../gui/styles.css'),path.join(__dirname,'../gui/native-preview.js'),path.join(__dirname,'../gui/audio-waveform.js'),path.join(__dirname,'../render/timeline.cjs'),
   ]});
 }).catch(e=>{console.error(e);dialog.showErrorBox('Content Library',e.message);app.exit(1);});
 app.on('window-all-closed',()=>app.quit());

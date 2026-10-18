@@ -10,6 +10,7 @@ const help=`Content Library. GUI and CLI use the same local catalog and operatio
   npm run library -- import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
   npm run library -- search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
   npm run library -- inspect --id ID
+  npm run library -- waveform --id ID [--start SEC --duration SEC --bins 16384]
   npm run library -- annotate --id ID --revision N --name NAME --notes TEXT --tags TAG_ID,TAG_ID
   npm run library -- folder-create --name SFX [--parent root]
   npm run library -- move|promote --id ID --revision N --folder ID
@@ -34,6 +35,10 @@ Use --catalog PATH to select a catalog; default is %LOCALAPPDATA%/Reelet/Library
 Author defaults to agent; --author human is supported. Outputs are structured JSON.
 Mutations of existing items require their current revision from inspect/overview.
 Ranges use exclusive end frames/samples. No command deletes original media.
+Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to Reelet:
+  node src/cli.ts library-import <project-dir> <id>
+This adds the source or selected range to the project bin and returns result.media.id.
+Follow nextOffset until complete when searching across multiple pages.
 `;
 async function main(){const args=process.argv.slice(2),command=args.shift();if(!command||['help','--help','-h'].includes(command)){console.log(help);return;}
   const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false;
