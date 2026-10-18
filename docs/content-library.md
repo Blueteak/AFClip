@@ -123,11 +123,11 @@ AFClip's normal import registers audio/video and persists library identity, sour
 Open **File > Browse content library**, or `Ctrl+L`, to browse, preview and add an asset or named range to the project bin. **Edit in library** opens the standalone writer. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
 
 ```powershell
-afclip library-sync PROJECT_DIR
-afclip library-import PROJECT_DIR ASSET_OR_RANGE_ID
+afclip-cli library-sync PROJECT_DIR
+afclip-cli library-import PROJECT_DIR ASSET_OR_RANGE_ID
 ```
 
-Agents can find clips with `aflib search --q "impact" --kind audio`, then pass a result's `id` directly to `afclip library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `AFCLIP_LIBRARY_HOME` when overriding the default.
+Agents can find clips with `aflib search --q "impact" --kind audio`, then pass a result's `id` directly to `afclip-cli library-import PROJECT_DIR ID`. This single import command resolves the original file and adds it to the bin, returning `result.media.id` for timeline edits. An asset ID imports the whole source; a range ID imports its saved selection. Search IDs remain stable across renames and folder moves. Follow `nextOffset` when `complete` is false. Both CLIs must use the same active catalog, selected by `AFCLIP_LIBRARY_HOME` when overriding the default.
 
 AFClip's Media List shows current library names grouped by home folder. Search includes filenames, tags, notes, parent asset context and folder names. Hover a row for tags, notes, take counts and source details. Range rows show the saved selection duration; changed ranges, replaced sources and removed library records are flagged without changing saved project timing or paths. Metadata refreshes every five seconds and when the window gains focus. If the library is unavailable, the list retains its last metadata and project editing remains available. Older projects register audio/video in the background when the editor opens. Images and graphics stay under Project media.
 
@@ -150,13 +150,13 @@ Temporary selections stay in the monitor until insertion. Insertion saves a sepa
 The CLI uses the same source inspection, waveform implementation and insertion operation:
 
 ```powershell
-afclip source-inspect PROJECT_DIR MEDIA_ID
-afclip source-prepare PROJECT_DIR MEDIA_ID --wait
-afclip source-jobs PROJECT_DIR MEDIA_ID
-afclip source-cancel PROJECT_DIR MEDIA_ID JOB_ID
-afclip source-waveform PROJECT_DIR MEDIA_ID --start 0 --duration 2 --bins 512
-afclip source-insert PROJECT_DIR MEDIA_ID --at 2
-afclip source-insert PROJECT_DIR MEDIA_ID --at 2 --track TRACK_ID --selection '{"revision":3,"sourceId":"SOURCE_ID","startSample":11025,"endSample":55125}'
+afclip-cli source-inspect PROJECT_DIR MEDIA_ID
+afclip-cli source-prepare PROJECT_DIR MEDIA_ID --wait
+afclip-cli source-jobs PROJECT_DIR MEDIA_ID
+afclip-cli source-cancel PROJECT_DIR MEDIA_ID JOB_ID
+afclip-cli source-waveform PROJECT_DIR MEDIA_ID --start 0 --duration 2 --bins 512
+afclip-cli source-insert PROJECT_DIR MEDIA_ID --at 2
+afclip-cli source-insert PROJECT_DIR MEDIA_ID --at 2 --track TRACK_ID --selection '{"revision":3,"sourceId":"SOURCE_ID","startSample":11025,"endSample":55125}'
 ```
 
 Use `selectionContext` from `source-inspect` for selection revision and source ID. Video selections supply `startFrame` and `endFrame` instead. Inspection includes range IDs, revisions, exact boundaries, tags, notes, takes and parent asset context. `source-waveform` reads the project's saved original and returns per-channel signed peaks and RMS data.
@@ -167,7 +167,7 @@ Duplicate verification can resolve provisional assets to a canonical asset with 
 
 Scratch verification covered 44.1 kHz stereo selections and 30 fps video inserted into a 24 fps project, CLI waveform/inspection, preparation and cancellation, locked and stale destinations, stale library selections, atomic undo/redo, duplicate resolution and insertion of saved selections without library reads.
 
-Project reference updates are persisted to `.afclip/library-outbox.json` before an edit returns and sent to the library in the background. Failed delivery retries every 15 seconds and on reopening the project. Registration first persists the previous reference set so interrupted imports can be reconciled. `afclip library-status PROJECT` reports `pending`, `syncing`, `error` and `lastSyncedAt`; `library-sync PROJECT` registers legacy bin media and explicitly waits for reconciliation. Ordinary edits and exports do not wait for delivery. Source inspection, waveform and preparation requests also run outside the project edit queue.
+Project reference updates are persisted to `.afclip/library-outbox.json` before an edit returns and sent to the library in the background. Failed delivery retries every 15 seconds and on reopening the project. Registration first persists the previous reference set so interrupted imports can be reconciled. `afclip-cli library-status PROJECT` reports `pending`, `syncing`, `error` and `lastSyncedAt`; `library-sync PROJECT` registers legacy bin media and explicitly waits for reconciliation. Ordinary edits and exports do not wait for delivery. Source inspection, waveform and preparation requests also run outside the project edit queue.
 
 `node benchmarks/windows/library-offline.ts` checks a deliberately stalled catalog, including a pending source-inspection request. On 2026-10-18, the project edit returned in 7 ms and a software export completed while delivery was stalled. Killing and restarting that scratch project's engine preserved the edit and delivered its saved references when the catalog responded again. The check uses generated audio and a local stub service; it never changes the active library.
 

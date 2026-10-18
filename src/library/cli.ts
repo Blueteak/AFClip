@@ -38,7 +38,7 @@ Author defaults to agent; --author human is supported. Outputs are structured JS
 Mutations of existing items require their current revision from inspect/overview.
 Ranges use exclusive end frames/samples. No command deletes original media.
 Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to AFClip:
-  afclip library-import <project-dir> <id>
+  afclip-cli library-import <project-dir> <id>
 This adds the source or selected range to the project bin and returns result.media.id.
 Follow nextOffset until complete when searching across multiple pages.
 Search and overview default to compact results; --full restores complete metadata.
