@@ -15,6 +15,15 @@ class TimelinePlayback {
   }
   setProject(project, mode) {
     if (this.revision === project.revision && this.projectId === project.id && this.mode === mode) return;
+    // Text overrides only affect the existing graphic iframe. Keep its DOM,
+    // decoded video frames and audio instead of starting another preview worker.
+    const textBaseKey = JSON.stringify({ ...project, clips: project.clips.map(c => ({ ...c, text: undefined })) }, (key, value) => {
+      if (key === 'revision' || key === 'relationshipRevisions') return undefined;
+      return value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value;
+    });
+    const keepTextSession = this.ready && this.native && this.sessionId && this.textBaseKey === textBaseKey && this.mode === mode;
+    this.textBaseKey = textBaseKey;
     // Audio-only placement and envelope edits do not change source pictures.
     // Detached audio clips reference video media but never draw it.
     const audioMedia = new Set(project.media.filter(m => m.kind === 'audio').map(m => m.id));
@@ -40,6 +49,18 @@ class TimelinePlayback {
     });
     const keepVideo = this.prepared && this.sessionId && this.videoKey === videoKey && this.mode === mode;
     this.videoKey = videoKey;
+    if (keepTextSession) {
+      this.pause(false);
+      this.revision = project.revision;
+      this.native.setup.project = project;
+      this.native.setup.plan = window.ReeletTimeline.compile(project);
+      for (const clip of this.native.setup.plan.clips) {
+        const entry = this.native.entries.get(clip.id);
+        if (entry) entry.clip = clip;
+      }
+      this.request(this.time, true);
+      return;
+    }
     this.pause(false); this.generation++; this.epoch++;
     if (!keepVideo) { this.native?.close(); this.native = null; }
     this.rejectReady?.(new Error('Preview replaced')); this.rejectReady = null;
