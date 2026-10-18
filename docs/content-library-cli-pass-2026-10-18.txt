@@ -1,0 +1,34 @@
+Content Library CLI workflow observations, 2026-10-18
+
+Scope: promote all 13 Inbox sources and make a rough annotation pass in the live default catalog. Existing source files and project edit timing stay in place.
+
+Measured so far
+- Atomic promotion of 13 sources: 136 ms including CLI process startup.
+- Five 256-bin waveform requests: 173-251 ms each including CLI startup.
+- First video preparation: 23.5 seconds; second completed 65.7 seconds after enqueue, including waiting for the first.
+
+Optimization candidates
+1. Separate lightweight review jobs from expensive preparation. The single FIFO queue held all eight contact sheets behind thirteen full preparation jobs. Deferred queued preparation and requeued it after sheets. Add priority or a separate bounded artifact worker.
+2. Offer prepare --level index|preview. Exact range creation requires a frame index, while the current command also creates seek proxies and decoded audio. Agents should be able to annotate as soon as indexing finishes.
+3. Add compact search/overview responses or --fields. Search embeds raw ffprobe streams and format metadata for every result; overview includes historical jobs and history. Initial discovery generated roughly 77k tokens across overview/search. IDs, revisions, kind, duration, folder, availability, and preparation state should be the default agent summary; inspect can carry full metadata.
+4. Make Inbox filtering explicit in help. search --inbox includes Inbox alongside ordinary library items; search --folder inbox is Inbox-only. Prefer --include-inbox for the former, and reject unsupported/ambiguous flags.
+5. Add command schema/help per operation. apply batches work well, but agents currently read source to discover fields, revision increments, and annotationTracks. Document batch return IDs/revisions and dependent operations on the same asset.
+6. Contact sheets need frame timestamps and source labels in either the image or a returned frame manifest. Current sheets contain no timestamps, making rough selections possible but exact event localization harder.
+7. Add a waveform summary with peak timestamp, activity bounds and source sample rate. Current waveforms use 48 kHz decoded data while source ranges may require 44.1 kHz. Return both rates explicitly to prevent incorrect sample-boundary conversions.
+8. Progress/wait should report queue position, current phase, elapsed time, and distinguish accepted from complete. --wait currently polls silently every 250 ms and top-level ok remains true when a job fails, although process exit is nonzero.
+
+Audio review uses filenames and decoded waveform data, not listening. Music windows are provisional editorial windows, not verified musical phrases.
+
+GUI verification
+- Opened the existing Vellum project in the native Reelet GUI and inspected 4P_Fantasy_3 and Impact Low Reverb 001 in Source view.
+- Both reported ready and displayed the new notes, tags, and two named ranges beneath their picture/waveform. Screenshots: .temp/reelet-video-annotations.png and .temp/reelet-audio-annotations.png.
+- Standalone Content Library also displayed the audio and video Rough selects tracks, and Inbox count 0.
+- Audio range names include source context to avoid ambiguous duplicate Main accent / Decay names in global search.
+
+Final result
+- Inbox: 0, complete search result.
+- Promoted: 8 videos to Recordings, 4 effects to Sound Effects, 1 track to Music.
+- All 13 sources have rough notes; 16 video ranges and 9 audio ranges saved.
+- All 13 preparation jobs and 8 contact-sheet jobs completed. Eleven initial queued preparations were deliberately cancelled and requeued behind contact sheets.
+- Video review used six sampled images per source. Gauntlet includes an approximate exclusion range for its ending debug console.
+- No application implementation changes were made during this pass. These optimization candidates remain follow-up work.
