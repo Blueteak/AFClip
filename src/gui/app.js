@@ -296,8 +296,8 @@ action('goOut', { menu: 'Timeline', group: 2, label: 'Go to Out', keys: ['Shift+
 action('clearMarks', { menu: 'Timeline', group: 2, label: 'Clear In and Out', keys: ['Ctrl+Shift+X'], enabled: () => inF != null || outF != null, run: () => setMarks(null, null) });
 action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker', icon: 'marker', keys: ['M'], desc: 'Add a marker at the playhead. Markers are shared with the CLI, snap moves and trims, and never change the export length.', enabled: editable, run: () => addMarker(nextMarkerName(), playF) });
 action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Right-click or double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerPopover(markerById(selMarker)) });
-action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Up'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
-action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Down'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
+action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Down'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
+action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Up'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
 action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top. Any media can go on any track.', enabled: editable, run: () => addTrack() });
 action('snap', { menu: 'Timeline', group: 3, label: 'Snapping', icon: 'magnet', keys: ['S'], desc: 'Snap moves and trims to clip edges, markers, the playhead and In/Out. Hold Alt while dragging to bypass.', checked: () => prefs.snap, run: () => { prefs.snap = !prefs.snap; savePrefs(); say(`Snapping ${prefs.snap ? 'on' : 'off'}`); syncChrome(); } });
 action('selectTool', { menu: 'Timeline', group: 4, label: 'Selection tool', icon: 'pointer', keys: ['V'], desc: 'Select, move and trim clips.', checked: () => tool === 'select', run: () => setTool('select') });
@@ -1373,7 +1373,7 @@ function rulerMarkers() {
     el.group = g;
     el.tip = () => ({ title: g.length > 1 ? plural(g.length, 'marker') : m.name, follow: true,
       meta: [tc(markerF(m)), ...(g.length > 1 ? g.map(o => `· ${o.name}`) : []), beyond ? 'After the last clip. Exports are unaffected.' : null].filter(Boolean).join('\n'),
-      hint: [{ keys: '#Click', text: g.length > 1 ? 'go to / cycle' : 'go to' }, { keys: '#Drag', text: 'move' }, { keys: '#Double-click', text: 'edit' }, { keys: 'Delete', text: 'remove' }, { keys: ['Shift+Up', 'Shift+Down'], text: 'prev / next' }] });
+      hint: [{ keys: '#Click', text: g.length > 1 ? 'go to / cycle' : 'go to' }, { keys: '#Drag', text: 'move' }, { keys: '#Double-click', text: 'edit' }, { keys: 'Delete', text: 'remove' }, { keys: ['Shift+Up', 'Shift+Down'], text: 'next / prev' }] });
     return el;
   });
 }
