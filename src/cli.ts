@@ -8,43 +8,43 @@ import {assert,parseTime,cmp} from './shared/project.ts';
 
 const HELP=`AFClip first editing slice. Every command prints JSON except help.
 
-  afclip-cli create <project-dir> [--name NAME] [--width 1920 --height 1080 --fps 30]
-  afclip-cli inspect <project-dir>
-  afclip-cli endpoint <project-dir>
-  afclip-cli import <project-dir> <source-file> [--kind video|audio|image|graphic]
-  afclip-cli library-import <project-dir> <asset-or-range-id>
-  afclip-cli library-sync|library-status <project-dir>
-  afclip-cli source-inspect <project-dir> <media-id>
-  afclip-cli source-prepare <project-dir> <media-id> [--wait]
-  afclip-cli source-jobs <project-dir> <media-id>
-  afclip-cli source-cancel <project-dir> <media-id> <job-id>
-  afclip-cli source-waveform <project-dir> <media-id> [--start SEC --duration SEC --bins N]
-  afclip-cli source-insert <project-dir> <media-id> --at SEC [--track ID --selection JSON --preconditions FILE]
-  afclip-cli apply <project-dir> <batch.json>
-  afclip-cli text-fields <project-dir> <clip-id>
-  afclip-cli text-set <project-dir> <clip-id> <field-id> --text VALUE [--revision N --media-revision N]
-  afclip-cli text-set <project-dir> <clip-id> <field-id> --file text.txt
-  afclip-cli text-reset <project-dir> <clip-id> <field-id>
-  afclip-cli markers <project-dir>
-  afclip-cli marker-add <project-dir> --time SEC --name NAME [--id ID]
-  afclip-cli marker-set <project-dir> <marker-id> [--time SEC] [--name NAME]
-  afclip-cli marker-remove <project-dir> <marker-id>
-  afclip-cli marker-next|marker-previous <project-dir> --time SEC
-  afclip-cli ripple-delete <project-dir> --start SEC --end SEC [--revision N]
-  afclip-cli detach-audio|unlink <project-dir> <clip-id> [--revision N]
-  afclip-cli undo|redo <project-dir>
-  afclip-cli export <project-dir> <output.mp4> [--mode gpu|software] [--start SEC --end SEC] [--verify quick|full] [--wait]
-  afclip-cli frame <project-dir> <output.png> --time SEC [--mode gpu|software] [--wait]
-  afclip-cli status <project-dir> [job-id]
-  afclip-cli cancel <project-dir> [job-id]
-  afclip-cli close <project-dir>
-  afclip-cli checkpoint <project-dir> --task DESCRIPTION
-  afclip-cli checkpoints <project-dir>
-  afclip-cli restore <project-dir> [checkpoint-id|latest] --confirm discard-later-edits
+  af-clip create <project-dir> [--name NAME] [--width 1920 --height 1080 --fps 30]
+  af-clip inspect <project-dir>
+  af-clip endpoint <project-dir>
+  af-clip import <project-dir> <source-file> [--kind video|audio|image|graphic]
+  af-clip library-import <project-dir> <asset-or-range-id>
+  af-clip library-sync|library-status <project-dir>
+  af-clip source-inspect <project-dir> <media-id>
+  af-clip source-prepare <project-dir> <media-id> [--wait]
+  af-clip source-jobs <project-dir> <media-id>
+  af-clip source-cancel <project-dir> <media-id> <job-id>
+  af-clip source-waveform <project-dir> <media-id> [--start SEC --duration SEC --bins N]
+  af-clip source-insert <project-dir> <media-id> --at SEC [--track ID --selection JSON --preconditions FILE]
+  af-clip apply <project-dir> <batch.json>
+  af-clip text-fields <project-dir> <clip-id>
+  af-clip text-set <project-dir> <clip-id> <field-id> --text VALUE [--revision N --media-revision N]
+  af-clip text-set <project-dir> <clip-id> <field-id> --file text.txt
+  af-clip text-reset <project-dir> <clip-id> <field-id>
+  af-clip markers <project-dir>
+  af-clip marker-add <project-dir> --time SEC --name NAME [--id ID]
+  af-clip marker-set <project-dir> <marker-id> [--time SEC] [--name NAME]
+  af-clip marker-remove <project-dir> <marker-id>
+  af-clip marker-next|marker-previous <project-dir> --time SEC
+  af-clip ripple-delete <project-dir> --start SEC --end SEC [--revision N]
+  af-clip detach-audio|unlink <project-dir> <clip-id> [--revision N]
+  af-clip undo|redo <project-dir>
+  af-clip export <project-dir> <output.mp4> [--mode gpu|software] [--start SEC --end SEC] [--verify quick|full] [--wait]
+  af-clip frame <project-dir> <output.png> --time SEC [--mode gpu|software] [--wait]
+  af-clip status <project-dir> [job-id]
+  af-clip cancel <project-dir> [job-id]
+  af-clip close <project-dir>
+  af-clip checkpoint <project-dir> --task DESCRIPTION
+  af-clip checkpoints <project-dir>
+  af-clip restore <project-dir> [checkpoint-id|latest] --confirm discard-later-edits
 
 Times accept decimal seconds or exact fractions, e.g. 1001/30000.
-Find reusable clips: aflib search --q TEXT --kind video
-Import a result with one command: afclip-cli library-import <project-dir> <result.items[].id>
+Find reusable clips: af-lib search --q TEXT --kind video
+Import a result with one command: af-clip library-import <project-dir> <result.items[].id>
 Asset IDs import the whole source; range IDs import the saved source selection into the project bin.
 The response includes result.media.id for subsequent timeline edits. Import preserves library provenance.
 source-inspect returns source monitor data, annotations, source PTS, sample rate and selectionContext.

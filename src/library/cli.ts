@@ -7,29 +7,29 @@ import {libraryEndpoint,request} from './client.ts';
 import {commandSchema,globals,schema} from './command-schema.ts';
 const help=`Content Library. GUI and CLI use the same local catalog and operation contract.
 
-  aflib gui [--id ASSET] [--dev]
-  aflib endpoint
-  aflib import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
-  aflib search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
-  aflib inspect --id ID
-  aflib waveform --id ID [--start SEC --duration SEC --bins 16384]
-  aflib annotate --id ID --revision N --name NAME --notes TEXT --tags TAG_ID,TAG_ID
-  aflib folder-create --name SFX [--parent root]
-  aflib move|promote --id ID --revision N --folder ID
-  aflib tag-create --name NAME
-  aflib tag-rename|tag-delete|tag-merge --id ID --revision N [--name NAME] [--target ID --targetRevision N] [--confirm clear-assignments]
-  aflib range-save --assetId ID --revision N --name NAME --startFrame 0 --endFrame 120
-  aflib range-save --assetId ID --revision N --name NAME --startSample 0 --endSample 48000
-  aflib prepare [--ids ID,ID | --folder ID] [--level index|preview] [--wait]
-  aflib source-folder-save --path PATH --folder ID [--watched --hierarchy]
-  aflib source-folders
-  aflib rescan [--id SOURCE_FOLDER_ID | PATH] [--hierarchy] [--wait]
-  aflib artifact --id ID --type frame|contact-sheet|excerpt [--time SEC --start SEC --end SEC] [--wait]
-  aflib jobs|history|overview|references|cache|cache-clear|checkpoints
-  aflib cancel --id JOB
-  aflib undo|redo
-  aflib checkpoint --name NAME
-  aflib call request.json
+  af-lib gui [--id ASSET] [--dev]
+  af-lib endpoint
+  af-lib import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
+  af-lib search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
+  af-lib inspect --id ID
+  af-lib waveform --id ID [--start SEC --duration SEC --bins 16384]
+  af-lib annotate --id ID --revision N --name NAME --notes TEXT --tags TAG_ID,TAG_ID
+  af-lib folder-create --name SFX [--parent root]
+  af-lib move|promote --id ID --revision N --folder ID
+  af-lib tag-create --name NAME
+  af-lib tag-rename|tag-delete|tag-merge --id ID --revision N [--name NAME] [--target ID --targetRevision N] [--confirm clear-assignments]
+  af-lib range-save --assetId ID --revision N --name NAME --startFrame 0 --endFrame 120
+  af-lib range-save --assetId ID --revision N --name NAME --startSample 0 --endSample 48000
+  af-lib prepare [--ids ID,ID | --folder ID] [--level index|preview] [--wait]
+  af-lib source-folder-save --path PATH --folder ID [--watched --hierarchy]
+  af-lib source-folders
+  af-lib rescan [--id SOURCE_FOLDER_ID | PATH] [--hierarchy] [--wait]
+  af-lib artifact --id ID --type frame|contact-sheet|excerpt [--time SEC --start SEC --end SEC] [--wait]
+  af-lib jobs|history|overview|references|cache|cache-clear|checkpoints
+  af-lib cancel --id JOB
+  af-lib undo|redo
+  af-lib checkpoint --name NAME
+  af-lib call request.json
 
 Every /v1 operation is available as a CLI command with --field value options,
 or call <file.json|-> for exact structured input, including atomic apply batches.
@@ -38,7 +38,7 @@ Author defaults to agent; --author human is supported. Outputs are structured JS
 Mutations of existing items require their current revision from inspect/overview.
 Ranges use exclusive end frames/samples. No command deletes original media.
 Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to AFClip:
-  afclip-cli library-import <project-dir> <id>
+  af-clip library-import <project-dir> <id>
 This adds the source or selected range to the project bin and returns result.media.id.
 Follow nextOffset until complete when searching across multiple pages.
 Search and overview default to compact results; --full restores complete metadata.
