@@ -6,13 +6,13 @@ The first complete edit is exported locally at `exports/sample-first-edit.mp4`: 
 
 ## Run it
 
-Use Node 24 and `npm ci`. Dependencies pin Electron, FFmpeg and ffprobe; a separate FFmpeg installation is unnecessary.
+Use Node 24 or newer, run `npm ci`, then `npm link` to register `afclip` and `aflib` globally. Dependencies pin Electron, FFmpeg and ffprobe; a separate FFmpeg installation is unnecessary.
 
 ```powershell
-node src/cli.ts --help
+afclip --help
 npm start -- /path/to/project
-node src/cli.ts inspect /path/to/project
-node src/cli.ts export /path/to/project exports/sample-first-edit.mp4 --mode gpu --wait
+afclip inspect /path/to/project
+afclip export /path/to/project exports/sample-first-edit.mp4 --mode gpu --wait
 ```
 
 The supplied example is a 64-second Sample edit assembled from local gameplay, a music bed, sound effects and two animated HTML graphics. Its source paths belong to this PC. `npm run edit:example` imports those sources and commits the timeline through engine commands. It takes a starting checkpoint and refuses to replace a project that already contains clips.
@@ -24,15 +24,15 @@ The program monitor now keeps a persistent preview worker. Space plays or pauses
 ## Create and edit through the CLI
 
 ```powershell
-node src/cli.ts create .cache/my-edit --name "My edit" --width 1920 --height 1080 --fps 30
-node src/cli.ts import .cache/my-edit "/path/to/media/source"
-node src/cli.ts checkpoint .cache/my-edit --task "First rough cut"
-node src/cli.ts inspect .cache/my-edit
+afclip create .cache/my-edit --name "My edit" --width 1920 --height 1080 --fps 30
+afclip import .cache/my-edit "/path/to/media/source"
+afclip checkpoint .cache/my-edit --task "First rough cut"
+afclip inspect .cache/my-edit
 ```
 
 Commands return JSON with `ok` and either `result` or a structured `error`. Inspection includes the manifest, object and relationship revisions, undo/redo counts, and any rendering lock. Media imports return the stable imported media ID. Normal imports reference originals; graphic imports copy editable assets into the project.
 
-Edits are atomic batches. Save a JSON file and pass it to `node src/cli.ts apply <project-dir> <batch.json>`. This example adds one track and a four-second clip. Replace `IMPORTED_MEDIA_ID`, and use current revision values from inspection:
+Edits are atomic batches. Save a JSON file and pass it to `afclip apply <project-dir> <batch.json>`. This example adds one track and a four-second clip. Replace `IMPORTED_MEDIA_ID`, and use current revision values from inspection:
 
 ```json
 {
@@ -78,8 +78,8 @@ Use **Detach Audio** on a video clip to create a separate audio clip on a new tr
 The pair stays linked for moves, trims and speed changes. Audio settings and picture settings remain independent. **Unlink** allows independent timing edits. Both operations are atomic and undoable. Detaching currently requires removing any dissolves touching the clip first; it does not silently discard their audio envelopes.
 
 ```powershell
-node src/cli.ts detach-audio .cache/my-edit clip_id
-node src/cli.ts unlink .cache/my-edit clip_id
+afclip detach-audio .cache/my-edit clip_id
+afclip unlink .cache/my-edit clip_id
 ```
 
 Both accept `--revision N` to require the inspected project revision. The equivalent `apply` operation is `{op:"detach-audio",clipId:"clip_id"}` or `{op:"unlink",clipId:"clip_id"}`, alone in its batch with `preconditions.project`. Clip fields `stream` and `linkId` persist the separation and link. Ordinary timing patches propagate to linked peers and require their revisions, track/occupancy revisions and the project revision. Locked tracks reject the complete edit. Ripple splitting gives the right-hand pair a new link.
@@ -93,12 +93,12 @@ Press **M** to create a marker immediately at the playhead with a default name. 
 Named markers belong to the sequence and have stable IDs shared by the GUI and CLI. They save with the project and participate in shared undo/redo and checkpoints. Existing projects without a marker array open with no markers. Markers may sit beyond the last clip to plan future edits, but do not extend playback or export duration.
 
 ```powershell
-node src/cli.ts marker-add .cache/my-edit --time 4 --name "Music hit" --id music_hit
-node src/cli.ts markers .cache/my-edit
-node src/cli.ts marker-set .cache/my-edit music_hit --name "Title entrance" --time 5
-node src/cli.ts marker-next .cache/my-edit --time 2
-node src/cli.ts marker-previous .cache/my-edit --time 6
-node src/cli.ts marker-remove .cache/my-edit music_hit
+afclip marker-add .cache/my-edit --time 4 --name "Music hit" --id music_hit
+afclip markers .cache/my-edit
+afclip marker-set .cache/my-edit music_hit --name "Title entrance" --time 5
+afclip marker-next .cache/my-edit --time 2
+afclip marker-previous .cache/my-edit --time 6
+afclip marker-remove .cache/my-edit music_hit
 ```
 
 Navigation returns the nearest marker strictly after or before the supplied time, or null at the end. Listing orders markers by time and then ID; multiple markers may share a time. Names must contain non-whitespace text and be at most 256 characters. Marker creation and explicit time edits must land on the project frame grid. Changing project FPS preserves existing marker times in seconds.
@@ -114,7 +114,7 @@ Ripple delete removes markers inside its half-open range and shifts markers at o
 Mark In and Out with I and O, then press Shift+Delete or choose **Edit > Ripple delete In/Out range**. Out includes its frame, matching range export. Right-click an empty section of a track and choose **Ripple delete gap across all tracks** to remove that gap. The gap must have a later clip on that track; trailing empty space is not a gap. Both routes cut across every track, including disabled tracks, and close the removed time in one shared undoable edit. Affected locked tracks reject the whole operation; locked tracks entirely before the range do not block it.
 
 ```powershell
-node src/cli.ts ripple-delete .cache/my-edit --start 3 --end 5
+afclip ripple-delete .cache/my-edit --start 3 --end 5
 ```
 
 CLI ranges are half-open: this removes 3 seconds up to, but not including, 5 seconds. Both boundaries must land on the project frame grid. Use `--revision N` to require an inspected project revision; without it the CLI reads the revision immediately before submitting. Concurrent project changes reject the entire edit.
@@ -168,11 +168,11 @@ A disposable four-second audio project verified handle gestures, volume dragging
 ## Render and inspect
 
 ```powershell
-node src/cli.ts frame .cache/my-edit exports/frame.png --time 2 --mode gpu --wait
-node src/cli.ts export .cache/my-edit exports/section.mp4 --start 1 --end 3 --mode gpu --wait
-node src/cli.ts status .cache/my-edit
-node src/cli.ts cancel .cache/my-edit
-node src/cli.ts export .cache/my-edit exports/software.mp4 --mode software --wait
+afclip frame .cache/my-edit exports/frame.png --time 2 --mode gpu --wait
+afclip export .cache/my-edit exports/section.mp4 --start 1 --end 3 --mode gpu --wait
+afclip status .cache/my-edit
+afclip cancel .cache/my-edit
+afclip export .cache/my-edit exports/software.mp4 --mode software --wait
 ```
 
 Without `--wait`, export/frame return a job ID immediately. Status can inspect that ID. `--wait` returns the final job and exits nonzero if it failed or was cancelled. Logs and job records live under `.afclip/jobs/<job-id>/`.
@@ -188,11 +188,11 @@ The renderer supports even output dimensions up to 4096 pixels per side. Video c
 ## Graphic assets and history
 
 ```powershell
-node src/cli.ts import .cache/my-edit path/to/title-folder --kind graphic
-node src/cli.ts undo .cache/my-edit
-node src/cli.ts redo .cache/my-edit
-node src/cli.ts checkpoints .cache/my-edit
-node src/cli.ts restore .cache/my-edit latest --confirm discard-later-edits
+afclip import .cache/my-edit path/to/title-folder --kind graphic
+afclip undo .cache/my-edit
+afclip redo .cache/my-edit
+afclip checkpoints .cache/my-edit
+afclip restore .cache/my-edit latest --confirm discard-later-edits
 ```
 
 A graphic folder needs `index.html`. Import copies it into `graphics/<media-id>`. The imported media's `metadata.authoringPath` identifies that editable folder, while `media.path` points to the accepted immutable version. Edit the authoring folder. The engine observes stable saves, accepts them as undoable changes and queues acceptance while rendering holds the lock. Export uses accepted assets, including a separate job snapshot. Assets are capped at 128 MiB per graphic and symlinks are rejected.
@@ -201,7 +201,7 @@ Graphics run in sandboxed iframes without Node APIs or network access. They rece
 
 The engine waits for the readiness response and fails if it times out. Broken graphics block export. This is a local authoring prototype, not a fully audited hostile-code execution service.
 
-Undo/redo share one chronological session history across GUI and CLI, capped at 100 edits or batches. New edits clear redo. The project daemon survives sequential commands, exits after five idle minutes without a subscriber or active render, and can be closed with `node src/cli.ts close <project-dir>`. Exit ends ordinary undo history.
+Undo/redo share one chronological session history across GUI and CLI, capped at 100 edits or batches. New edits clear redo. The project daemon survives sequential commands, exits after five idle minutes without a subscriber or active render, and can be closed with `afclip close <project-dir>`. Exit ends ordinary undo history.
 
 Checkpoints persist across restarts and retain the latest five. They copy project state and graphic code, while referencing source media. Restore requires the explicit confirmation shown above because it discards later edits, newer checkpoints and ordinary undo/redo history. It does not create another checkpoint first.
 
@@ -217,10 +217,10 @@ Mark static plain-text elements in `index.html` with unique field IDs:
 In native preview, click a visible field to select its text and pause playback. Click again to place the caret, double-click to select a word, or drag to highlight a range. Type or paste plain text; Enter inserts a line break. Click outside or press Ctrl/Cmd+Enter to commit, or Escape to cancel. Each committed session is one project undo step. The inspector also exposes fields, including empty or currently hidden fields, and Reset controls. Software preview uses the inspector for text editing.
 
 ```sh
-node src/cli.ts text-fields path/to/project clip_id
-node src/cli.ts text-set path/to/project clip_id headline --text "Available now"
-node src/cli.ts text-set path/to/project clip_id subtitle --file caption.txt
-node src/cli.ts text-reset path/to/project clip_id headline
+afclip text-fields path/to/project clip_id
+afclip text-set path/to/project clip_id headline --text "Available now"
+afclip text-set path/to/project clip_id subtitle --file caption.txt
+afclip text-reset path/to/project clip_id headline
 ```
 
 `text-fields` returns defaults, effective values, override flags, missing IDs and clip/media revisions. `text-set` and `text-reset` read current revisions automatically; agents working from an earlier inspection should pass `--revision N --media-revision N`. The shared protocol uses `text-fields` with `clipId`, and `text-set` with `clipId`, `field`, `value` or `reset:true`, `revision` and `mediaRevision`. An atomic batch can also set the clip's complete `text` map. Track locks, render locks and shared undo apply normally.
@@ -233,7 +233,7 @@ A disposable project verified field discovery, per-clip persistence, checkpoint 
 
 ## Local protocol and files
 
-`node src/cli.ts endpoint <project-dir>` returns the local `/v1` HTTP endpoint and bearer token. The GUI keeps that token in its main process. `GET /inspect`, `POST /command` and `GET /events` share engine state; SSE emits `hello`, `change` and `job` events. The engine binds only to `127.0.0.1` and rejects browser origins. Keep the token local.
+`afclip endpoint <project-dir>` returns the local `/v1` HTTP endpoint and bearer token. The GUI keeps that token in its main process. `GET /inspect`, `POST /command` and `GET /events` share engine state; SSE emits `hello`, `change` and `job` events. The engine binds only to `127.0.0.1` and rejects browser origins. Keep the token local.
 
 `project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.afclip/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. The project folder currently references source media and is not a Collect-project bundle.
 
@@ -276,7 +276,7 @@ MP4 exports now default to `--verify quick`. Before publishing the finished file
 For a decoded-frame check, choose **Thorough** verification in the Export dialog or use:
 
 ```powershell
-node src/cli.ts export /path/to/project exports/sample-first-edit.mp4 --verify full --wait
+afclip export /path/to/project exports/sample-first-edit.mp4 --verify full --wait
 ```
 
 Full mode performs the quick checks, then decodes the output to confirm the expected video frame count and nonempty decoded audio. Quick mode does not decode compressed picture/audio payloads, so it cannot detect every damaged bitstream. Neither mode judges the edit's visual quality or sound by ear. Review the finished export for those. Both modes finish before the temporary MP4 replaces the requested destination, and cancellation remains available during verification. Job statistics record the mode, packet counts, decoded frame count when requested, and elapsed verification time.

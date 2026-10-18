@@ -18,14 +18,17 @@ These overviews supersede the earlier design brief.
 
 The [editing prototype](docs/editing-prototype.md) loads a project folder, imports source media, commits atomic edits through a background Node engine, updates an Electron GUI over a local change stream, and coordinates headless frame renders and MP4 exports. The same commands handle GUI and CLI edits. Source decoding now streams through bounded live-frame buffers instead of writing a whole-clip RGBA cache.
 
-With Node 24 and dependencies installed:
+Install from a checkout with Node 24 or newer:
 
 ```powershell
 npm ci
-node src/cli.ts --help
+npm link
+afclip --help
 npm start -- /path/to/project
-node src/cli.ts export /path/to/project exports/sample-first-edit.mp4 --mode gpu --wait
+afclip export /path/to/project exports/sample-first-edit.mp4 --mode gpu --wait
 ```
+
+`npm link` registers `afclip` and `aflib` on your PATH. Both commands work from any directory, and relative project/media paths resolve from your current directory. The commands use this checkout, so pulled changes are available immediately. Keep the checkout in place; run `npm unlink --global afclip-prototypes` to remove the commands. If your terminal cannot find them, add the global npm bin directory to PATH: `npm config get prefix` on Windows, or that prefix plus `/bin` on macOS/Linux, then reopen the terminal.
 
 The example references local recordings and audio on this PC. It is not a portable media bundle. `npm run edit:example` assembles the example through engine commands when it does not already contain clips, and refuses to overwrite an existing edit. See the [prototype guide](docs/editing-prototype.md) for creating your own project, editing batches, graphics, checkpoints, GPU prerequisites and current limits.
 
@@ -39,7 +42,7 @@ Mac measurements and setup are in [macOS performance](docs/macos-performance.md)
 
 ## Content Library
 
-Run `npm run library:gui` for the standalone library, or `npm run library -- --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares AFClip's native media presentation and fast-seek implementation.
+Run `aflib gui` for the standalone library, or `aflib --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares AFClip's native media presentation and fast-seek implementation.
 
 In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking, the 35-asset GUI annotation pass and remaining scope.
 

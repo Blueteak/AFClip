@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -6,29 +7,29 @@ import {libraryEndpoint,request} from './client.ts';
 import {commandSchema,globals,schema} from './command-schema.ts';
 const help=`Content Library. GUI and CLI use the same local catalog and operation contract.
 
-  npm run library -- gui [--id ASSET] [--dev]
-  npm run library -- endpoint
-  npm run library -- import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
-  npm run library -- search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
-  npm run library -- inspect --id ID
-  npm run library -- waveform --id ID [--start SEC --duration SEC --bins 16384]
-  npm run library -- annotate --id ID --revision N --name NAME --notes TEXT --tags TAG_ID,TAG_ID
-  npm run library -- folder-create --name SFX [--parent root]
-  npm run library -- move|promote --id ID --revision N --folder ID
-  npm run library -- tag-create --name NAME
-  npm run library -- tag-rename|tag-delete|tag-merge --id ID --revision N [--name NAME] [--target ID --targetRevision N] [--confirm clear-assignments]
-  npm run library -- range-save --assetId ID --revision N --name NAME --startFrame 0 --endFrame 120
-  npm run library -- range-save --assetId ID --revision N --name NAME --startSample 0 --endSample 48000
-  npm run library -- prepare [--ids ID,ID | --folder ID] [--level index|preview] [--wait]
-  npm run library -- source-folder-save --path PATH --folder ID [--watched --hierarchy]
-  npm run library -- source-folders
-  npm run library -- rescan [--id SOURCE_FOLDER_ID | PATH] [--hierarchy] [--wait]
-  npm run library -- artifact --id ID --type frame|contact-sheet|excerpt [--time SEC --start SEC --end SEC] [--wait]
-  npm run library -- jobs|history|overview|references|cache|cache-clear|checkpoints
-  npm run library -- cancel --id JOB
-  npm run library -- undo|redo
-  npm run library -- checkpoint --name NAME
-  npm run library -- call request.json
+  aflib gui [--id ASSET] [--dev]
+  aflib endpoint
+  aflib import "D:\\Audio Effects" --folder FOLDER_ID --limit 25
+  aflib search [--q TEXT] [--folder ID] [--kind audio|video] [--tag ID] [--limit 60 --offset 0]
+  aflib inspect --id ID
+  aflib waveform --id ID [--start SEC --duration SEC --bins 16384]
+  aflib annotate --id ID --revision N --name NAME --notes TEXT --tags TAG_ID,TAG_ID
+  aflib folder-create --name SFX [--parent root]
+  aflib move|promote --id ID --revision N --folder ID
+  aflib tag-create --name NAME
+  aflib tag-rename|tag-delete|tag-merge --id ID --revision N [--name NAME] [--target ID --targetRevision N] [--confirm clear-assignments]
+  aflib range-save --assetId ID --revision N --name NAME --startFrame 0 --endFrame 120
+  aflib range-save --assetId ID --revision N --name NAME --startSample 0 --endSample 48000
+  aflib prepare [--ids ID,ID | --folder ID] [--level index|preview] [--wait]
+  aflib source-folder-save --path PATH --folder ID [--watched --hierarchy]
+  aflib source-folders
+  aflib rescan [--id SOURCE_FOLDER_ID | PATH] [--hierarchy] [--wait]
+  aflib artifact --id ID --type frame|contact-sheet|excerpt [--time SEC --start SEC --end SEC] [--wait]
+  aflib jobs|history|overview|references|cache|cache-clear|checkpoints
+  aflib cancel --id JOB
+  aflib undo|redo
+  aflib checkpoint --name NAME
+  aflib call request.json
 
 Every /v1 operation is available as a CLI command with --field value options,
 or call <file.json|-> for exact structured input, including atomic apply batches.
@@ -37,7 +38,7 @@ Author defaults to agent; --author human is supported. Outputs are structured JS
 Mutations of existing items require their current revision from inspect/overview.
 Ranges use exclusive end frames/samples. No command deletes original media.
 Search result.items[].id is the stable direct-access asset or range ID. Pass it directly to AFClip:
-  node src/cli.ts library-import <project-dir> <id>
+  afclip library-import <project-dir> <id>
 This adds the source or selected range to the project bin and returns result.media.id.
 Follow nextOffset until complete when searching across multiple pages.
 Search and overview default to compact results; --full restores complete metadata.
