@@ -276,7 +276,7 @@
     }
   ],
   "coldGuiPlayback": {
-    "artifact": "/Users/jonathan/Documents/GitHub/Reelet/.cache/playback/2026-10-18T00-51-05-839Z/results.json",
+    "artifact": "/Users/jonathan/Documents/GitHub/AFClip/.cache/playback/2026-10-18T00-51-05-839Z/results.json",
     "previewReadyMs": 5425.304792000001,
     "time": 63.983333333333334,
     "stats": {
@@ -419,7 +419,7 @@
     }
   },
   "seeking": {
-    "artifact": "/Users/jonathan/Documents/GitHub/Reelet/.cache/playback/2026-10-18T00-52-22-152Z/seeks.json",
+    "artifact": "/Users/jonathan/Documents/GitHub/AFClip/.cache/playback/2026-10-18T00-52-22-152Z/seeks.json",
     "previewReadyMs": 1949.724959,
     "summary": [
       {
@@ -551,7 +551,7 @@
       "kind": "export",
       "mode": "software",
       "verification": "full",
-      "output": "/Users/jonathan/Documents/GitHub/Reelet/.cache/macos/startup/dissolve.mp4",
+      "output": "/Users/jonathan/Documents/GitHub/AFClip/.cache/macos/startup/dissolve.mp4",
       "createdAt": "2026-10-18T00:52:54.772Z",
       "projectRevision": 0,
       "progress": 1,

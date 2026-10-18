@@ -554,3 +554,10 @@ kbd, .kbd {
 .insp-section textarea { width:100%; min-width:0; resize:vertical; color:inherit; background:var(--bg-2); border:1px solid var(--line-2); padding:5px; font:inherit; }
 
 .text-reset { margin:2px 12px 6px; }
+.source-selection-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* Source range selection and timeline drag target. */
+.source-overview { height: 36px; padding: 10px 6px; color: var(--text-2); font-size: 10px; cursor: crosshair; user-select: none; }
+.source-overview::before { top: 0; bottom: 0; height: auto; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), var(--bg-3) calc(10% - 1px), var(--bg-3) 10%); pointer-events: none; }
+.source-range-drag { position: absolute; top: 2px; bottom: 2px; background: rgba(79,157,255,.28); border: 1px solid var(--accent); border-radius: 3px; cursor: grab; overflow: hidden; white-space: nowrap; text-align: center; padding-top: 7px; color: var(--text); }
+.source-lanes, .source-wave { touch-action: none; }

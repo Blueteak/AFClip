@@ -163,8 +163,8 @@
   "followup": {
     "duplicate": {
       "locations": [
-        "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.temp\\library-intake-source\\ui\\digits.wav",
-        "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.temp\\library-intake-source\\ui\\discovered.wav"
+        "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.temp\\library-intake-source\\ui\\digits.wav",
+        "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.temp\\library-intake-source\\ui\\discovered.wav"
       ],
       "notes": "Scratch source mapping preservation check"
     },
@@ -202,8 +202,8 @@
     "assetId": "asset_312f427191a545278ade7945e28a501b",
     "sourceId": "source_7c0a25c652554f8b8b77bd7642e4e03d",
     "sourceLocations": [
-      "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.temp\\library-intake-source\\ui\\digits.wav",
-      "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.temp\\library-intake-source\\ui\\discovered.wav"
+      "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.temp\\library-intake-source\\ui\\digits.wav",
+      "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.temp\\library-intake-source\\ui\\discovered.wav"
     ],
     "start": {
       "num": 0,

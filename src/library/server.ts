@@ -38,7 +38,7 @@ async function command(c:any):Promise<any> {
     case 'overview':return ops.overview(c.compact);
     case 'search':return ops.browse(c);
     case 'inspect':return ops.inspect(c.id,c);
-    case 'selection':{const a=ops.asset(c.id);db.check(a,c.revision);assert(a.sourceId===c.sourceId,'Source version changed; select it again');return {...ops.inspect(a.id),...ops.nativeBounds(a,c),temporary:true};}
+    case 'selection':{const a=ops.asset(c.id);db.check(a,c.revision);assert(ops.sourceMatches(a,c.sourceId),'Source version changed; select it again');return {...ops.inspect(a.id),...ops.nativeBounds(a,c),matchedSourceId:c.sourceId,temporary:true};}
     case 'original':{const item=ops.inspect(c.id),a=item.parent||item;return {path:a.path,availability:a.availability,libraryId:a.libraryId,assetId:a.id,sourceId:item.sourceId,rangeId:item.parent?item.id:undefined,start:item.start,end:item.end};}
     case 'references':return db.all('reference');
     case 'source-folders':return db.all('source-folder');
@@ -101,7 +101,7 @@ function media(req:http.IncomingMessage,res:http.ServerResponse,file:string) {
   const type:any={'.mp4':'video/mp4','.mkv':'video/x-matroska','.webm':'video/webm','.mov':'video/mp4','.wav':'audio/wav','.mp3':'audio/mpeg','.ogg':'audio/ogg','.flac':'audio/flac','.mjpg':'image/jpeg','.png':'image/png'};
   res.writeHead(range?206:200,{'Content-Type':type[path.extname(file)]||'application/octet-stream','Accept-Ranges':'bytes','Content-Length':end-start+1,...(range?{'Content-Range':`bytes ${start}-${end}/${size}`}:{})});if(req.method==='HEAD')res.end();else{const stream=fs.createReadStream(file,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);}
 }
-const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/annotation-timeline.js':'src/library/gui/annotation-timeline.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/reelet.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/audio-waveform.js':'src/gui/audio-waveform.js','/timeline.js':'src/render/timeline.cjs'};
+const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/annotation-timeline.js':'src/library/gui/annotation-timeline.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/afclip.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/audio-waveform.js':'src/gui/audio-waveform.js','/timeline.js':'src/render/timeline.cjs'};
 const server=http.createServer(async(req,res)=>{
   try {
     const u=new URL(req.url||'/',`http://${req.headers.host}`);const host=`127.0.0.1:${(server.address() as any).port}`;
@@ -125,5 +125,5 @@ const server=http.createServer(async(req,res)=>{
     if(req.method!=='POST'||u.pathname!=='/v1/command')fail('NOT_FOUND','Unknown route');let body='';for await(const chunk of req){body+=chunk;assert(body.length<4*1024**2,'Request too large');}const payload=JSON.parse(body);if(!writer&&!['overview','search','inspect','preview','waveform','frames','jobs','prepare','artifact','original','selection'].includes(payload.command))fail('READ_ONLY','Open the standalone library to edit annotations or organization');json(res,{ok:true,result:await command(payload)});
   }catch(e:any){if(res.headersSent){res.destroy();return;}json(res,{ok:false,error:{code:e.code||'INTERNAL',message:e.message,details:e.details||{}}},e.code==='CONFLICT'?409:400);}
 });
-server.listen(0,'127.0.0.1',()=>{const url=`http://127.0.0.1:${(server.address() as any).port}`;atomicJSON(endpointFile,{url:url+'/v1',gui:url+'/?token='+token,readerGui:url+'/?token='+readerToken+'&mode=reelet',token,pid:process.pid,catalogDir:dir});});
+server.listen(0,'127.0.0.1',()=>{const url=`http://127.0.0.1:${(server.address() as any).port}`;atomicJSON(endpointFile,{url:url+'/v1',gui:url+'/?token='+token,readerGui:url+'/?token='+readerToken+'&mode=afclip',token,pid:process.pid,catalogDir:dir});});
 setInterval(()=>{for(const s of subscribers)s.write(': heartbeat\n\n');if(!jobs.active)jobs.evict();},30000).unref();

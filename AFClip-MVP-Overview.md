@@ -1,6 +1,6 @@
-# Reelet MVP Overview
+# AFClip MVP Overview
 
-Reelet is a video editor for making game trailers and marketing videos from supplied footage, music, sound effects, text and images. Humans and agents can take over the same project at any stage. The GUI and headless CLI are equally important interfaces.
+AFClip is a video editor for making game trailers and marketing videos from supplied footage, music, sound effects, text and images. Humans and agents can take over the same project at any stage. The GUI and headless CLI are equally important interfaces.
 
 This is the agreed MVP scope, consolidated from the design discussion. It describes intended behavior, not implementation status.
 
@@ -41,11 +41,11 @@ Committed GUI and CLI edits save automatically. Recover the last committed state
 
 Normal saves reference existing media. A separate Collect project action copies required media and graphic dependencies into a portable folder.
 
-A searchable project bin contains imported media. Video and audio imports register with the standalone [Content Library](content-library-overview.md), which owns reusable tags, notes and named selects. Images and graphics remain project-owned until the library supports them. Provide source preview and temporary editorial In/Out selection in Reelet. Humans and agents author reusable annotations through the library GUI or CLI; Reelet provides read-only library browsing, preview, insertion and an "Edit in library" action.
+A searchable project bin contains imported media. Video and audio imports register with the standalone [Content Library](content-library-overview.md), which owns reusable tags, notes and named selects. Images and graphics remain project-owned until the library supports them. Provide source preview and temporary editorial In/Out selection in AFClip. Humans and agents author reusable annotations through the library GUI or CLI; AFClip provides read-only library browsing, preview, insertion and an "Edit in library" action.
 
-New unorganized registrations enter the library's temporary Inbox. Removing a project-bin item withdraws that project's reference; the library removes an unpromoted Inbox item only after its last project reference is withdrawn. Closing a project or deleting a timeline instance does not withdraw that reference. Promoted assets are permanent and cannot be removed by Reelet. The library overview defines retry and undo behavior.
+New unorganized registrations enter the library's temporary Inbox. Removing a project-bin item withdraws that project's reference; the library removes an unpromoted Inbox item only after its last project reference is withdrawn. Closing a project or deleting a timeline instance does not withdraw that reference. Promoted assets are permanent and cannot be removed by AFClip. The library overview defines retry and undo behavior.
 
-Library metadata updates propagate into Reelet, but range edits never move existing timeline cuts or replace their source version. New insertion uses the current selection. Keep sufficient source and timing data in the project to play and export existing edits without the library service when originals are available.
+Library metadata updates propagate into AFClip, but range edits never move existing timeline cuts or replace their source version. New insertion uses the current selection. Keep sufficient source and timing data in the project to play and export existing edits without the library service when originals are available.
 
 Missing files appear as placeholders. Relinking preserves cuts and settings. Block export of affected sections until the media is relinked.
 
@@ -125,9 +125,9 @@ Declared plain-text fields inside graphics are editable in the GUI and CLI. In t
 
 Fields have stable IDs and HTML defaults. Store text overrides per timeline clip, so editing one instance does not change another. Copying or splitting a clip copies its values. Reset removes an override and restores the graphic's current default. Save, reopen, checkpoints, preview and export preserve the same values. Missing field IDs remain visible as errors until corrected or explicitly removed; never silently drop saved text. Expose field discovery, setting and reset through the shared engine and CLI.
 
-Use external editors or agents for graphic authoring. Reload saved changes in Reelet. Assets, fonts and scripts must be project-local, with no network access during preview or export. Agents can download dependencies into the project during authoring.
+Use external editors or agents for graphic authoring. Reload saved changes in AFClip. Assets, fonts and scripts must be project-local, with no network access during preview or export. Agents can download dependencies into the project during authoring.
 
-Reelet supplies graphic playback time. Graphics must follow that clock, including seeking and stretching, rather than elapsed real time. Rendering the same project time must produce the same animation state in preview and export.
+AFClip supplies graphic playback time. Graphics must follow that clock, including seeking and stretching, rather than elapsed real time. Rendering the same project time must produce the same animation state in preview and export.
 
 Footage and images also have basic positioning and scaling controls for reframing. New media defaults to Fit, with a quick Fill option that crops excess content.
 

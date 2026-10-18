@@ -6,8 +6,8 @@ const path = require('node:path');
 const { randomUUID, createHash } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
-  { scheme: 'reelet-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'afclip-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
+  { scheme: 'afclip-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const args = process.argv.slice(2);
 const projectDir = path.resolve(args[0] || '.');
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
@@ -22,7 +22,7 @@ const outputs = new Set();
 function grantSourceFile(file) {
   const id = createHash('sha256').update(path.resolve(file)).digest('hex');
   sourceFiles.set(id, path.resolve(file));
-  return `reelet-media://${id}/source`;
+  return `afclip-media://${id}/source`;
 }
 function grantLibraryResource(route, ep) {
   const url = new URL(route, ep.url), base = new URL(ep.url);
@@ -30,11 +30,11 @@ function grantLibraryResource(route, ep) {
   const token = new URL(ep.readerGui).searchParams.get('token');
   const id = createHash('sha256').update(url.href + token).digest('hex');
   libraryResources.set(id, { url: url.href, token });
-  return `reelet-media://${id}/library`;
+  return `afclip-media://${id}/library`;
 }
 async function getMediaLibraryEndpoint() {
   if (!mediaLibraryEndpoint) {
-    mediaLibraryEndpoint = execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true, timeout:15000 })
+    mediaLibraryEndpoint = execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true, timeout:15000 })
       .then(result => JSON.parse(result.stdout).result).catch(error => { mediaLibraryEndpoint = null; throw error; });
   }
   return mediaLibraryEndpoint;
@@ -44,7 +44,7 @@ app.commandLine.appendSwitch('force-color-profile', 'srgb');
 // on this Windows setup, delivering only ~56 fps. Use the GPU-backed EGL window
 // compositor with Chromium's deadline scheduler instead of that hardware wait.
 // This changes only the editor process; export workers retain their own settings.
-const presentation = option('--presentation') || process.env.REELET_PRESENTATION || (process.platform === 'win32' ? 'compatibility' : 'default');
+const presentation = option('--presentation') || process.env.AFCLIP_PRESENTATION || (process.platform === 'win32' ? 'compatibility' : 'default');
 if (!['default', 'compatibility', 'direct-composition'].includes(presentation)) throw new Error('Unknown presentation mode');
 if (process.platform === 'win32' && presentation === 'compatibility') {
   app.commandLine.appendSwitch('disable-direct-composition');
@@ -75,7 +75,7 @@ function checkSender(event) {
 }
 
 function handle(name, fn) {
-  ipcMain.handle(`reelet:${name}`, async (event, ...values) => { checkSender(event); return fn(...values); });
+  ipcMain.handle(`afclip:${name}`, async (event, ...values) => { checkSender(event); return fn(...values); });
 }
 
 async function watchEvents() {
@@ -95,11 +95,11 @@ async function watchEvents() {
         if (!data) continue;
         const value = JSON.parse(data);
         allowOutputs(value);
-        if (!window?.isDestroyed()) window.webContents.send('reelet:event', { type: name, value });
+        if (!window?.isDestroyed()) window.webContents.send('afclip:event', { type: name, value });
       }
     }
   } catch (error) {
-    if (error.name !== 'AbortError' && !window?.isDestroyed()) window.webContents.send('reelet:event', { type: 'disconnected', value: { message: error.message } });
+    if (error.name !== 'AbortError' && !window?.isDestroyed()) window.webContents.send('afclip:event', { type: 'disconnected', value: { message: error.message } });
   }
 }
 
@@ -116,14 +116,14 @@ async function capture() {
 
 app.whenReady().then(async () => {
   require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
-  const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', projectDir], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
+  const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', projectDir], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   const reply = JSON.parse(result.stdout.trim());
   if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
   endpoint = reply.result;
   const parsed = new URL(endpoint.url);
   if (parsed.hostname !== '127.0.0.1' || parsed.protocol !== 'http:') throw new Error('The project endpoint must be local');
 
-  protocol.handle('reelet-media', async req => {
+  protocol.handle('afclip-media', async req => {
     const id = new URL(req.url).hostname;
     const remote = libraryResources.get(id);
     if (remote) {
@@ -160,7 +160,7 @@ app.whenReady().then(async () => {
 
   // The renderer owns every shortcut, so drop Electron's default menu accelerators (reload, devtools, close).
   Menu.setApplicationMenu(null);
-  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1080, minHeight: 680, backgroundColor: '#0e0f11', title: 'Reelet', show: false,
+  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1080, minHeight: 680, backgroundColor: '#0e0f11', title: 'AFClip', show: false,
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#141518', symbolColor: '#9ba1aa', height: 36 },
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
   });
@@ -168,8 +168,8 @@ app.whenReady().then(async () => {
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error('GUI:', details.message); });
   previewSession = new (require('./preview-session.cjs'))(projectDir,
-    value => { if (!window.isDestroyed()) window.webContents.send('reelet:preview', value); },
-    (file, id) => { previewFiles.set(id, file); return `reelet-media://${id}/asset`; },
+    value => { if (!window.isDestroyed()) window.webContents.send('afclip:preview', value); },
+    (file, id) => { previewFiles.set(id, file); return `afclip-media://${id}/asset`; },
     graphics => { previewGraphics.graphics = structuredClone(graphics); },
     id => previewFiles.delete(id));
   handle('preview-open', async mode => {
@@ -186,9 +186,9 @@ app.whenReady().then(async () => {
     if (state.project.revision !== revision) throw new Error('Project changed while preparing audio');
     return previewSession.audio(sessionId, state.project);
   });
-  ipcMain.on('reelet:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
+  ipcMain.on('afclip:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
-  const sourceMedia = require('./source-media.cjs')({
+  const sourceMedia = require('../shared/source-media.cjs')({
     projectDir, inspect: () => request('/inspect'), libraryEndpoint: getMediaLibraryEndpoint,
     grantFile: grantSourceFile, grantLibrary: grantLibraryResource,
     invalidateLibrary: () => { mediaLibraryEndpoint = null; },
@@ -210,11 +210,17 @@ app.whenReady().then(async () => {
   });
   handle('library', async id => {
     await request('/command', {command:'library-sync'});
-    const result = await execFileAsync(process.env.REELET_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
+    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
     const ep = JSON.parse(result.stdout).result;
     const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
     const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, ep.gui+(id?'&asset='+encodeURIComponent(id):'')], { windowsHide:true, detached:true, stdio:'ignore', env });
     child.unref(); return {opened:true};
+  });
+  handle('edit-library', async id => {
+    const {project} = await request('/inspect');
+    if (!project.media.some(m => m.metadata?.library?.assetId === id)) throw new Error('Asset is not in this project');
+    await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'gui', '--id', id], {windowsHide:true});
+    return {opened:true};
   });
   handle('library-media', async () => {
     const { project } = await request('/inspect');
@@ -224,7 +230,7 @@ app.whenReady().then(async () => {
     } catch (error) { mediaLibraryEndpoint = null; throw error; }
   });
   handle('command', payload => {
-    if (!payload || !['text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('import', async kind => {
@@ -258,7 +264,7 @@ app.whenReady().then(async () => {
     if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result');
     const id = randomUUID(); files.set(id, path.resolve(file));
     if (files.size > 20) files.delete(files.keys().next().value);
-    return `reelet-media://${id}/media`;
+    return `afclip-media://${id}/media`;
   });
   handle('show-output', file => { if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result'); shell.showItemInFolder(path.resolve(file)); });
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
@@ -269,7 +275,7 @@ app.whenReady().then(async () => {
   });
   watchEvents();
   if (option('--capture')) captureTimer = setTimeout(() => capture().catch(console.error), 45000);
-}).catch(error => { console.error(error.stack || error.message); if (!args.includes('--quit-after-capture')) dialog.showErrorBox('Reelet could not open the project', error.message); app.exit(1); });
+}).catch(error => { console.error(error.stack || error.message); if (!args.includes('--quit-after-capture')) dialog.showErrorBox('AFClip could not open the project', error.message); app.exit(1); });
 
 app.on('window-all-closed', () => { previewSession?.close(); streamController?.abort(); app.exit(0); });
 app.on('before-quit', () => { previewSession?.close(); streamController?.abort(); clearTimeout(captureTimer); });

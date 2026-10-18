@@ -13,7 +13,7 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
 app.commandLine.appendSwitch('force_high_performance_gpu');
 app.setPath('userData', path.join(config.work, 'profile'));
-protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'afclip-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const emit = data => process.stdout.write(JSON.stringify(data) + '\n');
 const stats = { frames: 0, peakDecodedBytes: 0, peakDecoders: 0, peakChromiumWorkingSetBytes: 0, fullFrameReadback: !shared, rejectedPaints: 0 };
 let win, encoder, waiting, pending, queuedTexture, busy = false, token = 0, shuttingDown = false;
@@ -47,16 +47,16 @@ async function main() {
   }
   win = new BrowserWindow({ width, height: captureHeight, useContentSize: true, show: false, webPreferences: {
     offscreen: shared ? { useSharedTexture: true } : true, backgroundThrottling: false, sandbox: false, nodeIntegration: false, contextIsolation: true,
-    preload: path.join(__dirname, 'preload.cjs'), additionalArguments: [`--reelet-render=${process.argv[2]}`]
+    preload: path.join(__dirname, 'preload.cjs'), additionalArguments: [`--afclip-render=${process.argv[2]}`]
   } });
   win.webContents.setFrameRate(240);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
-  win.webContents.on('will-frame-navigate', (event, details) => { if (details?.url && !details.url.startsWith('reelet-graphic:')) event.preventDefault(); });
+  win.webContents.on('will-frame-navigate', (event, details) => { if (details?.url && !details.url.startsWith('afclip-graphic:')) event.preventDefault(); });
   win.webContents.on('render-process-gone', (_, details) => fail(new Error(`Compositor failed: ${details.reason}`)));
   win.webContents.on('console-message', (_, details) => console.error(`Graphic/compositor: ${details.message}`));
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
-    const allowed = details.url.startsWith('reelet-graphic:') || details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href || details.url.startsWith('data:');
+    const allowed = details.url.startsWith('afclip-graphic:') || details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href || details.url.startsWith('data:');
     callback({ cancel: !allowed });
   });
   async function consume(texture) {
@@ -103,7 +103,7 @@ async function main() {
       emit({ type: 'progress', phase: 'render', progress: .1 + .85 * (frame + 1) / total, frame: frame + 1, totalFrames: total, fps: (frame + 1) * 1000 / (performance.now() - start), message: `Rendering ${frame + 1}/${total}` });
     }
   }
-  await win.webContents.executeJavaScript('window.reeletFrames.close()');
+  await win.webContents.executeJavaScript('window.afclipFrames.close()');
   if (shared) { const ended = await command('end'); if (ended.frames !== total) throw new Error('NVENC frame count mismatch'); shuttingDown = true; encoder.stdin.end(); }
   else if (encoded) { encoder.stdin.end(); await encoded; }
   stats.renderMs = performance.now() - start; stats.renderFps = total * 1000 / stats.renderMs;

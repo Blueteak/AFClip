@@ -1,12 +1,12 @@
 # Windows rendering experiments
 
-This is a measurement tool, not the Reelet editor or its shared project engine. It exercises the provisional FFmpeg/Electron pipeline described in the [technical overview](../../Reelet-Technical-Overview.md). See [the measured results](../../docs/windows-benchmark-results.md) for findings and untested requirements.
+This is a measurement tool, not the AFClip editor or its shared project engine. It exercises the provisional FFmpeg/Electron pipeline described in the [technical overview](../../AFClip-Technical-Overview.md). See [the measured results](../../docs/windows-benchmark-results.md) for findings and untested requirements.
 
 The [follow-up solution experiment](../../docs/windows-rendering-solutions.md) adds `npm run bench:solutions`: shared FFmpeg RGB decoding, canvas composition, paint-event readiness, complete gameplay exports and direct NV12 input for Intel QSV. Run the baseline first to create its inputs. The solution runner tests its own path while preserving the original benchmark for comparison.
 
 The [GPU export experiment](../../docs/windows-gpu-export.md) adds `npm run bench:gpu`. It uses Electron shared textures, a local C++ D3D11/NVENC helper, and GPU BT.709 conversion. It runs three samples each of shared-texture export, GPU bitmap capture, CPU composition with x264, and CPU composition with NVENC. Windows x64, an NVIDIA GPU, Visual Studio C++ Build Tools and the Windows SDK are required. The runner builds the helper under `.cache/` and downloads a checksum-pinned NVENC API header there. It installs no drivers or system tools.
 
-Run the baseline once to create fixtures and select source media, then `npm run bench:gpu`. The GPU runner prepares fresh decoded caches through `bench:solutions`, verifies that suite, and retains logs, MP4s and JSON under `.cache/windows-gpu/`. It deletes generated RGBA caches after success. Set `REELET_KEEP_FRAMES=1` to retain them, then pass that solution run directory to `npm run bench:gpu -- <directory>` to reuse them. `REELET_GPU_REPEATS` defaults to 3. Failed hardware paths remain explicit failures rather than silently switching encoders.
+Run the baseline once to create fixtures and select source media, then `npm run bench:gpu`. The GPU runner prepares fresh decoded caches through `bench:solutions`, verifies that suite, and retains logs, MP4s and JSON under `.cache/windows-gpu/`. It deletes generated RGBA caches after success. Set `AFCLIP_KEEP_FRAMES=1` to retain them, then pass that solution run directory to `npm run bench:gpu -- <directory>` to reuse them. `AFCLIP_GPU_REPEATS` defaults to 3. Failed hardware paths remain explicit failures rather than silently switching encoders.
 
 ## Run
 
@@ -48,3 +48,9 @@ These are short, serial experiments on one machine with warm filesystem caches, 
 No project commands, GUI/CLI collaboration, autosave, edit locks, undo, frame-rate changes, speed changes, VFR audio export, graphic sandbox enforcement, or export cancellation are implemented here. The fixed local HTML fixture is trusted test code, not a sandbox for arbitrary user graphics. HDR and AMD hardware are untested.
 
 References: [Electron offscreen rendering](https://www.electronjs.org/docs/latest/tutorial/offscreen-rendering), [capturePage](https://www.electronjs.org/docs/latest/api/web-contents#contentscapturepagerect-opts), [FFmpeg options](https://ffmpeg.org/ffmpeg.html).
+
+## Native Source monitor integration
+
+Run `node benchmarks/windows/source-monitor.cjs`, or add `--mkv` to check prepared container playback. It creates disposable media, a library catalog and a project under `.temp/source-monitor/`, opens the real Electron editor, and checks preparation, independent source playback, exact In/Out marking, insertion, live CLI annotation updates and atomic undo. Diagnostic audio is muted. Results and a screenshot remain in that directory. The check closes its editor and background services; it does not modify an existing project or the active user catalog.
+
+Run `node benchmarks/windows/library-offline.ts` to stall a disposable catalog endpoint while editing and exporting a generated audio project. It also stalls source inspection, kills only its own project engine, and verifies durable reference delivery after restart. Results remain under `.temp/library-offline/`.

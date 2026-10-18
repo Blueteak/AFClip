@@ -1,6 +1,6 @@
 # Editing prototype
 
-This is the first usable project-engine slice, not the complete [MVP](../Reelet-MVP-Overview.md). It follows the independent Node engine and worker architecture in the [Technical Overview](../Reelet-Technical-Overview.md).
+This is the first usable project-engine slice, not the complete [MVP](../AFClip-MVP-Overview.md). It follows the independent Node engine and worker architecture in the [Technical Overview](../AFClip-Technical-Overview.md).
 
 The first complete edit is exported locally at `exports/vellum-first-edit.mp4`: 64 seconds, 1920 by 1080, 30 fps, H.264 and stereo 48 kHz AAC. It contains eight gameplay shots, seven dissolves, two animated titles, a music bed and four supplied sound effects. The project remains editable in `examples/vellum-first-edit`.
 
@@ -175,7 +175,7 @@ node src/cli.ts cancel .cache/my-edit
 node src/cli.ts export .cache/my-edit exports/software.mp4 --mode software --wait
 ```
 
-Without `--wait`, export/frame return a job ID immediately. Status can inspect that ID. `--wait` returns the final job and exits nonzero if it failed or was cancelled. Logs and job records live under `.reelet/jobs/<job-id>/`.
+Without `--wait`, export/frame return a job ID immediately. Status can inspect that ID. `--wait` returns the final job and exits nonzero if it failed or was cancelled. Logs and job records live under `.afclip/jobs/<job-id>/`.
 
 Every render holds the engine's editing lock, including single-frame and short-section renders. Rendering happens in a separate Node worker with Electron/FFmpeg children. A failure releases the lock while preserving committed project state. Cancellation signals the worker, stops its child processes and removes the partial output. Completion renames a temporary output beside the destination, preserving any previous completed output until the new file is ready. Output paths cannot replace imported media or accepted/editable graphic assets.
 
@@ -197,7 +197,7 @@ node src/cli.ts restore .cache/my-edit latest --confirm discard-later-edits
 
 A graphic folder needs `index.html`. Import copies it into `graphics/<media-id>`. The imported media's `metadata.authoringPath` identifies that editable folder, while `media.path` points to the accepted immutable version. Edit the authoring folder. The engine observes stable saves, accepts them as undoable changes and queues acceptance while rendering holds the lock. Export uses accepted assets, including a separate job snapshot. Assets are capped at 128 MiB per graphic and symlinks are rejected.
 
-Graphics run in sandboxed iframes without Node APIs or network access. They receive a `postMessage` containing `{type:"reelet-render",requestId,time}`. Render the supplied source time, await assets, and respond with `{type:"reelet-ready",requestId}` or `{type:"reelet-error",requestId,error}`. Each requested time must produce a complete state independently of previous calls. The example graphics demonstrate this contract. The default logical canvas is 1920 by 1080; metadata can specify `logicalWidth` and `logicalHeight`. The compositor scales that canvas to fit the output.
+Graphics run in sandboxed iframes without Node APIs or network access. They receive a `postMessage` containing `{type:"afclip-render",requestId,time}`. Render the supplied source time, await assets, and respond with `{type:"afclip-ready",requestId}` or `{type:"afclip-error",requestId,error}`. Each requested time must produce a complete state independently of previous calls. The example graphics demonstrate this contract. The default logical canvas is 1920 by 1080; metadata can specify `logicalWidth` and `logicalHeight`. The compositor scales that canvas to fit the output.
 
 The engine waits for the readiness response and fails if it times out. Broken graphics block export. This is a local authoring prototype, not a fully audited hostile-code execution service.
 
@@ -210,8 +210,8 @@ Checkpoints persist across restarts and retain the latest five. They copy projec
 Mark static plain-text elements in `index.html` with unique field IDs:
 
 ```html
-<h1 data-reelet-text="headline">Vellum</h1>
-<p data-reelet-text="subtitle">GAMEPLAY</p>
+<h1 data-afclip-text="headline">Vellum</h1>
+<p data-afclip-text="subtitle">GAMEPLAY</p>
 ```
 
 In native preview, click a visible field to select its text and pause playback. Click again to place the caret, double-click to select a word, or drag to highlight a range. Type or paste plain text; Enter inserts a line break. Click outside or press Ctrl/Cmd+Enter to commit, or Escape to cancel. Each committed session is one project undo step. The inspector also exposes fields, including empty or currently hidden fields, and Reset controls. Software preview uses the inspector for text editing.
@@ -227,7 +227,7 @@ node src/cli.ts text-reset path/to/project clip_id headline
 
 Text is stored per clip. Copy, duplicate and split retain its values without linking subsequent edits. Reset reveals the current HTML default. External source saves preserve overrides; renaming or removing a referenced field causes a render error. Restore its ID or remove the missing override using the inspector or `text-reset`.
 
-IDs use 1–128 letters, digits, underscores or hyphens. Fields contain text and optional `<br>` breaks, with no nested formatting elements. Up to 256 fields and 16,384 characters per override are supported. Reelet preserves line breaks with `white-space: pre-wrap`. Keep field elements stable: animation may change their styles or ancestors but must not replace the elements or author their text. CSS-generated text, SVG/canvas text and rich-text editing are outside this contract. Both bundled Vellum graphics declare `headline` and `subtitle`; existing imported copies need those attributes added to their authoring folders.
+IDs use 1–128 letters, digits, underscores or hyphens. Fields contain text and optional `<br>` breaks, with no nested formatting elements. Up to 256 fields and 16,384 characters per override are supported. AFClip preserves line breaks with `white-space: pre-wrap`. Keep field elements stable: animation may change their styles or ancestors but must not replace the elements or author their text. CSS-generated text, SVG/canvas text and rich-text editing are outside this contract. Both bundled Vellum graphics declare `headline` and `subtitle`; existing imported copies need those attributes added to their authoring folders.
 
 A disposable project verified field discovery, per-clip persistence, checkpoint restoration, undo/redo, reset, unchanged source files, stale-revision rejection and track/render locks. The GUI browser check exercised direct typing, partial-text replacement, multiline entry, Escape, rapid field switching, inspector Reset after focus and an external edit conflict. The Electron editor loaded the same fields and rendered the changed text. A software frame and a one-second MP4 exported successfully; full verification decoded all 30 frames.
 
@@ -235,7 +235,7 @@ A disposable project verified field discovery, per-clip persistence, checkpoint 
 
 `node src/cli.ts endpoint <project-dir>` returns the local `/v1` HTTP endpoint and bearer token. The GUI keeps that token in its main process. `GET /inspect`, `POST /command` and `GET /events` share engine state; SSE emits `hello`, `change` and `job` events. The engine binds only to `127.0.0.1` and rejects browser origins. Keep the token local.
 
-`project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.reelet/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. The project folder currently references source media and is not a Collect-project bundle.
+`project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.afclip/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. The project folder currently references source media and is not a Collect-project bundle.
 
 ## Manual validation and remaining scope
 

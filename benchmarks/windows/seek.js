@@ -23,7 +23,7 @@
       return result;
     };
   }
-  const expected = time => window.ReeletTimeline.at(native.setup.plan, time).filter(i => i.kind === 'video').map(item => {
+  const expected = time => window.AFClipTimeline.at(native.setup.plan, time).filter(i => i.kind === 'video').map(item => {
     const e = native.entries.get(item.clipId), pts = e.media.pts;
     let lo = 0, hi = pts.length;
     while (lo < hi) { const mid = (lo + hi) >>> 1; if (pts[mid] <= item.sourceTime + 1e-7) lo = mid + 1; else hi = mid; }

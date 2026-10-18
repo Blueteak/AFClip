@@ -20,8 +20,8 @@ Optimization candidates
 Audio review uses filenames and decoded waveform data, not listening. Music windows are provisional editorial windows, not verified musical phrases.
 
 GUI verification
-- Opened the existing Vellum project in the native Reelet GUI and inspected 4P_Fantasy_3 and Impact Low Reverb 001 in Source view.
-- Both reported ready and displayed the new notes, tags, and two named ranges beneath their picture/waveform. Screenshots: .temp/reelet-video-annotations.png and .temp/reelet-audio-annotations.png.
+- Opened the existing Vellum project in the native AFClip GUI and inspected 4P_Fantasy_3 and Impact Low Reverb 001 in Source view.
+- Both reported ready and displayed the new notes, tags, and two named ranges beneath their picture/waveform. Screenshots: .temp/afclip-video-annotations.png and .temp/afclip-audio-annotations.png.
 - Standalone Content Library also displayed the audio and video Rough selects tracks, and Inbox count 0.
 - Audio range names include source context to avoid ambiguous duplicate Main accent / Decay names in global search.
 

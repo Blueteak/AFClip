@@ -14,24 +14,25 @@ module.exports = async function libraryMedia(media, endpoint) {
   const tags = new Map(overview.tags.map(t => [t.id, t.name]));
   const folders = new Map(overview.folders.map(f => [f.id, f.name]));
   const requests = new Map();
-  const inspect = id => {
-    if (!requests.has(id)) requests.set(id, read({ command: 'inspect', id, relationships: false }).catch(error => {
+  const inspect = (id, sourceId) => {
+    const key = `${id}:${sourceId || ''}`;
+    if (!requests.has(key)) requests.set(key, read({ command: 'inspect', id, sourceId, relationships: false }).catch(error => {
       if (error.code === 'NOT_FOUND') return null;
       throw error;
     }));
-    return requests.get(id);
+    return requests.get(key);
   };
   const items = {};
   for (const m of media) {
     const link = m.metadata?.library;
     if (!link) continue;
     if (link.libraryId !== overview.libraryId) { items[m.id] = { status: 'Different library' }; continue; }
-    const asset = await inspect(link.assetId);
+    const asset = await inspect(link.assetId, link.sourceId);
     if (!asset) { items[m.id] = { status: 'Removed from library' }; continue; }
     const range = link.rangeId && !link.temporary ? await inspect(link.rangeId) : null;
     const own = range || asset;
     const status = asset.deleted || asset.purged ? 'Removed from library'
-      : asset.sourceId !== link.sourceId ? 'Source changed in library'
+      : !(asset.sourceMatches ?? asset.sourceId === link.sourceId) ? 'Source changed in library'
       : link.rangeId && !link.temporary && !range ? 'Range removed from library'
       : range && range.revision !== link.rangeRevision ? 'Range changed in library'
       : asset.availability !== 'available' ? 'Library source unavailable' : '';

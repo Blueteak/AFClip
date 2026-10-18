@@ -81,8 +81,19 @@ export class Jobs {
     fs.renameSync(temporary,thumb);}finally{fs.rmSync(temporary,{force:true});}
   }
   async prepare(j:any) {
-    const a=this.ops.asset(j.assetId),s=this.db.get(j.sourceId,'source'),file=this.ops.location(s);assert(a.sourceId===s.id,'Source version changed; request preparation again');assert(s.status==='verified','Verify source before review preparation');assert(file,'Source unavailable or changed');
+    const a=this.ops.asset(j.assetId);assert(this.ops.sourceMatches(a,j.sourceId),'Source version changed; request preparation again');
+    const s=this.ops.source(a),file=this.ops.location(s);j.sourceId=s.id;
+    assert(s.status==='verified','Verify source before review preparation');assert(file,'Source unavailable or changed');
     const cache=path.join(this.db.dir,'cache');
+    // Keep existing readers on complete artifacts. Cancelled preparation must
+    // not leave a truncated file that preview mistakes for a usable cache.
+    const generate=async(extension:string,args:string[])=>{
+      const output=path.join(cache,`${s.id}.${extension}`);
+      if(fs.existsSync(output))return;
+      const temporary=path.join(cache,`${s.id}.${j.id}.partial.${extension}`);
+      try{await this.run(j,ffmpeg,[...args,temporary],false);fs.renameSync(temporary,output);}
+      finally{fs.rmSync(temporary,{force:true});}
+    };
     if(j.level!=='index'&&!fs.existsSync(path.join(cache,`${s.id}.png`)))await this.thumbnail(j);
     if(a.kind==='video') {
       this.update(j,'Indexing source presentation timestamps',.1);
@@ -102,10 +113,10 @@ export class Jobs {
       const seek=media[a.id].seekProxy;
       fs.writeFileSync(path.join(cache,`${s.id}.preview.json`),JSON.stringify({pts:index.pts,seekProxy:seek||null}));
       // Native video decoding uses original pixels. Container-only remux makes MKV accessible to Chromium.
-      if(/\.(mkv|avi)$/i.test(file)) {this.update(j,'Preparing native playback container',.8);await this.run(j,ffmpeg,['-v','error','-y','-i',file,'-map','0:v:0','-an','-c:v','copy','-movflags','+faststart',path.join(cache,`${s.id}.mp4`)],false);}
+      if(/\.(mkv|avi)$/i.test(file)) {this.update(j,'Preparing native playback container',.8);await generate('mp4',['-v','error','-y','-i',file,'-map','0:v:0','-an','-c:v','copy','-movflags','+faststart']);}
     }
     if(j.level==='index'){j.result={level:'index',sampleRate:Number(s.metadata?.streams?.find((x:any)=>x.codec_type==='audio')?.sample_rate)||null};return;}
-    if(s.metadata.hasAudio){this.update(j,'Preparing source audio',.9);await this.run(j,ffmpeg,['-v','error','-y','-i',file,'-vn','-c:a','pcm_s16le',path.join(cache,`${s.id}.wav`)],false);}
+    if(s.metadata.hasAudio){this.update(j,'Preparing source audio',.9);await generate('wav',['-v','error','-y','-i',file,'-vn','-c:a','pcm_s16le']);}
     this.evict();
   }
   requestArtifact(c:any){

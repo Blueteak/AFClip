@@ -1,12 +1,12 @@
 {
-  "out": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z",
+  "out": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z",
   "startedAt": "2026-10-17T05:31:26.545Z",
   "checks": [
     {
       "name": "Original RGB, VFR, export and sync checks pass",
       "pass": true,
       "details": {
-        "report": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-solutions\\2026-10-17T05-22-33-523Z\\results.json"
+        "report": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-solutions\\2026-10-17T05-22-33-523Z\\results.json"
       }
     },
     {
@@ -1414,7 +1414,7 @@
             "p95": 1.7089000000000851,
             "max": 3.326599999999985
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu.mp4"
         },
         {
           "id": "source0",
@@ -1434,7 +1434,7 @@
             "p95": 1.7114000000001397,
             "max": 2.986499999999978
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu-source0.mp4"
         },
         {
           "id": "source1",
@@ -1454,7 +1454,7 @@
             "p95": 1.8739000000005035,
             "max": 3.0312000000003536
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu-source1.mp4"
         }
       ],
       "export": {
@@ -1475,7 +1475,7 @@
           "p95": 1.7089000000000851,
           "max": 3.326599999999985
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-0\\composed-gpu.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "enabled",
@@ -1520,7 +1520,7 @@
             "p95": 1.6226999999998952,
             "max": 3.3574000000000126
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -1540,7 +1540,7 @@
             "p95": 1.6765000000000327,
             "max": 11.85089999999991
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -1560,7 +1560,7 @@
             "p95": 1.6503999999995358,
             "max": 3.031600000000253
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -1581,7 +1581,7 @@
           "p95": 1.6226999999998952,
           "max": 3.3574000000000126
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-0\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -1626,7 +1626,7 @@
             "p95": 1.6984999999999673,
             "max": 31.221600000000024
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -1646,7 +1646,7 @@
             "p95": 1.5734999999999673,
             "max": 32.044200000000274
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -1666,7 +1666,7 @@
             "p95": 1.3828999999996086,
             "max": 3.073500000000422
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -1687,7 +1687,7 @@
           "p95": 1.6984999999999673,
           "max": 31.221600000000024
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-0\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -1732,7 +1732,7 @@
             "p95": 1.7312999999999192,
             "max": 3.305000000000007
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu.mp4"
         },
         {
           "id": "source0",
@@ -1752,7 +1752,7 @@
             "p95": 1.673200000000179,
             "max": 2.8474999999998545
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu-source0.mp4"
         },
         {
           "id": "source1",
@@ -1772,7 +1772,7 @@
             "p95": 1.903599999999642,
             "max": 3.10149999999976
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu-source1.mp4"
         }
       ],
       "export": {
@@ -1793,7 +1793,7 @@
           "p95": 1.7312999999999192,
           "max": 3.305000000000007
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-1\\composed-gpu.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "enabled",
@@ -1838,7 +1838,7 @@
             "p95": 1.6056999999998425,
             "max": 3.516999999999996
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -1858,7 +1858,7 @@
             "p95": 1.5455000000001746,
             "max": 9.830899999999929
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -1878,7 +1878,7 @@
             "p95": 1.495999999999185,
             "max": 3.4202000000004773
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -1899,7 +1899,7 @@
           "p95": 1.6056999999998425,
           "max": 3.516999999999996
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-1\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -1944,7 +1944,7 @@
             "p95": 1.6380000000001473,
             "max": 26.595799999999997
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -1964,7 +1964,7 @@
             "p95": 1.6192999999998392,
             "max": 20.710799999999836
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -1984,7 +1984,7 @@
             "p95": 1.4726999999993495,
             "max": 2.9947000000001935
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -2005,7 +2005,7 @@
           "p95": 1.6380000000001473,
           "max": 26.595799999999997
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-1\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -2050,7 +2050,7 @@
             "p95": 1.8103999999999587,
             "max": 3.393699999999967
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu.mp4"
         },
         {
           "id": "source0",
@@ -2070,7 +2070,7 @@
             "p95": 1.7398000000002867,
             "max": 8.227800000000116
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu-source0.mp4"
         },
         {
           "id": "source1",
@@ -2090,7 +2090,7 @@
             "p95": 1.7309999999997672,
             "max": 3.152900000000045
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu-source1.mp4"
         }
       ],
       "export": {
@@ -2111,7 +2111,7 @@
           "p95": 1.8103999999999587,
           "max": 3.393699999999967
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\gpu-bitmap-2\\composed-gpu.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "enabled",
@@ -2156,7 +2156,7 @@
             "p95": 1.5819999999999936,
             "max": 3.3622000000000014
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -2176,7 +2176,7 @@
             "p95": 1.6450999999997293,
             "max": 10.514099999999871
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -2196,7 +2196,7 @@
             "p95": 1.6044999999994616,
             "max": 3.021299999999428
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -2217,7 +2217,7 @@
           "p95": 1.5819999999999936,
           "max": 3.3622000000000014
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-bitmap-2\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -2262,7 +2262,7 @@
             "p95": 1.6592000000000553,
             "max": 17.3759
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software.mp4"
         },
         {
           "id": "source0",
@@ -2282,7 +2282,7 @@
             "p95": 1.6195999999999913,
             "max": 17.33159999999998
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software-source0.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software-source0.mp4"
         },
         {
           "id": "source1",
@@ -2302,7 +2302,7 @@
             "p95": 1.6004000000002634,
             "max": 3.188199999999597
           },
-          "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software-source1.mp4"
+          "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software-source1.mp4"
         }
       ],
       "export": {
@@ -2323,7 +2323,7 @@
           "p95": 1.6592000000000553,
           "max": 17.3759
         },
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software.mp4"
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\cpu-nvenc-2\\composed-software.mp4"
       },
       "gpuFeatures": {
         "2d_canvas": "unavailable_software",
@@ -2343,14 +2343,14 @@
       }
     }
   ],
-  "baseline": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-solutions\\2026-10-17T05-22-33-523Z",
+  "baseline": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-solutions\\2026-10-17T05-22-33-523Z",
   "shared": {
     "mode": "shared-texture",
     "exports": [
       {
         "id": "fixture",
         "repeat": 0,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-0.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-0.mp4",
         "initializeMs": 30.843200000000024,
         "encodeMs": 1956.978,
         "muxMs": 106.20299999999997,
@@ -2531,7 +2531,7 @@
       {
         "id": "fixture",
         "repeat": 1,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-1.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-1.mp4",
         "initializeMs": 2.468499999999949,
         "encodeMs": 1947.1400999999996,
         "muxMs": 99.68199999999979,
@@ -2712,7 +2712,7 @@
       {
         "id": "fixture",
         "repeat": 2,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-2.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-fixture-2.mp4",
         "initializeMs": 2.7570000000005166,
         "encodeMs": 1965.6143000000002,
         "muxMs": 101.06370000000061,
@@ -2893,7 +2893,7 @@
       {
         "id": "source0",
         "repeat": 0,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-0.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-0.mp4",
         "initializeMs": 2.720999999999549,
         "encodeMs": 1971.2286000000004,
         "muxMs": 94.53380000000107,
@@ -3074,7 +3074,7 @@
       {
         "id": "source0",
         "repeat": 1,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-1.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-1.mp4",
         "initializeMs": 2.345499999999447,
         "encodeMs": 1998.7789999999986,
         "muxMs": 92.6944999999996,
@@ -3255,7 +3255,7 @@
       {
         "id": "source0",
         "repeat": 2,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-2.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source0-2.mp4",
         "initializeMs": 2.448500000000422,
         "encodeMs": 2001.4391000000014,
         "muxMs": 94.36719999999877,
@@ -3436,7 +3436,7 @@
       {
         "id": "source1",
         "repeat": 0,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-0.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-0.mp4",
         "initializeMs": 2.528599999999642,
         "encodeMs": 2314.730599999999,
         "muxMs": 106.3786,
@@ -3617,7 +3617,7 @@
       {
         "id": "source1",
         "repeat": 1,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-1.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-1.mp4",
         "initializeMs": 2.411000000000058,
         "encodeMs": 2340.303100000001,
         "muxMs": 110.86069999999745,
@@ -3798,7 +3798,7 @@
       {
         "id": "source1",
         "repeat": 2,
-        "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-2.mp4",
+        "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-source1-2.mp4",
         "initializeMs": 2.511399999999412,
         "encodeMs": 2218.3964000000014,
         "muxMs": 106.25089999999909,
@@ -3997,7 +3997,7 @@
     },
     "rejectedPaints": 1,
     "vfr": {
-      "output": "C:\\Users\\jonat\\Documents\\GitHub\\Reelet\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-vfr.h264",
+      "output": "C:\\Users\\jonat\\Documents\\GitHub\\AFClip\\.cache\\windows-gpu\\2026-10-17T05-31-26-544Z\\shared-vfr.h264",
       "times": [
         0.3,
         0.333333333333,

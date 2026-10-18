@@ -14,7 +14,7 @@ p{font:500 20px/1 Cinzel;letter-spacing:9px;margin:0 0 0 9px;color:#d4c5a1}
 </style></head><body>
 <div id="veil"></div><div id="card">
 <svg id="sigil" viewBox="0 0 300 300" aria-hidden="true"><circle cx="150" cy="150" r="94"/><circle cx="150" cy="150" r="107" stroke-dasharray="3 13"/><path d="M150 30L270 150L150 270L30 150Z M150 47V79 M253 150H221 M150 253V221 M47 150H79"/><path d="M106 129L150 145L194 129V181L150 198L106 181ZM150 145V198"/></svg>
-<div id="cornerA"></div><div id="cornerB"></div><h1 data-reelet-text="headline">Vellum</h1><div id="line"></div><p data-reelet-text="subtitle">GAMEPLAY</p>
+<div id="cornerA"></div><div id="cornerB"></div><h1 data-afclip-text="headline">Vellum</h1><div id="line"></div><p data-afclip-text="subtitle">GAMEPLAY</p>
 </div>
 <script>
 'use strict';
@@ -30,9 +30,9 @@ window.render=async function(t){
   document.getElementById('sigil').style.transform=`rotate(${-.8+clamp(t/6)*1.6}deg)`;
 };
 addEventListener('message',async event=>{
-  if(event.source!==parent||event.data?.type!=='reelet-render')return;
+  if(event.source!==parent||event.data?.type!=='afclip-render')return;
   const {requestId,time}=event.data;
-  try{await window.render(time);parent.postMessage({type:'reelet-ready',requestId},'*')}
-  catch(error){parent.postMessage({type:'reelet-error',requestId,error:String(error.message||error)},'*')}
+  try{await window.render(time);parent.postMessage({type:'afclip-ready',requestId},'*')}
+  catch(error){parent.postMessage({type:'afclip-error',requestId,error:String(error.message||error)},'*')}
 });
 </script></body></html>

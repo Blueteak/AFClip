@@ -55,13 +55,15 @@ module.exports = function sourceMedia({ projectDir, inspect, libraryEndpoint, gr
   async function preview(m) {
     const link = m.metadata?.library, file = path.resolve(projectDir, m.path);
     const result = {
-      mediaId: m.id, kind: m.kind, name: link?.name || path.basename(m.path),
+      mediaId: m.id, revision: m.revision, library: link || null, kind: m.kind, name: link?.name || path.basename(m.path),
+      sampleRate: Number(m.metadata?.streams?.find(s => s.codec_type === 'audio')?.sample_rate) || null,
       duration: seconds(m.duration) || 5, width: m.metadata?.width || 1920, height: m.metadata?.height || 1080,
       url: m.kind === 'graphic' ? null : grantFile(file),
       audioUrl: m.kind === 'audio' || m.kind === 'video' && m.metadata?.hasAudio !== false ? grantFile(file) : null,
       imageUrl: m.kind === 'image' ? grantFile(file) : null, pts: [], seekProxy: null,
       selection: link?.end != null ? { start: seconds(link.start), end: seconds(link.end) } : null,
       annotations: null, warning: m.kind === 'graphic' ? 'Preview this graphic on the timeline.' : null,
+      prepared: m.kind === 'audio',
     };
     if (link) {
       try {
@@ -77,13 +79,14 @@ module.exports = function sourceMedia({ projectDir, inspect, libraryEndpoint, gr
           return reply.result;
         };
         const [asset, overview] = await Promise.all([
-          read({ command: 'inspect', id: link.assetId }), read({ command: 'overview' }),
+          read({ command: 'inspect', id: link.assetId, sourceId: link.sourceId }), read({ command: 'overview' }),
         ]);
-        if (asset.libraryId !== link.libraryId || asset.sourceId !== link.sourceId) {
+        if (asset.libraryId !== link.libraryId || !(asset.sourceMatches ?? asset.sourceId === link.sourceId)) {
           result.warning = 'The library source has changed. Previewing the saved project source without its replacement annotations.';
         } else if (asset.purged || asset.deleted) {
           result.warning = 'This asset was removed from the library. Previewing the saved project source.';
         } else {
+          result.selectionContext = { revision: asset.revision, sourceId: link.sourceId };
           const tags = new Map(overview.tags.map(tag => [tag.id, tag.name]));
           const names = ids => (ids || []).map(id => tags.get(id)).filter(Boolean);
           const ranges = [...(asset.ranges || [])];
@@ -95,7 +98,7 @@ module.exports = function sourceMedia({ projectDir, inspect, libraryEndpoint, gr
           result.annotations = {
             name: asset.name, notes: asset.notes || '', tags: names(asset.tags),
             tracks: asset.annotationTracks || [{ id: 'annotations', name: 'Annotations' }],
-            ranges: ranges.map(range => ({ id: range.id, name: range.name, start: seconds(range.start), end: seconds(range.end),
+            ranges: ranges.map(range => ({ id: range.id, revision: range.revision, sourceId: range.sourceId, boundaries: range.boundaries, exactStart: range.start, exactEnd: range.end, name: range.name, start: seconds(range.start), end: seconds(range.end),
               tags: names(range.tags), notes: range.notes || '', trackId: range.trackId || 'annotations' })),
             takes: asset.takes || [],
           };
@@ -105,6 +108,7 @@ module.exports = function sourceMedia({ projectDir, inspect, libraryEndpoint, gr
             result.url = grantLibrary(source.url, ep);
             result.audioUrl = result.audioUrl ? grantLibrary(source.audioUrl, ep) : null;
             result.pts = source.pts;
+            result.prepared = source.prepared;
             result.seekProxy = source.seekProxy ? { ...source.seekProxy, url: grantLibrary(source.seekProxy.url, ep) } : null;
           } else result.warning = 'Library source unavailable. Using the saved project path.';
           if (link.rangeId && !link.temporary) {

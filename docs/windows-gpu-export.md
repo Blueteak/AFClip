@@ -48,7 +48,7 @@ npm run bench:gpu
 
 The original benchmark preserves its known native-video color failure and can exit 1. Its generated fixtures are still usable. `bench:gpu` runs the corrected RGB suite, builds the native helper with the installed Visual Studio C++ compiler and Windows SDK, and executes the comparison. The NVENC 12.1 API header is downloaded from a pinned FFmpeg header release and SHA256-verified; its NVIDIA license notice is retained in the cached header. No global installation is performed.
 
-Results and media stay under `.cache/windows-gpu/<timestamp>/`. The raw input recordings are read without modification. Generated RGBA caches are deleted after success unless `REELET_KEEP_FRAMES=1` is set. To reuse retained caches, pass the corresponding `.cache/windows-solutions/<timestamp>` directory to `bench:gpu`. This trusted fixed graphics fixture still requires the existing preload filesystem adapter and disabled renderer sandbox.
+Results and media stay under `.cache/windows-gpu/<timestamp>/`. The raw input recordings are read without modification. Generated RGBA caches are deleted after success unless `AFCLIP_KEEP_FRAMES=1` is set. To reuse retained caches, pass the corresponding `.cache/windows-solutions/<timestamp>` directory to `bench:gpu`. This trusted fixed graphics fixture still requires the existing preload filesystem adapter and disabled renderer sandbox.
 
 The next decoder change should replace the six-second raw caches with a bounded queue. GPU decoder-to-canvas interop, long-project cancellation/recovery, non-NVIDIA shared-texture encoding and arbitrary graphics sandboxing remain separate work.
 

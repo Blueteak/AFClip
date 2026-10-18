@@ -53,7 +53,7 @@ if (!process.versions.electron) {
     win.webContents.debugger.on('message', (_event, method, params) => { if (method === 'Media.playerPropertiesChanged') mediaEvents.push(params); });
     await win.webContents.debugger.sendCommand('Media.enable');
     let ready = false;
-    const prepareSeconds = Number(process.env.REELET_PREPARE_TIMEOUT_SECONDS || 120);
+    const prepareSeconds = Number(process.env.AFCLIP_PREPARE_TIMEOUT_SECONDS || 120);
     if (!(prepareSeconds > 0 && prepareSeconds <= 600)) throw new Error('Preparation deadline must be between 0 and 600 seconds');
     for (let i = 0; i < prepareSeconds * 2; i++) {
       try { ready = await win.webContents.executeJavaScript('typeof playback !== "undefined" && playback.ready && !!playback.native'); } catch {}
@@ -83,7 +83,7 @@ if (!process.versions.electron) {
       result.versions = process.versions; result.gpu = await app.getGPUInfo('complete');
       fs.writeFileSync(path.join(output, 'seeks.json'), JSON.stringify(result, null, 2));
       console.log(JSON.stringify(result.summary, null, 2));
-      await win.webContents.executeJavaScript('playback.pause(false); reelet.previewClose()');
+      await win.webContents.executeJavaScript('playback.pause(false); afclip.previewClose()');
       await sleep(300); app.exit(0); return;
     }
     await win.webContents.executeJavaScript(`
@@ -164,12 +164,12 @@ if (!process.versions.electron) {
     });
     fs.writeFileSync(path.join(output, 'results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify({ time:result.time, stats:result.stats, byClip:result.byClip }, null, 2));
-    await win.webContents.executeJavaScript('playback.pause(false); reelet.previewClose()');
+    await win.webContents.executeJavaScript('playback.pause(false); afclip.previewClose()');
     await sleep(300); app.exit(0);
   })().catch(async error => {
     fs.writeFileSync(path.join(output, 'error.json'), JSON.stringify({error:error.message,versions:process.versions},null,2));
     console.error(error);
-    for (const window of BrowserWindow.getAllWindows()) await window.webContents.executeJavaScript('reelet.previewClose()').catch(()=>{});
+    for (const window of BrowserWindow.getAllWindows()) await window.webContents.executeJavaScript('afclip.previewClose()').catch(()=>{});
     await sleep(300); app.exit(1);
   });
 }

@@ -27,7 +27,7 @@ async function main() {
   let baseline = process.argv[2];
   if (!baseline) {
     console.log('Preparing sources and running the original correctness checks...');
-    await run('baseline', process.execPath, [path.join(__dirname, 'solutions.cjs')], { REELET_KEEP_FRAMES: '1' });
+    await run('baseline', process.execPath, [path.join(__dirname, 'solutions.cjs')], { AFCLIP_KEEP_FRAMES: '1' });
     const root = path.resolve('.cache/windows-solutions');
     baseline = path.join(root, fs.readdirSync(root).filter(x => fs.existsSync(path.join(root, x, 'config.json'))).sort().at(-1));
   }
@@ -36,8 +36,8 @@ async function main() {
   for (const f of Object.values(config.frames)) if (!fs.existsSync(f.file)) throw new Error('The baseline raw-frame cache was removed. Run without a directory argument to prepare it again.');
   const original = JSON.parse(fs.readFileSync(path.join(baseline, 'results.json')));
   check('Original RGB, VFR, export and sync checks pass', !original.error && !!original.finishedAt && original.checks.every(c => c.pass) && original.rendering.every(r => !r.error && r.checks.every(c => c.pass)), { report: path.join(baseline, 'results.json') });
-  const repeats = Number(process.env.REELET_GPU_REPEATS || 3);
-  if (!Number.isInteger(repeats) || repeats < 1 || repeats > 10) throw new Error('REELET_GPU_REPEATS must be 1..10');
+  const repeats = Number(process.env.AFCLIP_GPU_REPEATS || 3);
+  if (!Number.isInteger(repeats) || repeats < 1 || repeats > 10) throw new Error('AFCLIP_GPU_REPEATS must be 1..10');
   // Re-run every control with matching NVENC P4/QP16/no-B-frame settings.
   for (let repeat = 0; repeat < repeats; repeat++) {
     for (const [label, mode, encoder] of [['gpu-bitmap', 'gpu', 'h264_nvenc'], ['cpu-bitmap', 'software', 'libx264'], ['cpu-nvenc', 'software', 'h264_nvenc']]) {
@@ -99,6 +99,6 @@ async function main() {
   console.log(JSON.stringify({ out, checks: report.checks.length, failed: report.checks.filter(c => !c.pass), summary: report.summary }, null, 2));
   // Only delete our generated caches after all tests pass. Never touch source media.
   if (report.checks.some(c => !c.pass)) process.exitCode = 1;
-  else if (!process.env.REELET_KEEP_FRAMES) for (const f of Object.values(config.frames)) fs.unlinkSync(f.file);
+  else if (!process.env.AFCLIP_KEEP_FRAMES) for (const f of Object.values(config.frames)) fs.unlinkSync(f.file);
 }
 main().catch(e => { report.error = e.stack; save(); console.error(e); process.exitCode = 1; });

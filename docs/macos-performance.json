@@ -4560,7 +4560,7 @@
       "kind": "export",
       "mode": "software",
       "verification": "full",
-      "output": "/Users/jonathan/Documents/GitHub/Reelet/.cache/macos/dissolve.mp4",
+      "output": "/Users/jonathan/Documents/GitHub/AFClip/.cache/macos/dissolve.mp4",
       "createdAt": "2026-10-18T00:36:56.392Z",
       "projectRevision": 0,
       "progress": 1,
@@ -4624,7 +4624,7 @@
       "kind": "export",
       "mode": "gpu",
       "verification": "full",
-      "output": "/Users/jonathan/Documents/GitHub/Reelet/.cache/macos/gpu.mp4",
+      "output": "/Users/jonathan/Documents/GitHub/AFClip/.cache/macos/gpu.mp4",
       "createdAt": "2026-10-18T00:37:08.810Z",
       "projectRevision": 0,
       "progress": 0.1,
@@ -4633,7 +4633,7 @@
       "error": {
         "code": "RENDER_FAILED",
         "message": "Shared-texture benchmark requires Windows x64.",
-        "log": "/Users/jonathan/Documents/GitHub/Reelet/.cache/macos/gameplay/.reelet/jobs/job_38ebc0eed8394e3fa5b80af003058f09/render/renderer.log",
+        "log": "/Users/jonathan/Documents/GitHub/AFClip/.cache/macos/gameplay/.afclip/jobs/job_38ebc0eed8394e3fa5b80af003058f09/render/renderer.log",
         "fallback": "Restart from the beginning with --mode software"
       },
       "finishedAt": "2026-10-18T00:37:09.170Z"

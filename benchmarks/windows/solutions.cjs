@@ -106,7 +106,7 @@ async function main() {
   report.finishedAt = new Date().toISOString(); save();
   console.log(JSON.stringify({ out, checks: report.checks, exports: report.rendering.map(x => ({ mode: x.mode, export: x.export })) }, null, 2));
   // Decoded frames are disposable cache data; retain captures, logs and encoded outputs.
-  if (!process.env.REELET_KEEP_FRAMES) for (const f of Object.values(frames)) fs.unlinkSync(f.file);
+  if (!process.env.AFCLIP_KEEP_FRAMES) for (const f of Object.values(frames)) fs.unlinkSync(f.file);
   if (report.checks.some(x => !x.pass) || report.rendering.some(r => r.checks.some(x => !x.pass))) process.exitCode = 1;
 }
 main().catch(e => { report.error = e.stack; save(); console.error(e); process.exitCode = 1; });

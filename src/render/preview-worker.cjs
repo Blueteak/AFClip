@@ -21,14 +21,14 @@ app.commandLine.appendSwitch('force-device-scale-factor', '1');
 app.commandLine.appendSwitch('force-color-profile', 'srgb');
 if (config.mode === 'software') app.disableHardwareAcceleration();
 app.setPath('userData', path.join(config.work, 'profile'));
-protocol.registerSchemesAsPrivileged([{ scheme: 'reelet-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'afclip-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const emit = data => process.stdout.write(JSON.stringify(data) + '\n');
 let win, latest, busy = false, ready = false, token = 0, pending, previousEpoch, previousTime;
 function fail(error) { emit({ type: 'error', error: { message: error.message } }); shutdown(1); }
 async function shutdown(code = 0) {
   ready = false; latest = null;
   if (win && !win.isDestroyed()) {
-    await win.webContents.executeJavaScript('window.reeletFrames.close()').catch(() => {});
+    await win.webContents.executeJavaScript('window.afclipFrames.close()').catch(() => {});
     win.destroy();
   }
   app.exit(code);
@@ -40,7 +40,7 @@ async function pump() {
   const wanted = ++token;
   let timer;
   try {
-    if (previousEpoch !== request.epoch && (previousTime == null || request.time < previousTime || request.time - previousTime > .25)) await win.webContents.executeJavaScript('window.reeletFrames.close()');
+    if (previousEpoch !== request.epoch && (previousTime == null || request.time < previousTime || request.time - previousTime > .25)) await win.webContents.executeJavaScript('window.afclipFrames.close()');
     previousEpoch = request.epoch; previousTime = request.time;
     const painted = new Promise((resolve, reject) => {
       timer = setTimeout(() => reject(new Error('Preview frame timed out')), 15000);
@@ -70,15 +70,15 @@ app.whenReady().then(async () => {
   const { width, height } = config;
   win = new BrowserWindow({ width, height: height + 8, useContentSize: true, show: false, webPreferences: {
     offscreen: true, backgroundThrottling: false, sandbox: false, nodeIntegration: false, contextIsolation: true,
-    preload: path.join(__dirname, 'preload.cjs'), additionalArguments: [`--reelet-render=${previewFile}`],
+    preload: path.join(__dirname, 'preload.cjs'), additionalArguments: [`--afclip-render=${previewFile}`],
   } });
   win.webContents.setFrameRate(120);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
-  win.webContents.on('will-frame-navigate', (event, details) => { if (details?.url && !details.url.startsWith('reelet-graphic:')) event.preventDefault(); });
+  win.webContents.on('will-frame-navigate', (event, details) => { if (details?.url && !details.url.startsWith('afclip-graphic:')) event.preventDefault(); });
   win.webContents.on('render-process-gone', (_, details) => fail(new Error(`Preview compositor failed: ${details.reason}`)));
   win.webContents.session.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !(
-    details.url.startsWith('reelet-graphic:') || details.url.startsWith('data:') ||
+    details.url.startsWith('afclip-graphic:') || details.url.startsWith('data:') ||
     details.url === require('node:url').pathToFileURL(path.join(__dirname, 'compositor.html')).href
   ) }));
   win.webContents.on('paint', (_event, _dirty, image) => {

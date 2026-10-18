@@ -82,4 +82,4 @@ function at(plan, time) {
   });
 }
 if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain, automationExpression };
-else window.ReeletTimeline = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain };
+else window.AFClipTimeline = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain };
