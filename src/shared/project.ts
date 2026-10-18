@@ -4,7 +4,8 @@ export type Track = { id: string; revision: number; name: string; disabled: bool
 export type VolumePoint = { time: Time; value: number };
 export type Clip = { id: string; revision: number; trackId: string; mediaId: string; start: Time; duration: Time; sourceIn: Time; speed: Time; volume: number; volumePoints?: VolumePoint[]; mute: boolean; fadeIn: Time; fadeOut: Time; transform?: {x?:number;y?:number;scale?:number;rotation?:number;opacity?:number;fit?:'fit'|'fill'}; name?:string };
 export type Transition = { id: string; revision: number; trackId: string; fromClipId: string; toClipId: string; duration: Time; alignment:'center'|'start'|'end' };
-export type Project = { version:1; id:string; name:string; revision:number; resolution:{width:number;height:number}; fps:Time; media:Media[]; tracks:Track[]; clips:Clip[]; transitions:Transition[]; relationshipRevisions:Record<string,number>; [key:string]:any };
+export type Marker = { id:string; revision:number; name:string; time:Time };
+export type Project = { version:1; id:string; name:string; revision:number; resolution:{width:number;height:number}; fps:Time; media:Media[]; tracks:Track[]; clips:Clip[]; transitions:Transition[]; markers?:Marker[]; relationshipRevisions:Record<string,number>; [key:string]:any };
 export const ZERO: Time = {num:0,den:1};
 export const ONE: Time = {num:1,den:1};
 export class EngineError extends Error { code:string; details:any; constructor(code:string,message:string,details:any={}) {super(message);this.code=code;this.details=details;} }
@@ -18,7 +19,7 @@ export const sub=(a:Time,b:Time)=>rational(BigInt(a.num)*BigInt(b.den)-BigInt(b.
 export const mul=(a:Time,b:Time)=>rational(BigInt(a.num)*BigInt(b.num),BigInt(a.den)*BigInt(b.den));
 export const cmp=(a:Time,b:Time)=>{const d=BigInt(a.num)*BigInt(b.den)-BigInt(b.num)*BigInt(a.den);return d<0n?-1:d>0n?1:0;};
 export function parseTime(v:string):Time {if(v.includes('/')){const [n,d]=v.split('/');return time({num:Number(n),den:Number(d)});} assert(/^-?\d+(\.\d+)?$/.test(v),'Expected seconds or fraction');const places=(v.split('.')[1]||'').length;return rational(BigInt(v.replace('.','')),10n**BigInt(places));}
-export function revisions(p:Project):Record<string,number> {const r:Record<string,number>={project:p.revision,...p.relationshipRevisions};for(const [collection,singular]of [['media','media'],['tracks','track'],['clips','clip'],['transitions','transition']])for(const o of p[collection])r[`${singular}:${o.id}`]=o.revision;return r;}
+export function revisions(p:Project):Record<string,number> {const r:Record<string,number>={project:p.revision,...p.relationshipRevisions};for(const [collection,singular]of [['media','media'],['tracks','track'],['clips','clip'],['transitions','transition'],['markers','marker']])for(const o of p[collection]||[])r[`${singular}:${o.id}`]=o.revision;return r;}
 export function duration(p:Project):Time {return p.clips.reduce((end,c)=>{const e=add(c.start,c.duration);return cmp(e,end)>0?e:end;},ZERO);}
 // Source timestamps deliberately survive trims, splits, and project FPS changes.
 function validateVolumePoints(points:any, media:Media, clipId:string) {
@@ -37,7 +38,9 @@ function validateVolumePoints(points:any, media:Media, clipId:string) {
 export function validateProject(p:any):asserts p is Project {
  assert(p&&p.version===1,'Unsupported project version'); assert(typeof p.id==='string'&&typeof p.name==='string','Project requires id and name');assert(Number.isSafeInteger(p.revision)&&p.revision>=0,'Invalid project revision');
  assert(p.resolution&&Number.isInteger(p.resolution.width)&&Number.isInteger(p.resolution.height)&&p.resolution.width>=2&&p.resolution.height>=2&&p.resolution.width%2===0&&p.resolution.height%2===0&&p.resolution.width<=7680&&p.resolution.height<=4320,'Resolution must have even dimensions up to 7680x4320');assert(seconds(time(p.fps,'fps'))>0&&seconds(p.fps)<=240,'Frame rate must be between 0 and 240');
- for(const name of ['media','tracks','clips','transitions']){assert(Array.isArray(p[name]),`Missing ${name} array`);const ids=new Set();for(const o of p[name]){assert(o&&typeof o.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(o.id)&&!ids.has(o.id),`Invalid or duplicate ${name} ID`);ids.add(o.id);assert(Number.isSafeInteger(o.revision)&&o.revision>=0,'Invalid object revision');}}
+ if(p.markers===undefined)p.markers=[];
+ for(const name of ['media','tracks','clips','transitions','markers']){assert(Array.isArray(p[name]),`Missing ${name} array`);const ids=new Set();for(const o of p[name]){assert(o&&typeof o.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(o.id)&&!ids.has(o.id),`Invalid or duplicate ${name} ID`);ids.add(o.id);assert(Number.isSafeInteger(o.revision)&&o.revision>=0,'Invalid object revision');}}
+ for(const marker of p.markers){assert(typeof marker.name==='string'&&marker.name.trim().length>0&&marker.name.length<=256,'Marker name must contain 1 to 256 characters');assert(cmp(time(marker.time,'Marker time'),ZERO)>=0,'Marker time must not be negative');}
  const media=new Map<string,Media>(p.media.map((m:Media)=>[m.id,m]));const tracks=new Map<string,Track>(p.tracks.map((t:Track)=>[t.id,t]));const clips=new Map<string,Clip>(p.clips.map((c:Clip)=>[c.id,c]));
  for(const m of p.media){assert(['video','audio','image','graphic'].includes(m.kind)&&typeof m.path==='string'&&m.path.length>0,'Invalid media');assert(cmp(time(m.duration),ZERO)>=0,'Negative media duration');assert(m.metadata&&typeof m.metadata==='object','Media metadata required');}
  for(const t of p.tracks)assert(typeof t.name==='string'&&typeof t.locked==='boolean'&&typeof t.disabled==='boolean','Invalid track');

@@ -46,5 +46,10 @@ export function rippleOperations(project:Project, start:Time, end:Time) {
   }
   if(outgoing.id!==tr.fromClipId||incoming.id!==tr.toClipId)put('transitions',{id:tr.id,fromClipId:outgoing.id,toClipId:incoming.id});
  }
+ for(const marker of project.markers || []){
+  if(cmp(marker.time,start)<0)continue;
+  if(cmp(marker.time,end)<0)remove('markers',marker.id);
+  else put('markers',{id:marker.id,time:sub(marker.time,delta)});
+ }
  return {operations,newIds};
 }

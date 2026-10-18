@@ -71,6 +71,29 @@ Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional
 
 Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
 
+## Timeline markers
+
+Press **M** to name a marker at the playhead. **Shift+Up / Shift+Down** navigate markers. Click a ruler flag to seek, drag it to move, or double-click to edit its name and time. Delete removes the selected marker; Escape cancels a drag. Clip moves and trims snap to markers, with Alt bypassing snapping. Adding a marker selects it, and the marker dialog pauses playback.
+
+Named markers belong to the sequence and have stable IDs shared by the GUI and CLI. They save with the project and participate in shared undo/redo and checkpoints. Existing projects without a marker array open with no markers. Markers may sit beyond the last clip to plan future edits, but do not extend playback or export duration.
+
+```powershell
+node src/cli.ts marker-add .cache/my-edit --time 4 --name "Music hit" --id music_hit
+node src/cli.ts markers .cache/my-edit
+node src/cli.ts marker-set .cache/my-edit music_hit --name "Title entrance" --time 5
+node src/cli.ts marker-next .cache/my-edit --time 2
+node src/cli.ts marker-previous .cache/my-edit --time 6
+node src/cli.ts marker-remove .cache/my-edit music_hit
+```
+
+Navigation returns the nearest marker strictly after or before the supplied time, or null at the end. Listing orders markers by time and then ID; multiple markers may share a time. Names must contain non-whitespace text and be at most 256 characters. Marker creation and explicit time edits must land on the project frame grid. Changing project FPS preserves existing marker times in seconds.
+
+Agents can include markers in ordinary atomic `apply` batches. Use `collection: "markers"` and `put` values containing `id`, `name`, and `time`, or `remove` with an ID. New markers need `"marker:ID": 0` in the preconditions. Existing edits require the inspected `marker:ID` revision, and time changes also require the inspected `project` revision. The inspection response includes marker objects and revisions. Track locks do not prevent standalone marker edits.
+
+Disposable engine and GUI checks covered marker creation, dragging, naming, navigation, Delete, cancellation, CLI changes appearing live, ripple boundaries, undo/redo, persistence, checkpoints, and preservation of exact times after FPS changes.
+
+Ripple delete removes markers inside its half-open range and shifts markers at or after its end earlier by the deleted duration. Markers before the range remain fixed. Undo restores both clips and markers in one step.
+
 ## Ripple delete
 
 Mark In and Out with I and O, then press Shift+Delete or choose **Edit > Ripple delete In/Out range**. Out includes its frame, matching range export. Right-click an empty section of a track and choose **Ripple delete gap across all tracks** to remove that gap. The gap must have a later clip on that track; trailing empty space is not a gap. Both routes cut across every track, including disabled tracks, and close the removed time in one shared undoable edit. Affected locked tracks reject the whole operation; locked tracks entirely before the range do not block it.
@@ -87,7 +110,7 @@ The same action works through `apply` as the only operation in a batch:
 {"preconditions":{"project":12},"operations":[{"op":"ripple-delete","start":{"num":3,"den":1},"end":{"num":5,"den":1}}]}
 ```
 
-Clips inside the range are removed. Spanning clips become adjacent pieces that retain the surviving source sections, speed, transforms and source-timed volume points. Newly cut edges have no clip fade; existing outer fades clamp to the remaining piece. Later clips shift earlier by the range length. Source offsets remain exact even at fractional speeds. Dissolves intersecting the removed time are removed; unaffected dissolves retain their settings and follow surviving pieces. This action does not create a transition at the new cut. Timeline markers remain unimplemented.
+Clips inside the range are removed. Spanning clips become adjacent pieces that retain the surviving source sections, speed, transforms and source-timed volume points. Newly cut edges have no clip fade; existing outer fades clamp to the remaining piece. Later clips shift earlier by the range length. Source offsets remain exact even at fractional speeds. Dissolves intersecting the removed time are removed; unaffected dissolves retain their settings and follow surviving pieces. This action does not create a transition at the new cut. Sequence markers follow the same ripple edit.
 
 A disposable edit checked CLI and GUI range deletion, gap deletion, source offsets at half speed, disabled tracks, dissolve preservation, shared undo/redo, and atomic rejection for locked tracks or stale revisions. Its 9.3-second software export passed full verification with 279 frames.
 
@@ -179,7 +202,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: folders, linked audio detach, markers, Content Library integration for reusable selects, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: folders, linked audio detach, Content Library integration for reusable selects, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 
