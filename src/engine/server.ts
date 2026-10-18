@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {ProjectState,atomicJSON} from './state.ts';
 import {inspectMedia,importGraphic,graphicSignature,snapshotGraphic} from './probe.ts';
 import {checkpoint,listCheckpoints,restoreCheckpoint} from './checkpoints.ts';
+import {inspectGraphicText,setGraphicText} from './graphic-text.ts';
 import {LibraryLink} from './library.ts';
 import {libraryCommand} from '../library/client.ts';
 import {EngineError,assert,fail,revisions,duration,time,cmp,ZERO} from '../shared/project.ts';
@@ -29,6 +30,8 @@ function startRender(command:any){state.requireUnlocked();const kind=command.kin
 }
 async function command(c:any){assert(c&&typeof c.command==='string','Missing command');switch(c.command){
  case 'inspect':return state.inspect();
+ case 'text-fields':return inspectGraphicText(state,c.clipId);
+ case 'text-set':{const r=setGraphicText(state,c);publish('change',r);return r;}
  case 'library-sync':{const result=await library.migrate();publish('change',state.inspect());return result;}
  case 'apply':{const r=state.batch(c.batch);await library.sync();publish('change',r);return r;}
  case 'undo':case 'redo':{const r=state.history(c.command);await library.sync();publish('change',r);return r;}

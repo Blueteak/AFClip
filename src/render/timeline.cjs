@@ -78,7 +78,7 @@ function at(plan, time) {
       if (tr.side === 'in') { visual *= p; audio *= p; } else audio *= 1 - p;
     }
     return { clipId: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : c.media.kind, sourceTime: c.sourceIn + local * c.speed,
-      opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
+      text: c.text || {}, opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
 if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain, automationExpression };

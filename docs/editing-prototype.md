@@ -199,11 +199,37 @@ A graphic folder needs `index.html`. Import copies it into `graphics/<media-id>`
 
 Graphics run in sandboxed iframes without Node APIs or network access. They receive a `postMessage` containing `{type:"reelet-render",requestId,time}`. Render the supplied source time, await assets, and respond with `{type:"reelet-ready",requestId}` or `{type:"reelet-error",requestId,error}`. Each requested time must produce a complete state independently of previous calls. The example graphics demonstrate this contract. The default logical canvas is 1920 by 1080; metadata can specify `logicalWidth` and `logicalHeight`. The compositor scales that canvas to fit the output.
 
-The engine waits for the readiness response and fails if it times out. Broken graphics currently block export; the MVP's explicit omit-broken-graphic override is not implemented. This is a local authoring prototype, not a fully audited hostile-code execution service.
+The engine waits for the readiness response and fails if it times out. Broken graphics block export. This is a local authoring prototype, not a fully audited hostile-code execution service.
 
 Undo/redo share one chronological session history across GUI and CLI, capped at 100 edits or batches. New edits clear redo. The project daemon survives sequential commands, exits after five idle minutes without a subscriber or active render, and can be closed with `node src/cli.ts close <project-dir>`. Exit ends ordinary undo history.
 
 Checkpoints persist across restarts and retain the latest five. They copy project state and graphic code, while referencing source media. Restore requires the explicit confirmation shown above because it discards later edits, newer checkpoints and ordinary undo/redo history. It does not create another checkpoint first.
+
+## Editable graphic text
+
+Mark static plain-text elements in `index.html` with unique field IDs:
+
+```html
+<h1 data-reelet-text="headline">Sample</h1>
+<p data-reelet-text="subtitle">GAMEPLAY</p>
+```
+
+In native preview, click a visible field to select its text and pause playback. Click again to place the caret, double-click to select a word, or drag to highlight a range. Type or paste plain text; Enter inserts a line break. Click outside or press Ctrl/Cmd+Enter to commit, or Escape to cancel. Each committed session is one project undo step. The inspector also exposes fields, including empty or currently hidden fields, and Reset controls. Software preview uses the inspector for text editing.
+
+```sh
+node src/cli.ts text-fields path/to/project clip_id
+node src/cli.ts text-set path/to/project clip_id headline --text "Available now"
+node src/cli.ts text-set path/to/project clip_id subtitle --file caption.txt
+node src/cli.ts text-reset path/to/project clip_id headline
+```
+
+`text-fields` returns defaults, effective values, override flags, missing IDs and clip/media revisions. `text-set` and `text-reset` read current revisions automatically; agents working from an earlier inspection should pass `--revision N --media-revision N`. The shared protocol uses `text-fields` with `clipId`, and `text-set` with `clipId`, `field`, `value` or `reset:true`, `revision` and `mediaRevision`. An atomic batch can also set the clip's complete `text` map. Track locks, render locks and shared undo apply normally.
+
+Text is stored per clip. Copy, duplicate and split retain its values without linking subsequent edits. Reset reveals the current HTML default. External source saves preserve overrides; renaming or removing a referenced field causes a render error. Restore its ID or remove the missing override using the inspector or `text-reset`.
+
+IDs use 1–128 letters, digits, underscores or hyphens. Fields contain text and optional `<br>` breaks, with no nested formatting elements. Up to 256 fields and 16,384 characters per override are supported. Reelet preserves line breaks with `white-space: pre-wrap`. Keep field elements stable: animation may change their styles or ancestors but must not replace the elements or author their text. CSS-generated text, SVG/canvas text and rich-text editing are outside this contract. Both bundled Sample graphics declare `headline` and `subtitle`; existing imported copies need those attributes added to their authoring folders.
+
+A disposable project verified field discovery, per-clip persistence, checkpoint restoration, undo/redo, reset, unchanged source files, stale-revision rejection and track/render locks. The GUI browser check exercised direct typing, partial-text replacement, multiline entry, Escape, rapid field switching, inspector Reset after focus and an external edit conflict. The Electron editor loaded the same fields and rendered the changed text. A software frame and a one-second MP4 exported successfully; full verification decoded all 30 frames.
 
 ## Local protocol and files
 

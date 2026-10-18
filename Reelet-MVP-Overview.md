@@ -47,7 +47,7 @@ New unorganized registrations enter the library's temporary Inbox. Removing a pr
 
 Library metadata updates propagate into Reelet, but range edits never move existing timeline cuts or replace their source version. New insertion uses the current selection. Keep sufficient source and timing data in the project to play and export existing edits without the library service when originals are available.
 
-Missing files appear as placeholders. Relinking preserves cuts and settings. Block export of affected sections until the media is relinked; the explicit broken-graphic override below is the exception.
+Missing files appear as placeholders. Relinking preserves cuts and settings. Block export of affected sections until the media is relinked.
 
 ## Tracks and organization
 
@@ -121,6 +121,10 @@ Distinguish three concepts:
 
 Graphic clips expose position, scale, rotation, opacity, timeline placement, trimming and stretching. Internal animation can remain entirely in code. Moving a graphic preserves its animation; trimming skips or hides part of that animation, while stretching changes its speed.
 
+Declared plain-text fields inside graphics are editable in the GUI and CLI. In the preview, selecting a field pauses playback and selects its clip. Highlight text or place the caret and type, preserving styling and animation. Support multiline text, plain-text paste and ordinary text shortcuts. Clicking outside commits one undoable edit; Escape cancels. Keep the caret stable while editing and reject conflicting external changes.
+
+Fields have stable IDs and HTML defaults. Store text overrides per timeline clip, so editing one instance does not change another. Copying or splitting a clip copies its values. Reset removes an override and restores the graphic's current default. Save, reopen, checkpoints, preview and export preserve the same values. Missing field IDs remain visible as errors until corrected or explicitly removed; never silently drop saved text. Expose field discovery, setting and reset through the shared engine and CLI.
+
 Use external editors or agents for graphic authoring. Reload saved changes in Reelet. Assets, fonts and scripts must be project-local, with no network access during preview or export. Agents can download dependencies into the project during authoring.
 
 Reelet supplies graphic playback time. Graphics must follow that clock, including seeking and stretching, rather than elapsed real time. Rendering the same project time must produce the same animation state in preview and export.
@@ -129,7 +133,7 @@ Footage and images also have basic positioning and scaling controls for reframin
 
 ### Broken graphics
 
-Show a clip error when a graphic cannot load or render, keeping the rest of the project editable. Block export by default, but allow an explicit user choice to continue without that graphic through either GUI or CLI. Never silently omit it.
+Show a clip error when a graphic cannot load or render, keeping the rest of the project editable. Broken graphics block export. Never silently omit them.
 
 ## Resolution and timing
 
@@ -158,7 +162,7 @@ Humans and agents can render and inspect a composited single frame or short sect
 - Video treatments and ordered treatment stacks, including blur, color adjustment and masks. The future stack should support reordering, disabling and removing individual treatments.
 - Custom transitions, pitch-preserving audio stretching, frame blending and generated intermediate frames.
 - Nested track folders, group effects, audio buses and ripple trimming.
-- Embedded code editing and visual animation authoring.
+- Embedded code editing, rich-text formatting controls and visual animation authoring. Direct plain-text field editing is in MVP.
 - Recording, built-in media generation, multicam editing and nested timelines.
 - Additional export delivery formats.
 

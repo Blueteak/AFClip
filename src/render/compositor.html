@@ -19,7 +19,7 @@ for(const clip of setup.clips){if(clip.kind==='audio')continue;const layer=docum
 }
 window.addEventListener('message',e=>{const d=e.data,p=pending.get(d?.requestId);if(!p||e.source!==p.source)return;if(d.type==='reelet-ready'){pending.delete(d.requestId);p.resolve();}else if(d.type==='reelet-error'){pending.delete(d.requestId);p.reject(new Error(d.error||'Graphic render failed'));}});
 window.ready=Promise.all(loads).then(()=>document.fonts.ready);
-function graphicFrame(frame,time){return new Promise((resolve,reject)=>{const id=++requestId;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Graphic did not acknowledge explicit time within 10 seconds'));},10000);pending.set(id,{source:frame.contentWindow,resolve:()=>{clearTimeout(timer);resolve();},reject:e=>{clearTimeout(timer);reject(e);}});frame.contentWindow.postMessage({type:'reelet-render',requestId:id,time},'*');});}
+function graphicFrame(frame,time,text){return new Promise((resolve,reject)=>{const id=++requestId;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('Graphic did not acknowledge explicit time within 10 seconds'));},10000);pending.set(id,{source:frame.contentWindow,resolve:()=>{clearTimeout(timer);resolve();},reject:e=>{clearTimeout(timer);reject(e);}});frame.contentWindow.postMessage({type:'reelet-render',requestId:id,time,text},'*');});}
 window.renderFrame=async(items,token)=>{
   await window.ready;
   for(const {layer}of layers.values())layer.style.display='none';
@@ -27,7 +27,7 @@ window.renderFrame=async(items,token)=>{
   for(const item of items){const entry=layers.get(item.clipId);if(!entry)continue;const {layer,content,kind}=entry,tr=item.transform;
     layer.style.display='block';layer.style.zIndex=String(item.track*10000+items.indexOf(item));layer.style.opacity=String(item.opacity);
     layer.style.transform=`translate(${tr.x||0}px,${tr.y||0}px) rotate(${tr.rotation||0}deg) scale(${tr.scale||1})`;
-    if(kind==='graphic')graphics.push(graphicFrame(content,item.sourceTime));else content.style.objectFit=tr.fit==='fill'?'cover':'contain';
+    if(kind==='graphic')graphics.push(graphicFrame(content,item.sourceTime,item.text));else content.style.objectFit=tr.fit==='fill'?'cover':'contain';
   }
   const stats=await window.reeletFrames.draw(items);
   await Promise.all(graphics);

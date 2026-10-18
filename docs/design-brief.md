@@ -4,7 +4,7 @@
 
 Build a Windows desktop editor for gameplay marketing videos, from short clips to roughly 60-second edits. The primary job is turning existing footage and supplied creative assets into polished promotional videos with fast iteration between a human editor and an external coding agent.
 
-This repository begins with planning only. The requirements below express the intended product; proposed boundaries and milestones are starting points for evaluation, not settled implementation choices.
+This is the original planning brief. The [MVP overview](../Reelet-MVP-Overview.md) and [technical overview](../Reelet-Technical-Overview.md) define the current scope and decisions. The selected-element code panel below remains deferred; declared plain-text fields now have direct GUI and CLI editing.
 
 ## Intended workflow
 
