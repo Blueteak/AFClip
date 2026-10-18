@@ -294,8 +294,8 @@ action('markOut', { menu: 'Timeline', group: 2, label: 'Mark Out', icon: 'out', 
 action('goIn', { menu: 'Timeline', group: 2, label: 'Go to In', keys: ['Shift+I'], enabled: () => inF != null, run: () => seek(inF, true) });
 action('goOut', { menu: 'Timeline', group: 2, label: 'Go to Out', keys: ['Shift+O'], enabled: () => outF != null, run: () => seek(outF, true) });
 action('clearMarks', { menu: 'Timeline', group: 2, label: 'Clear In and Out', keys: ['Ctrl+Shift+X'], enabled: () => inF != null || outF != null, run: () => setMarks(null, null) });
-action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker…', icon: 'marker', keys: ['M'], desc: 'Name a marker at the playhead. Markers are shared with the CLI, snap moves and trims, and never change the export length.', enabled: editable, run: () => markerDialog(null, playF) });
-action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerDialog(markerById(selMarker)) });
+action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker', icon: 'marker', keys: ['M'], desc: 'Add a marker at the playhead. Markers are shared with the CLI, snap moves and trims, and never change the export length.', enabled: editable, run: () => addMarker(nextMarkerName(), playF) });
+action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Right-click or double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerPopover(markerById(selMarker)) });
 action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Up'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
 action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Down'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
 action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top. Any media can go on any track.', enabled: editable, run: () => addTrack() });
@@ -455,7 +455,7 @@ function openShortcuts() {
   groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
-    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Double-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
+    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Right-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
   ], joined: true });
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
@@ -678,21 +678,62 @@ function deleteMarker(id) {
   if (selMarker === id) selMarker = null;
   return edit(() => { const m = markerById(id); return m ? { ops: [remove('markers', id)], message: `Removed marker “${m.name}”` } : refuse('The marker no longer exists'); });
 }
-function markerDialog(m, f0 = m ? markerF(m) : playF) {
-  playback.pause(false);
-  let f = f0;
-  const name = h('input', { value: m ? m.name : `Marker ${markers().length + 1}`, maxlength: 256, spellcheck: 'false', placeholder: 'Marker name' });
-  const time = timeInput(f0, v => { f = v; });
-  const body = h('div', { class: 'dialog-body' },
-    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Name'), name),
-    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Time'), time));
-  dialog({ title: m ? 'Edit marker' : 'Add marker', iconName: 'marker', body,
-    buttons: [...(m ? [{ label: 'Delete', run: () => { deleteMarker(m.id); } }] : []), { label: 'Cancel' }, { label: m ? 'Save' : 'Add', kind: 'primary', keys: 'Enter', run: () => {
-      const v = name.value.trim(); if (!v) { name.focus(); return false; }
-      if (m) changeMarker(m.id, { name: v, f }); else addMarker(v, f);
-    } }] });
-  setTimeout(() => name.select(), 0);
+// New markers take the next free default name so repeated adds never need a prompt.
+function nextMarkerName() {
+  const n = Math.max(0, ...markers().map(m => Number(/^Marker (\d+)$/.exec(m.name)?.[1] || 0)));
+  return `Marker ${Math.max(n, markers().length) + 1}`;
 }
+// The marker editor floats above its ruler flag, like the Content Library annotation popover.
+// Closing it in any way keeps what was typed; each committed field is its own undo step.
+let markerPop = null;
+function closeMarkerPopover(save = true) {
+  const pop = markerPop; if (!pop) return;
+  markerPop = null;
+  if (save) {
+    if (pop.box.contains(document.activeElement)) document.activeElement.blur();
+    const m = markerById(pop.id), v = pop.name.value.trim();
+    if (m && v && v !== m.name) changeMarker(pop.id, { name: v });
+  }
+  pop.box.remove();
+}
+function markerPopover(m) {
+  closeMarkerPopover(); closeMenu(); hideTip(); playback.pause(false);
+  if (selMarker !== m.id) selectMarker(m.id);
+  const disabled = !editable();
+  const name = h('input', { value: m.name, maxlength: 256, spellcheck: 'false', disabled, 'aria-label': 'Marker name' });
+  name.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); closeMarkerPopover(); } };
+  const time = timeInput(markerF(m), f => changeMarker(m.id, { f }), { disabled });
+  const box = h('div', { class: 'marker-popover', role: 'dialog', 'aria-label': 'Marker' },
+    h('div', { class: 'popover-heading' }, name, h('button', { class: 'icon-button small', onclick: () => closeMarkerPopover(), tip: { title: 'Close', keys: 'Escape' } }, icon('x'))),
+    h('div', { class: 'popover-body' }, field('Time', time, { tip: 'Where the marker sits on the timeline. Markers apply to every track.' })),
+    h('div', { class: 'popover-actions' }, h('button', { class: 'popover-delete', disabled, onclick: () => { closeMarkerPopover(false); deleteMarker(m.id); }, tip: { title: 'Delete marker', keys: 'Delete' } }, 'Delete', kbd('Delete'))));
+  document.body.append(box);
+  markerPop = { id: m.id, box, name, time };
+  positionMarkerPopover();
+  if (!disabled) setTimeout(() => { if (markerPop?.name === name) name.select(); }, 0);
+}
+// Ruler redraws replace the flags, so the anchor is looked up again on every redraw and scroll.
+function positionMarkerPopover() {
+  const pop = markerPop; if (!pop) return;
+  const m = markerById(pop.id); if (!m) { closeMarkerPopover(false); return; }
+  if (selMarker !== pop.id) { closeMarkerPopover(); return; }
+  const flag = [...$('ruler').querySelectorAll('.marker')].find(el => el.group?.some(o => o.id === pop.id));
+  const view = $('tl-scroll').getBoundingClientRect(), r = flag?.getBoundingClientRect();
+  const x = r && r.left + 5;
+  if (!r || x < view.left + HEAD_W || x > view.right) { pop.box.hidden = true; return; }
+  pop.box.hidden = false;
+  const width = pop.box.offsetWidth, height = pop.box.offsetHeight;
+  const left = Math.max(10, Math.min(innerWidth - width - 10, x - width / 2));
+  pop.box.style.left = `${left}px`; pop.box.style.top = `${Math.max(10, r.top - height - 10)}px`;
+  pop.box.style.setProperty('--popover-tip', `${Math.max(14, Math.min(width - 14, x - left))}px`);
+}
+document.addEventListener('pointerdown', e => { if (markerPop && !markerPop.box.contains(e.target) && !e.target.closest?.('.layer')) closeMarkerPopover(); }, true);
+document.addEventListener('keydown', e => {
+  if (!markerPop || modal || openMenuState || e.key !== 'Escape') return;
+  e.preventDefault(); e.stopImmediatePropagation(); closeMarkerPopover();
+}, true);
+addEventListener('resize', positionMarkerPopover);
+$('tl-scroll').addEventListener('scroll', positionMarkerPopover, { passive: true });
 
 function deleteSelection() {
   if (selMarker) return deleteMarker(selMarker);
@@ -1356,7 +1397,7 @@ function drawTimeline() {
   for (const t of displayTracks()) host.append(trackRow(t, width));
   if (!p.tracks.length) host.append(h('div', { class: 'tl-empty-note' }, 'Drag media here from the bin, or double-click it to add it at the playhead.'));
   $('tl-empty').style.width = `${HEAD_W + width}px`;
-  drawMarkerLine(); drawPlayhead(); pinLabels();
+  drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover();
 }
 // Keep clip names readable when a clip starts left of the visible area.
 function pinLabels() {
@@ -1843,7 +1884,7 @@ $('ruler').addEventListener('pointerdown', e => {
   if (e.button !== 0 || drag) return;
   e.preventDefault();
   const g = el.group, m = g.find(x => x.id === selMarker) || markerById(el.dataset.id) || g[0], now = Date.now();
-  if (lastMarkerDown && g.some(x => x.id === lastMarkerDown.id) && now - lastMarkerDown.at < 400) { lastMarkerDown = null; if (can('editMarker')) markerDialog(m); return; }
+  if (lastMarkerDown && g.some(x => x.id === lastMarkerDown.id) && now - lastMarkerDown.at < 400) { lastMarkerDown = null; if (can('editMarker')) markerPopover(m); return; }
   lastMarkerDown = { id: m.id, at: now };
   const wasSelected = selMarker === m.id;
   if (!wasSelected) selectMarker(m.id);
@@ -1863,10 +1904,10 @@ function markerDrag(e) {
 }
 $('ruler').addEventListener('contextmenu', e => {
   const el = e.target.closest('.marker'), at = Math.max(0, laneFrame(e.clientX));
-  if (!el) { contextMenu(e, [{ label: `Add marker at ${tc(at)}…`, icon: 'marker', disabled: !editable(), run: () => markerDialog(null, at) }, { action: 'addMarker' }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
+  if (!el) { contextMenu(e, [{ label: 'Add marker', icon: 'marker', disabled: !editable(), run: () => addMarker(nextMarkerName(), at) }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
+  e.preventDefault();
   const g = el.group, m = g.find(x => x.id === selMarker) || g[0];
-  selectMarker(m.id);
-  contextMenu(e, [{ label: 'Go to marker', icon: 'step-forward', run: () => seek(markerF(m), true) }, { action: 'editMarker' }, '-', { label: 'Delete marker', icon: 'trash', disabled: !editable(), run: () => deleteMarker(m.id) }]);
+  markerPopover(m);
 });
 $('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: 'M', text: 'add marker' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
 $('mini-ruler').tip = { title: 'Sequence overview', hint: [{ keys: '#Click', text: 'jump' }, { keys: '#Drag', text: 'scrub' }] };
@@ -2009,7 +2050,7 @@ document.addEventListener('keydown', e => {
 
 // ---------------------------------------------------------------- Events and startup
 window.reeletPrepareReload = () => {
-  if (!connected || drag || modal || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId ||
+  if (!connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
   return true;

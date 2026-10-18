@@ -272,6 +272,18 @@ kbd, .kbd {
 .marker.selected .marker-name { color: var(--text); background: #2a2d33; }
 .marker.dragging { cursor: grabbing; }
 .marker-line { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(242, 245, 250, .4); }
+/* Marker editor: same shell as the Content Library annotation popover, tip pointing down at the flag. */
+.marker-popover { position: fixed; z-index: 55; width: 260px; max-width: calc(100vw - 20px); background: var(--bg-1); border: 1px solid var(--line-2); border-radius: 5px; box-shadow: 0 8px 24px #0006; color: var(--text); }
+.marker-popover::after { content: ""; position: absolute; top: 100%; left: var(--popover-tip, 50%); width: 15px; height: 15px; background: var(--bg-2); border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); transform: translate(-50%, -7px) rotate(45deg); pointer-events: none; }
+.marker-popover .popover-heading { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; }
+.marker-popover .popover-heading input { flex: 1; min-width: 0; height: 26px; padding: 4px 6px; font-weight: 600; background: var(--bg-0); border: 1px solid var(--line-2); border-radius: 4px; color: var(--text); }
+.marker-popover .popover-heading input:focus { border-color: var(--accent); }
+.marker-popover .popover-body { padding: 12px; }
+.marker-popover .field { padding: 0; grid-template-columns: 48px 1fr; }
+.marker-popover .field input { background: var(--bg-0); border-color: var(--line-2); }
+.marker-popover .popover-actions { display: flex; align-items: center; padding: 8px 12px; background: var(--bg-2); border-top: 1px solid var(--line); border-radius: 0 0 4px 4px; }
+.popover-delete { display: inline-flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px; margin-left: -8px; border-radius: 4px; color: var(--danger); }
+.popover-delete:hover:not(:disabled) { background: var(--bg-3); }
 .tracks { position: relative; flex: none; }
 .track { display: flex; height: var(--track-h); border-bottom: 1px solid var(--line); }
 .track-head {

@@ -73,7 +73,7 @@ Same-track clips must not overlap. A dissolve references adjacent clips by `from
 
 ## Timeline markers
 
-Press **M** to name a marker at the playhead. **Shift+Up / Shift+Down** navigate markers. Click a ruler flag to seek, drag it to move, or double-click to edit its name and time. Delete removes the selected marker; Escape cancels a drag. Clip moves and trims snap to markers, with Alt bypassing snapping. Adding a marker selects it, and the marker dialog pauses playback.
+Press **M** to create a marker immediately at the playhead with a default name. Right-click empty ruler space and choose **Add Marker** to create one at that time. **Shift+Up / Shift+Down** navigate markers. Click a ruler flag to seek, drag it to move, or right-click or double-click to edit its name and time in a popup above the flag. Delete removes the selected marker; Escape cancels a drag or dismisses the popup. Clip moves and trims snap to markers, with Alt bypassing snapping. Adding a marker selects it without opening the editor.
 
 Named markers belong to the sequence and have stable IDs shared by the GUI and CLI. They save with the project and participate in shared undo/redo and checkpoints. Existing projects without a marker array open with no markers. Markers may sit beyond the last clip to plan future edits, but do not extend playback or export duration.
 
