@@ -8,6 +8,9 @@
 - No test-driven development.
 - If you think an automated test is needed, ask before adding it.
 
+## Editor Restart
+- After changes that require an editor restart, close and reopen it on the same project automatically.
+
 ## UI Design
 
 - If you are a GPT Model and your task requires creating a new UI Element/Style instead of reusing an existing one, spin up a Claude Opus 5.5 Sub-Agent for that task.
