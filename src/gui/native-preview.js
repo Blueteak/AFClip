@@ -24,7 +24,7 @@ window.NativePreview = class NativePreview {
     window.addEventListener('message', this.message);
     for (const clip of setup.plan.clips) {
       const media = setup.media[clip.mediaId];
-      if (!media || media.kind === 'audio') continue;
+      if (!media || media.kind === 'audio' || clip.stream === 'audio') continue;
       const layer = document.createElement('div'); layer.className = 'native-layer'; layer.hidden = true;
       this.stage.append(layer);
       const entry = { clip, media, layer }; this.entries.set(clip.id, entry);

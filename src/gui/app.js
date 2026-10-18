@@ -85,6 +85,13 @@ const kindLabel = kind => ({ video: 'Video', audio: 'Audio', image: 'Image', gra
 const pct = v => `${Math.round(v * 1000) / 10}%`;
 const toDb = v => v <= 0 ? '-∞' : (Math.round(20 * Math.log10(v) * 10) / 10).toFixed(1);
 const trackLabel = t => String(tracks().indexOf(t) + 1);
+// A detached pair shares one source: the picture clip is silent and the audio clip has no picture.
+const clipKind = c => c.stream === 'audio' ? 'audio' : mediaById(c.mediaId)?.kind;
+const clipHasAudio = c => c.stream !== 'video' && hasAudio(mediaById(c.mediaId));
+const clipVisual = c => c.stream !== 'audio' && isVisual(mediaById(c.mediaId));
+const linkedPeers = c => c?.linkId ? clips().filter(o => o.linkId === c.linkId && o.id !== c.id) : [];
+// Timing edits act on whole link groups, so moves, trims, splits and deletes expand to companions.
+const withLinked = list => { const out = new Map(list.map(c => [c.id, c])); for (const c of list) for (const o of linkedPeers(c)) out.set(o.id, o); return [...out.values()]; };
 
 // ---------------------------------------------------------------- Preferences
 const prefs = (() => {
@@ -280,8 +287,10 @@ action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl
 
 action('split', { menu: 'Clip', group: 1, label: 'Split at playhead', icon: 'scissors', keys: ['Ctrl+K'], desc: 'Cut the selected clips (or every unlocked clip) under the playhead.', enabled: editable, run: splitAtPlayhead });
 action('dissolve', { menu: 'Clip', group: 1, label: 'Add dissolve', icon: 'dissolve', keys: ['Ctrl+D'], desc: 'Cross-dissolve at the cut nearest the playhead, centered, 1 second or as long as the footage allows.', enabled: editable, run: addDissolve });
-action('mute', { menu: 'Clip', group: 2, label: 'Mute audio', icon: 'mute', keys: ['Shift+M'], desc: 'Toggle mute on the selected clips.', enabled: () => editable() && selectedClips().some(c => hasAudio(mediaById(c.mediaId))), checked: () => selectedClips().length > 0 && selectedClips().every(c => c.mute), run: toggleMute });
-action('fill', { menu: 'Clip', group: 2, label: 'Fill frame', desc: 'Scale to cover the frame, cropping the excess. Off means Fit.', keys: ['Shift+F'], enabled: () => editable() && selectedClips().some(c => isVisual(mediaById(c.mediaId))), checked: () => selectedClips().length > 0 && selectedClips().every(c => c.transform?.fit === 'fill'), run: toggleFill });
+action('mute', { menu: 'Clip', group: 2, label: 'Mute audio', icon: 'mute', keys: ['Shift+M'], desc: 'Toggle mute on the selected clips.', enabled: () => editable() && selectedClips().some(clipHasAudio), checked: () => selectedClips().length > 0 && selectedClips().every(c => c.mute), run: toggleMute });
+action('fill', { menu: 'Clip', group: 2, label: 'Fill frame', desc: 'Scale to cover the frame, cropping the excess. Off means Fit.', keys: ['Shift+F'], enabled: () => editable() && selectedClips().some(clipVisual), checked: () => selectedClips().length > 0 && selectedClips().every(c => c.transform?.fit === 'fill'), run: toggleFill });
+action('detachAudio', { menu: 'Clip', group: 'link', label: 'Detach audio', icon: 'audio', keys: ['Ctrl+Shift+D'], desc: 'Move the selected clip’s sound to its own linked clip on a new track. Moves, trims and splits keep the pair in sync.', enabled: () => editable() && !detachRefusal(), why: () => detachRefusal() || 'Edits are locked', run: detachAudio });
+action('unlink', { menu: 'Clip', group: 'link', label: 'Unlink', icon: 'link-off', keys: ['Ctrl+Shift+L'], desc: 'Let the selected clip and its detached audio move and trim independently.', enabled: () => editable() && !unlinkRefusal(), why: () => unlinkRefusal() || 'Edits are locked', run: unlinkClip });
 action('nudgeLeft', { menu: 'Clip', group: 3, label: 'Nudge left 1 frame', keys: ['Alt+Left'], enabled: () => editable() && selection.size > 0, run: () => nudge(-1) });
 action('nudgeRight', { menu: 'Clip', group: 3, label: 'Nudge right 1 frame', keys: ['Alt+Right'], enabled: () => editable() && selection.size > 0, run: () => nudge(1) });
 action('nudgeLeft5', { label: 'Nudge left 5 frames', keys: ['Alt+Shift+Left'], enabled: () => editable() && selection.size > 0, run: () => nudge(-5) });
@@ -616,12 +625,18 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function splitAt(ids, f, fallback) {
   return edit(() => {
-    let targets = ids.map(clipById).filter(c => c && startF(c) < f && f < endF(c));
-    if (!targets.length && fallback) targets = clips().filter(c => startF(c) < f && f < endF(c) && !trackById(c.trackId)?.locked);
+    const under = c => startF(c) < f && f < endF(c);
+    let targets = withLinked(ids.map(clipById).filter(c => c && under(c))).filter(under);
+    if (!targets.length && fallback) targets = clips().filter(c => under(c) && !lockedIn(withLinked([c])));
     if (!targets.length) return refuse('No clip under the playhead to split');
     if (lockedRefusal(targets) !== false) return null;
-    const ops = [], pre = {};
-    for (const c of targets) { const part = splitOps(c, f); ops.push(...part.ops); Object.assign(pre, part.pre); }
+    // Right halves of a linked pair form a new pair rather than joining the left halves' link.
+    const ops = [], pre = {}, links = new Map();
+    for (const c of targets) {
+      const part = splitOps(c, f);
+      if (c.linkId) { if (!links.has(c.linkId)) links.set(c.linkId, uid('link')); part.ops[1].value.linkId = links.get(c.linkId); }
+      ops.push(...part.ops); Object.assign(pre, part.pre);
+    }
     return { ops, pre, message: `Split ${plural(targets.length, 'clip')} at ${tc(f)}` };
   });
 }
@@ -742,7 +757,7 @@ function deleteSelection() {
   selection = new Set(); selTransition = null;
   if (tid) return edit(() => transitionById(tid) ? { ops: [remove('transitions', tid)], message: 'Dissolve removed' } : null);
   edit(() => {
-    const list = ids.map(clipById).filter(Boolean); if (!list.length) return null;
+    const list = withLinked(ids.map(clipById).filter(Boolean)); if (!list.length) return null;
     if (lockedRefusal(list) !== false) return null;
     const set = new Set(list.map(c => c.id));
     return { ops: [...transitionsTouching(set).map(t => remove('transitions', t.id)), ...list.map(c => remove('clips', c.id))], message: `Deleted ${plural(list.length, 'clip')}` };
@@ -760,6 +775,10 @@ function paste() {
   const at = playF, board = clipboard, ids = [];
   edit(() => {
     const ops = [], pre = {}, newTracks = new Map();
+    // Copies never join the original's link. A pair copied whole links to itself; a lone half pastes unlinked.
+    const counts = new Map(), links = new Map();
+    for (const c of board.clips) if (c.linkId) counts.set(c.linkId, (counts.get(c.linkId) || 0) + 1);
+    for (const [linkId, n] of counts) links.set(linkId, n > 1 ? uid('link') : null);
     const placed = board.clips.map(c => ({ c, s: at + c.offset - board.base, e: at + c.offset - board.base + toF(c.duration) }));
     const fits = placed.every(p => trackById(p.c.trackId) && !trackById(p.c.trackId).locked && free(p.c.trackId, p.s, p.e));
     for (const { c, s } of placed) {
@@ -770,13 +789,14 @@ function paste() {
       }
       const id = uid('clip'); ids.push(id); pre[`clip:${id}`] = 0;
       const { offset, ...value } = c;
-      ops.push(put('clips', { ...value, id, trackId, start: fromF(s) }));
+      ops.push(put('clips', { ...value, id, trackId, start: fromF(s), ...(value.linkId ? { linkId: links.get(value.linkId) } : {}) }));
     }
     return { ops, pre, message: `Pasted ${plural(placed.length, 'clip')}${fits ? '' : ' on a new track'}` };
   }).then(ok => { if (ok) select(ids); });
 }
 
 function moveOps(list, dF, dTrack) {
+  list = withLinked(list);
   const disp = displayTracks(), ids = new Set(list.map(c => c.id)), dest = new Map();
   for (const c of list) {
     const t = disp[disp.findIndex(x => x.id === c.trackId) + dTrack];
@@ -802,7 +822,7 @@ function moveOps(list, dF, dTrack) {
 }
 function commitMove(ids, dF, dTrack) {
   edit(() => {
-    const list = ids.map(clipById).filter(Boolean); if (!list.length) return null;
+    const list = withLinked(ids.map(clipById).filter(Boolean)); if (!list.length) return null;
     const res = moveOps(list, dF, dTrack);
     if (res.error) return refuse(res.error);
     const what = `Moved ${plural(list.length, 'clip')}${dF ? ` ${dF > 0 ? '+' : '−'}${shortTc(Math.abs(dF))}` : ''}`;
@@ -814,7 +834,7 @@ const nudge = n => commitMove([...selection], n, 0);
 function toggleMute() {
   const ids = [...selection];
   edit(() => {
-    const list = ids.map(clipById).filter(c => c && hasAudio(mediaById(c.mediaId))); if (!list.length) return null;
+    const list = ids.map(clipById).filter(c => c && clipHasAudio(c)); if (!list.length) return null;
     const mute = !list.every(c => c.mute);
     return { ops: list.map(c => put('clips', { id: c.id, mute })), message: mute ? 'Muted' : 'Unmuted' };
   });
@@ -822,10 +842,46 @@ function toggleMute() {
 function toggleFill() {
   const ids = [...selection];
   edit(() => {
-    const list = ids.map(clipById).filter(c => c && isVisual(mediaById(c.mediaId))); if (!list.length) return null;
+    const list = ids.map(clipById).filter(c => c && clipVisual(c)); if (!list.length) return null;
     const fit = list.every(c => c.transform?.fit === 'fill') ? 'fit' : 'fill';
     return { ops: list.map(c => put('clips', { id: c.id, transform: { ...(c.transform || {}), fit } })), message: fit === 'fill' ? 'Fill frame' : 'Fit frame' };
   });
+}
+
+function detachRefusal() {
+  const list = selectedClips(), c = list[0], m = c && mediaById(c.mediaId);
+  if (list.length !== 1) return list.length ? 'Select a single clip to detach its audio' : 'Select a video clip with audio';
+  if (c.stream || c.linkId) return 'Audio is already detached';
+  if (m?.kind !== 'video' || m.metadata?.hasAudio !== true) return 'The clip has no audio to detach';
+  if (trackById(c.trackId)?.locked) return `“${trackById(c.trackId).name}” is locked`;
+  if (transitionsTouching(new Set([c.id])).length) return 'Remove the clip’s dissolves before detaching audio';
+  return null;
+}
+function unlinkRefusal() {
+  const groups = new Set(selectedClips().map(c => c.linkId).filter(Boolean));
+  if (groups.size !== 1) return groups.size ? 'Select clips from a single linked pair' : 'Select a linked clip';
+  const c = selectedClips().find(c => c.linkId), locked = lockedIn(withLinked([c]));
+  return locked ? `“${trackById(locked.trackId).name}” is locked` : null;
+}
+// Detach and Unlink must be the only operation in their batch and assert the whole project revision.
+function linkCommand(op, refusal, message) {
+  return perform(async () => {
+    const why = refusal(); if (why) { say(why, 'warn'); return SKIP; }
+    try {
+      return await api.command({ command: 'apply', batch: { preconditions: { project: project().revision }, operations: [op()] } });
+    } catch (error) {
+      if (/Expected put or remove|Unsupported operation|Unknown operation/i.test(error.message)) throw new Error('The project engine is older than linked audio. Restart Reelet and its project engine to enable Detach Audio. Saved edits are preserved; session undo history resets.');
+      throw error;
+    }
+  }, message);
+}
+function detachAudio() {
+  const id = selectedClips()[0]?.id;
+  linkCommand(() => ({ op: 'detach-audio', clipId: id }), () => clipById(id) && selection.has(id) ? detachRefusal() : 'The clip no longer exists', 'Detached audio to a new track');
+}
+function unlinkClip() {
+  const id = selectedClips().find(c => c.linkId)?.id;
+  linkCommand(() => ({ op: 'unlink', clipId: id }), () => clipById(id)?.linkId ? unlinkRefusal() : 'The clip is no longer linked', 'Unlinked picture and audio');
 }
 
 // Longest dissolve (in frames) the footage around a cut allows.
@@ -1238,37 +1294,45 @@ function drawClipInspector(box, c) {
   const m = mediaById(c.mediaId), locked = !!trackById(c.trackId)?.locked || !editable();
   const durF = endF(c) - startF(c), speed = secs(c.speed);
   // `changes` may be a function of the clip as it is when the edit runs.
-  const putClip = (changes, message) => edit(() => { const fresh = clipById(c.id); return fresh ? { ops: [put('clips', { id: c.id, ...(typeof changes === 'function' ? changes(fresh) : changes) })], message } : null; });
+  // The engine carries timing to linked companions; their fades are clamped here so a shorter pair stays valid.
+  const putClip = (changes, message) => edit(() => {
+    const fresh = clipById(c.id); if (!fresh) return null;
+    const value = typeof changes === 'function' ? changes(fresh) : changes;
+    const peers = value.duration ? linkedPeers(fresh).map(o => ({ id: o.id, ...fadeClamp(o, value.duration) })).filter(o => Object.keys(o).length > 1) : [];
+    return { ops: [put('clips', { id: c.id, ...value }), ...peers.map(o => put('clips', o))], message };
+  });
+  const kind = clipKind(c), peers = linkedPeers(c);
   $('inspector-title').textContent = 'Clip';
-  $('inspector-kind').append(icon(kindIcon(m?.kind), 'sm'), kindLabel(m?.kind));
+  $('inspector-kind').append(icon(kindIcon(kind), 'sm'), kindLabel(kind));
   const name = h('input', { value: clipName(c), maxlength: 160, disabled: locked, spellcheck: 'false', tip: { title: 'Clip name', desc: 'Shown on the timeline. Agents see this name through the CLI.' } });
   name.onkeydown = e => { if (e.key === 'Enter') name.blur(); if (e.key === 'Escape') { name.value = clipName(c); name.blur(); } };
   name.onblur = () => { const v = name.value.trim(); if (v && v !== clipName(c)) putClip({ name: v }, 'Clip renamed'); else name.value = clipName(c); };
-  box.append(h('div', { class: 'insp-head' }, icon(kindIcon(m?.kind)), name), h('div', { class: 'insp-source', tip: { title: mediaName(m), meta: m?.metadata?.authoringPath || m?.path } }, `${mediaName(m)} · track “${trackById(c.trackId)?.name}”`));
+  box.append(h('div', { class: 'insp-head' }, icon(kindIcon(kind)), name), h('div', { class: 'insp-source', tip: { title: mediaName(m), desc: peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”. Moves, trims and splits act on both.` : null, meta: m?.metadata?.authoringPath || m?.path } }, `${mediaName(m)} · track “${trackById(c.trackId)?.name}”`, peers.length ? h('span', { class: 'insp-link' }, icon('link', 'sm'), 'Linked') : null));
   if (locked && editable()) box.append(h('div', { class: 'insp-note warn' }, 'This track is locked. Unlock it in the track header to edit.'));
 
+  const timingLocked = locked || !!lockedIn(peers);
   const maxDur = sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.sourceIn)) / speed * fps() + 1e-6) : undefined;
   const timing = h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Timing'),
-    field('Start', timeInput(startF(c), f => putClip({ start: fromF(f) }, `Start ${tc(f)}`), { disabled: locked }), { tip: 'Where the clip begins on the timeline.' }),
-    field('Duration', timeInput(durF, f => { const d = fromF(f); putClip(fresh => ({ duration: d, ...fadeClamp(fresh, d) }), `Duration ${shortTc(f)}`); }, { min: 1, max: maxDur, disabled: locked }), { tip: 'Length on the timeline. Speed stays the same, so this trims or extends the source.' }),
-    ...(m?.kind === 'image' ? [] : [field('Source in', timeInput(toF(c.sourceIn), f => putClip({ sourceIn: fromF(f) }, `Source in ${tc(f)}`), { disabled: locked, max: sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.duration) * speed) * fps() + 1e-6) : undefined }), { tip: 'The first source frame used, measured in the source media.' }),
+    field('Start', timeInput(startF(c), f => putClip({ start: fromF(f) }, `Start ${tc(f)}`), { disabled: timingLocked }), { tip: 'Where the clip begins on the timeline.' }),
+    field('Duration', timeInput(durF, f => { const d = fromF(f); putClip(fresh => ({ duration: d, ...fadeClamp(fresh, d) }), `Duration ${shortTc(f)}`); }, { min: 1, max: maxDur, disabled: timingLocked }), { tip: 'Length on the timeline. Speed stays the same, so this trims or extends the source.' }),
+    ...(m?.kind === 'image' ? [] : [field('Source in', timeInput(toF(c.sourceIn), f => putClip({ sourceIn: fromF(f) }, `Source in ${tc(f)}`), { disabled: timingLocked, max: sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.duration) * speed) * fps() + 1e-6) : undefined }), { tip: 'The first source frame used, measured in the source media.' }),
       field('Speed', plainNumber(speed * 100, 1, v => {
         const next = frac(Math.round(v * 10), 1000), dur = Math.max(1, Math.floor(durF * speed / secs(next) + 1e-6));
         putClip(fresh => ({ speed: next, duration: fromF(dur), ...fadeClamp(fresh, fromF(dur)) }), `Speed ${pct(secs(next))}`);
-      }, { min: 1, max: 1600, step: 1, big: 10, disabled: locked }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
+      }, { min: 1, max: 1600, step: 1, big: 10, disabled: timingLocked }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
   box.append(timing);
 
-  if (hasAudio(m)) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Audio', h('span', { class: 'tab-spacer' }),
+  if (clipHasAudio(c)) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Audio', h('span', { class: 'tab-spacer' }),
       h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))),
     field('Volume', numberInput({ value: c.volume <= 0 ? -60 : Math.max(-60, 20 * Math.log10(c.volume)), format: v => v <= -60 ? '-∞' : v.toFixed(1), parse: t => /^-?\s*(inf|∞)/i.test(String(t).trim()) ? -60 : Number.isFinite(Number(t)) && String(t).trim() !== '' ? Number(t) : null, step: .5, big: 3, min: -60, max: 24, disabled: locked,
       onCommit: db => putClip({ volume: db <= -60 ? 0 : Math.min(16, 10 ** (db / 20)) }, `Volume ${db <= -60 ? '-∞' : db.toFixed(1)} dB`) }), { unit: 'dB', tip: '0 dB is the source level. Type -inf to silence.' }),
     field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked }), { tip: 'Ramps picture and sound up from silence/black at the clip start.' }),
     field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked }), { tip: 'Ramps down to silence/black at the clip end.' })));
-  else if (m?.kind !== 'audio') box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Fades'),
+  else if (kind !== 'audio') box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Fades'),
     field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked })),
     field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked }))));
 
-  if (isVisual(m)) {
+  if (clipVisual(c)) {
     const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message);
     box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Transform'),
       field('Position', h('div', { class: 'field-pair' }, plainNumber(t.x ?? 0, 0, v => setT('x', v, `X ${v}`), { disabled: locked }), plainNumber(t.y ?? 0, 0, v => setT('y', v, `Y ${v}`), { disabled: locked })), { tip: 'Offset in pixels from the centered layout, X then Y.' }),
@@ -1277,7 +1341,7 @@ function drawClipInspector(box, c) {
       field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked }), { unit: '%' }),
       field('Framing', segmented([['fit', 'Fit', 'Show the whole picture, letterboxing if needed.'], ['fill', 'Fill', 'Cover the frame and crop the excess.']], t.fit || 'fit', v => setT('fit', v, v === 'fill' ? 'Fill frame' : 'Fit frame'), locked), { tip: 'Shift+F toggles.' })));
   }
-  box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), chip('copy'), chip('delete', null, 'danger')));
+  box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), peers.length ? chip('unlink', 'Unlink') : clipHasAudio(c) && m?.kind === 'video' ? chip('detachAudio', 'Detach') : null, chip('copy'), chip('delete', null, 'danger')));
 }
 function drawTransitionInspector(box, t) {
   const a = clipById(t.fromClipId), b = clipById(t.toClipId), locked = !!trackById(t.trackId)?.locked || !editable();
@@ -1439,21 +1503,23 @@ function trackRow(t, width) {
 }
 function clipBlock(c, t) {
   const m = mediaById(c.mediaId), left = secs(c.start) * pps, width = Math.max(2, secs(c.duration) * pps), speed = secs(c.speed);
+  const kind = clipKind(c), audible = clipHasAudio(c), peers = linkedPeers(c), peerSelected = peers.some(o => selection.has(o.id));
   const badges = [];
   if (Math.abs(speed - 1) > 1e-9) badges.push(h('span', { class: 'clip-badge' }, icon('speed'), pct(speed)));
   if (c.mute) badges.push(h('span', { class: 'clip-badge' }, icon('mute')));
-  const el = h('div', { class: `clip ${m?.kind || 'missing'} ${selection.has(c.id) ? 'selected' : ''} ${t.locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
-    width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(m?.kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
-    !hasAudio(m) && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
-    !hasAudio(m) && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
-    !hasAudio(m) && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
+  if (peers.length) badges.push(h('span', { class: 'clip-badge' }, icon('link')));
+  const el = h('div', { class: `clip ${m ? kind : 'missing'} ${selection.has(c.id) ? 'selected' : peerSelected ? 'link-peer' : ''} ${t.locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
+    width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
+    !audible && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
+    !audible && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
+    !audible && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
     t.locked ? null : h('i', { class: 'handle l' }), t.locked ? null : h('i', { class: 'handle r' }));
-  if (hasAudio(m)) addAudioControls(el, c, t);
-  el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(m?.kind)} · ${mediaName(m)}`,
-    meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, hasAudio(m) ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   ')].filter(Boolean).join('\n'),
+  if (audible) addAudioControls(el, c, t);
+  el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(kind)} · ${mediaName(m)}`,
+    meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, audible ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   '), peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”` : null].filter(Boolean).join('\n'),
     hint: t.locked ? [{ text: 'Track is locked' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
-      ...(hasAudio(m) ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
-  el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
+      ...(audible ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
+  el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', peers.length ? { action: 'unlink' } : { action: 'detachAudio' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
 }
 const waveformRequests = new Map();
@@ -1697,7 +1763,7 @@ $('tracks').addEventListener('pointerdown', e => {
   startDrag({ type: 'marquee', x0: e.clientX, y0: e.clientY, moved: false, additive: e.shiftKey || e.ctrlKey, base: new Set(selection) });
 });
 function beginMove(e, primary) {
-  const list = selectedClips(), disp = displayTracks();
+  const list = withLinked(selectedClips()), disp = displayTracks();
   const rows = list.map(c => disp.findIndex(t => t.id === c.trackId));
   const ids = new Set(list.map(c => c.id));
   startDrag({ type: 'move', x0: e.clientX, y0: e.clientY, primary, list, ids, horizontal: false, dF: 0, dTrack: 0, res: null,
@@ -1707,10 +1773,13 @@ function beginMove(e, primary) {
   hintItems([{ text: 'Push past a neighbour to crossfade' }, { keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
 }
 function beginTrim(e, c, edge) {
-  const m = mediaById(c.mediaId), s0 = startF(c), e0 = endF(c);
-  const others = clipsOn(c.trackId).filter(o => o.id !== c.id);
+  const m = mediaById(c.mediaId), s0 = startF(c), e0 = endF(c), group = withLinked([c]);
+  if (lockedRefusal(group) !== false) return;
+  // Linked companions share timing, so neighbours on every linked track bound the trim.
+  const ids = new Set(group.map(o => o.id)), others = group.flatMap(g => clipsOn(g.trackId).filter(o => !ids.has(o.id)));
   startDrag({ type: 'trim', x0: e.clientX, c, m, edge, s0, e0, prevEnd: Math.max(0, ...others.map(endF).filter(x => x <= s0)), nextStart: Math.min(Infinity, ...others.map(startF).filter(x => x >= e0)),
-    targets: snapTargets(new Set([c.id])), el: document.querySelector(`.clip[data-id="${c.id}"]`), result: null });
+    targets: snapTargets(ids), el: document.querySelector(`.clip[data-id="${c.id}"]`),
+    peers: group.filter(o => o.id !== c.id).map(o => ({ c: o, el: document.querySelector(`.clip[data-id="${o.id}"]`) })), result: null });
   hintItems([{ keys: 'Shift', text: 'stretch (change speed)' }, { keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
 }
 function onDragMove(e) {
@@ -1781,8 +1850,10 @@ function trimDrag(e) {
   }
   const dur = en - s, d0 = d.e0 - d.s0;
   d.result = { s, en, dur, stretch };
-  d.el.classList.add('dragging');
-  d.el.style.left = `${frameX(s)}px`; d.el.style.width = `${Math.max(2, frameX(dur))}px`;
+  for (const el of [d.el, ...d.peers.map(p => p.el)].filter(Boolean)) {
+    el.classList.add('dragging');
+    el.style.left = `${frameX(s)}px`; el.style.width = `${Math.max(2, frameX(dur))}px`;
+  }
   const delta = d.edge === 'l' ? s - d.s0 : en - d.e0;
   readout(stretch ? `Speed ${pct(speed * d0 / dur)}   Duration ${shortTc(dur)}` : `${delta >= 0 ? '+' : '−'}${shortTc(Math.abs(delta))}   Duration ${shortTc(dur)}`, limit ? `Limited by ${limit}` : '');
 }
@@ -1851,11 +1922,16 @@ function onDragUp(e) {
     edit(() => {
       const c = clipById(d.c.id);
       if (!c || c.revision !== d.c.revision) return refuse('The clip changed during the drag. Nothing was applied.');
-      const duration = fromF(r.dur), changes = { duration, ...fadeClamp(c, duration) };
+      const group = withLinked([c]);
+      if (d.peers.some(p => clipById(p.c.id)?.revision !== p.c.revision) || group.length !== d.peers.length + 1) return refuse('A linked clip changed during the drag. Nothing was applied.');
+      if (lockedRefusal(group) !== false) return null;
+      const duration = fromF(r.dur), changes = { duration };
       if (r.stretch) changes.speed = frac(c.speed.num * (d.e0 - d.s0), c.speed.den * r.dur);
       if (d.edge === 'l') { changes.start = fromF(r.s); if (!r.stretch) changes.sourceIn = fadd(c.sourceIn, fmul(fsub(fromF(r.s), c.start), c.speed)); }
-      const gone = transitions().filter(t => d.edge === 'l' ? t.toClipId === c.id : t.fromClipId === c.id);
-      return { ops: [...gone.map(t => remove('transitions', t.id)), put('clips', { id: c.id, ...changes })],
+      // Companions get the same timing explicitly, plus their own fade clamps.
+      const ids = new Set(group.map(o => o.id));
+      const gone = transitions().filter(t => d.edge === 'l' ? ids.has(t.toClipId) : ids.has(t.fromClipId));
+      return { ops: [...gone.map(t => remove('transitions', t.id)), ...group.map(o => put('clips', { id: o.id, ...changes, ...fadeClamp(o, duration) }))],
         message: `${r.stretch ? `Speed ${pct(secs(changes.speed))}` : 'Trimmed'} · duration ${shortTc(r.dur)}${gone.length ? ' · removed dissolve' : ''}` };
     });
   } else if (d.type === 'marquee') {

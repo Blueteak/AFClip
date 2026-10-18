@@ -16,8 +16,9 @@ class TimelinePlayback {
   setProject(project, mode) {
     if (this.revision === project.revision && this.projectId === project.id && this.mode === mode) return;
     // Audio-only placement and envelope edits do not change source pictures.
+    // Detached audio clips reference video media but never draw it.
     const audioMedia = new Set(project.media.filter(m => m.kind === 'audio').map(m => m.id));
-    const visualClips = project.clips.filter(c => !audioMedia.has(c.mediaId));
+    const visualClips = project.clips.filter(c => !audioMedia.has(c.mediaId) && c.stream !== 'audio');
     const visualIds = new Set(visualClips.map(c => c.id));
     const visualTransitions = project.transitions.filter(t => visualIds.has(t.fromClipId) || visualIds.has(t.toClipId));
     // An audio clip bordering a visual transition can determine its cut time.
@@ -30,7 +31,7 @@ class TimelinePlayback {
       media: project.media.filter(m => pictureMedia.has(m.id)),
       tracks: project.tracks.filter(t => pictureTracks.has(t.id)),
       transitions: visualTransitions,
-      clips: pictureClips.map(c => ({ ...c, volume: 1, mute: false, volumePoints: [], fadeIn: 0, fadeOut: 0 })),
+      clips: pictureClips.map(c => ({ ...c, linkId: undefined, volume: 1, mute: false, volumePoints: [], fadeIn: 0, fadeOut: 0 })),
     }, (key, value) => {
       if (key === 'revision' || key === 'relationshipRevisions') return undefined;
       // Engine patches and undo can reorder keys without changing the picture.

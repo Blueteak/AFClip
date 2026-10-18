@@ -71,6 +71,21 @@ Clips default to volume one, unmuted, no fades, source-in zero and Fit. Optional
 
 Same-track clips must not overlap. A dissolve references adjacent clips by `fromClipId`, `toClipId` and `trackId`, with a rational `duration` and `alignment` of `center`, `start` or `end`. It consumes source handles around the existing cut and preserves timeline length. Insufficient handles cause a validation error with the available amount, rather than frozen frames or a moved cut.
 
+## Detach Audio
+
+Use **Detach Audio** on a video clip to create a separate audio clip on a new track. Both reference the same source file and keep their timing, playback speed, fades, volume and source-timed volume points. The original clip becomes picture-only, so unmuting it cannot double the sound. A disabled source track creates a disabled audio track.
+
+The pair stays linked for moves, trims and speed changes. Audio settings and picture settings remain independent. **Unlink** allows independent timing edits. Both operations are atomic and undoable. Detaching currently requires removing any dissolves touching the clip first; it does not silently discard their audio envelopes.
+
+```powershell
+node src/cli.ts detach-audio .cache/my-edit clip_id
+node src/cli.ts unlink .cache/my-edit clip_id
+```
+
+Both accept `--revision N` to require the inspected project revision. The equivalent `apply` operation is `{op:"detach-audio",clipId:"clip_id"}` or `{op:"unlink",clipId:"clip_id"}`, alone in its batch with `preconditions.project`. Clip fields `stream` and `linkId` persist the separation and link. Ordinary timing patches propagate to linked peers and require their revisions, track/occupancy revisions and the project revision. Locked tracks reject the complete edit. Ripple splitting gives the right-hand pair a new link.
+
+Disposable checks covered detaching, exact timing and settings, duplicate rejection, linked timing edits, locks, Unlink, ripple splits, undo/redo and reopening the project. Before/after mixed audio WAVs and a rendered picture frame were byte-identical. These checks also exposed a bundled FFmpeg crash when applying volume-point automation to mono audio; normalizing the layout to stereo before that filter fixes it.
+
 ## Timeline markers
 
 Press **M** to create a marker immediately at the playhead with a default name. Right-click empty ruler space and choose **Add Marker** to create one at that time. **Shift+Up** goes to the next marker; **Shift+Down** goes to the previous marker. Click a ruler flag to seek, drag it to move, or right-click or double-click to edit its name and time in a popup above the flag. Delete removes the selected marker; Escape cancels a drag or dismisses the popup. Clip moves and trims snap to markers, with Alt bypassing snapping. Adding a marker selects it without opening the editor.
@@ -202,7 +217,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: folders, linked audio detach, Content Library integration for reusable selects, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: folders, video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The [Content Library overview](../content-library-overview.md) defines the planned standalone library and ownership boundary; the prototype still uses project-local media and caches. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 

@@ -44,7 +44,7 @@ async function draw(items) {
   return { ...stats };
 }
 contextBridge.exposeInMainWorld('reeletFrames', {
-  getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: config.media[c.mediaId].kind })) }),
+  getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : config.media[c.mediaId].kind })) }),
   draw,
   close: () => { for (const d of decoders.values()) d.close(); decoders.clear(); return { ...stats }; }
 });
