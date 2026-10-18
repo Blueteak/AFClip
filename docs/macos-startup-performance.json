@@ -1,0 +1,618 @@
+{
+  "date": "2026-10-17",
+  "baseCommit": "484cf34",
+  "scope": "Fragment sample-count timestamp indexing; same four 4K60 H.264 sources as the initial Mac report.",
+  "cacheCondition": "Empty application timestamp and seek caches. OS filesystem cache not flushed. Runs serial.",
+  "worker": {
+    "beforeReadyMs": 137203.641875,
+    "afterReadyMs": 4612.166375,
+    "speedup": 29.748198724726187,
+    "events": [
+      {
+        "type": "progress",
+        "message": "Inspecting source timestamps and graphics",
+        "ms": 23.274874999999994
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 1/6 sources",
+        "ms": 812.1462919999999
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 2/6 sources",
+        "ms": 1048.255333
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 3/6 sources",
+        "ms": 1846.083375
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 4/6 sources",
+        "ms": 3403.630042
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 5/6 sources",
+        "ms": 3405.0809169999998
+      },
+      {
+        "type": "progress",
+        "message": "Prepared 6/6 sources",
+        "ms": 3406.1935829999998
+      },
+      {
+        "type": "ready",
+        "ms": 4612.166375,
+        "seekCache": {
+          "bytes": 0,
+          "budget": 268435456,
+          "sources": 4,
+          "hits": 0,
+          "built": 0,
+          "ms": 0.6599169999999503,
+          "complete": false
+        }
+      },
+      {
+        "type": "seek-cache",
+        "mediaId": "media_d76529bf57dc44b2a9a217f11b7eb826",
+        "ms": 12811.977917
+      },
+      {
+        "type": "seek-cache",
+        "mediaId": "media_3ce8a9b4bcf14e338812a8ed9c0f5a57",
+        "ms": 20090.300042
+      },
+      {
+        "type": "seek-cache",
+        "mediaId": "media_b7eff3a55f834ddc9efaa7dd84176843",
+        "ms": 28401.974667
+      },
+      {
+        "type": "seek-cache",
+        "mediaId": "media_bfbd4a3e01014e39a6f79cc3851e71bb",
+        "ms": 36498.411333000004
+      },
+      {
+        "type": "seek-cache",
+        "ms": 36498.454292,
+        "seekCache": {
+          "bytes": 250947170,
+          "budget": 268435456,
+          "sources": 4,
+          "hits": 0,
+          "built": 4,
+          "ms": 31889.876708,
+          "complete": true
+        }
+      }
+    ]
+  },
+  "timestampParity": [
+    {
+      "file": "/path/to/media/source.mp4",
+      "method": "packet-fragment",
+      "frames": 13212,
+      "ms": 339.584875,
+      "decodedFallback": false,
+      "exactDecodedMatch": true,
+      "ptsSha256": "0c15cf97156b1a389b44f10d724a500c8133dfa9f0059666e0958bba10e84bd8"
+    },
+    {
+      "file": "/path/to/media/source.mp4",
+      "method": "packet-fragment",
+      "frames": 2816,
+      "ms": 173.83387500000003,
+      "decodedFallback": false,
+      "exactDecodedMatch": true,
+      "ptsSha256": "e066ad977f484254f4d04381b849868182826f8f44166cbc47345dc64636486d"
+    },
+    {
+      "file": "/path/to/media/source.mp4",
+      "method": "packet-fragment",
+      "frames": 6495,
+      "ms": 727.6341249999999,
+      "decodedFallback": false,
+      "exactDecodedMatch": true,
+      "ptsSha256": "7d4ff7c8e82a4718fcc37d208971756bc4540771c8e595dcb7fbf5064f05533a"
+    },
+    {
+      "file": "/path/to/media/source.mp4",
+      "method": "packet-fragment",
+      "frames": 19364,
+      "ms": 1533.515542,
+      "decodedFallback": false,
+      "exactDecodedMatch": true,
+      "ptsSha256": "f5af924051d731cc03a684fff3fa85e7075e1ae9c0c5a268b918c3dfcf4a5f3d"
+    }
+  ],
+  "controls": [
+    {
+      "name": "h264-regular",
+      "frames": 50,
+      "method": "packet",
+      "exactDecodedMatch": true,
+      "vfrIntervalsUs": [
+        33333,
+        100000
+      ]
+    },
+    {
+      "name": "h264-fragment",
+      "frames": 50,
+      "method": "packet-fragment",
+      "exactDecodedMatch": true,
+      "vfrIntervalsUs": [
+        33333,
+        100000
+      ]
+    },
+    {
+      "name": "hevc-regular",
+      "frames": 50,
+      "method": "packet",
+      "exactDecodedMatch": true,
+      "vfrIntervalsUs": [
+        33333,
+        100000
+      ]
+    },
+    {
+      "name": "hevc-fragment",
+      "frames": 50,
+      "method": "packet-fragment",
+      "exactDecodedMatch": true,
+      "vfrIntervalsUs": [
+        33333,
+        100000
+      ]
+    },
+    {
+      "name": "missing PTS",
+      "decodedFallback": true
+    },
+    {
+      "name": "duplicate PTS",
+      "decodedFallback": true
+    },
+    {
+      "name": "unordered DTS",
+      "decodedFallback": true
+    },
+    {
+      "name": "discard packet",
+      "decodedFallback": true
+    },
+    {
+      "name": "corrupt packet",
+      "decodedFallback": true
+    },
+    {
+      "name": "missing opening keyframe",
+      "decodedFallback": true
+    },
+    {
+      "name": "wrong start",
+      "decodedFallback": true
+    },
+    {
+      "name": "interlaced",
+      "decodedFallback": true
+    },
+    {
+      "name": "unsupported codec",
+      "decodedFallback": true
+    },
+    {
+      "name": "unsupported container",
+      "decodedFallback": true
+    },
+    {
+      "name": "declared count mismatch",
+      "decodedFallback": true
+    },
+    {
+      "name": "fragment count mismatch",
+      "decodedFallback": true
+    },
+    {
+      "name": "wrong track",
+      "decodedFallback": true
+    },
+    {
+      "name": "invalid track",
+      "decodedFallback": true
+    },
+    {
+      "name": "extra stream",
+      "decodedFallback": true
+    },
+    {
+      "name": "truncated mdat",
+      "decodedFallback": true
+    },
+    {
+      "name": "invalid box size",
+      "decodedFallback": true
+    },
+    {
+      "name": "oversize box",
+      "decodedFallback": true
+    },
+    {
+      "name": "truncated trun table",
+      "decodedFallback": true
+    },
+    {
+      "name": "unknown trun flags",
+      "decodedFallback": true
+    },
+    {
+      "name": "nonempty initial sample table",
+      "decodedFallback": true
+    },
+    {
+      "name": "ambiguous video tracks without ID",
+      "decodedFallback": true,
+      "explicitTrackCounts": [
+        50,
+        50
+      ]
+    },
+    {
+      "name": "zero-size final mdat",
+      "samples": 50
+    },
+    {
+      "name": "64-bit box size",
+      "samples": 50
+    },
+    {
+      "name": "unsafe 64-bit box size",
+      "decodedFallback": true
+    }
+  ],
+  "coldGuiPlayback": {
+    "artifact": "/Users/user/Documents/GitHub/Reelet/.cache/playback/2026-10-18T00-51-05-839Z/results.json",
+    "previewReadyMs": 5425.304792000001,
+    "time": 63.983333333333334,
+    "stats": {
+      "ticks": 3841,
+      "sourceFrames": 4456,
+      "presentedFrames": 4456,
+      "maxTickMs": 22.399999976158142,
+      "resyncs": 0
+    },
+    "seekCache": {
+      "bytes": 250947170,
+      "budget": 268435456,
+      "sources": 4,
+      "hits": 0,
+      "built": 4,
+      "ms": 34490.358042,
+      "complete": true
+    },
+    "byClip": [
+      {
+        "clip": "shot_1",
+        "callbacks": 510,
+        "seconds": 8.506,
+        "callbackFps": 59.840112861509525,
+        "presentedFps": 59.840112861509525,
+        "steadyPresentedFps": 59.95858792444202,
+        "p95GapMs": 17.899999999999636,
+        "maxGapMs": 33.30000000000018,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 4.983999999999433,
+        "maxClockErrorMs": 25.065000000000115
+      },
+      {
+        "clip": "shot_2",
+        "callbacks": 540,
+        "seconds": 8.991599999999998,
+        "callbackFps": 59.94483740379911,
+        "presentedFps": 59.94483740379911,
+        "steadyPresentedFps": 59.95089509189293,
+        "p95GapMs": 17.600000000002183,
+        "maxGapMs": 18.700000000000728,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 2.8709999999991798,
+        "maxClockErrorMs": 3.462999999999994
+      },
+      {
+        "clip": "shot_3",
+        "callbacks": 539,
+        "seconds": 8.974099999999998,
+        "callbackFps": 59.95030142298393,
+        "presentedFps": 59.95030142298393,
+        "steadyPresentedFps": 59.95032005350149,
+        "p95GapMs": 17.600000000002183,
+        "maxGapMs": 18.700000000000728,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 2.678999999999654,
+        "maxClockErrorMs": 4.094999999999516
+      },
+      {
+        "clip": "shot_4",
+        "callbacks": 540,
+        "seconds": 8.990799999999995,
+        "callbackFps": 59.950171286203705,
+        "presentedFps": 59.950171286203705,
+        "steadyPresentedFps": 59.95018056565323,
+        "p95GapMs": 17.799999999999272,
+        "maxGapMs": 18.69999999999709,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 2.690999999999555,
+        "maxClockErrorMs": 3.4810000000007335
+      },
+      {
+        "clip": "shot_5",
+        "callbacks": 540,
+        "seconds": 8.992,
+        "callbackFps": 59.94217081850534,
+        "presentedFps": 59.94217081850534,
+        "steadyPresentedFps": 59.93875046175478,
+        "p95GapMs": 17.900000000001455,
+        "maxGapMs": 18.700000000004366,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 4.970999999999393,
+        "maxClockErrorMs": 5.443999999997118
+      },
+      {
+        "clip": "shot_6",
+        "callbacks": 539,
+        "seconds": 8.972900000000001,
+        "callbackFps": 59.95831893813593,
+        "presentedFps": 59.95831893813593,
+        "steadyPresentedFps": 59.95962877584413,
+        "p95GapMs": 18,
+        "maxGapMs": 18.700000000004366,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 2.588000000001145,
+        "maxClockErrorMs": 4.347000000000989
+      },
+      {
+        "clip": "shot_7",
+        "callbacks": 540,
+        "seconds": 8.991800000000003,
+        "callbackFps": 59.94350408149646,
+        "presentedFps": 59.94350408149646,
+        "steadyPresentedFps": 59.95089509189289,
+        "p95GapMs": 18,
+        "maxGapMs": 18.60000000000582,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 3.864000000001866,
+        "maxClockErrorMs": 5.093000000002235
+      },
+      {
+        "clip": "shot_8",
+        "callbacks": 509,
+        "seconds": 8.473699999999997,
+        "callbackFps": 59.95019885056117,
+        "presentedFps": 59.95019885056117,
+        "steadyPresentedFps": 59.95035957487436,
+        "p95GapMs": 18,
+        "maxGapMs": 18.60000000000582,
+        "droppedWhileVisible": 0,
+        "p95ClockErrorMs": 5.05099999999814,
+        "maxClockErrorMs": 5.508999999999986
+      }
+    ],
+    "stage": {
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "top": 0,
+      "right": 1920,
+      "bottom": 1080,
+      "left": 0
+    },
+    "devicePixelRatio": 1,
+    "presentation": {
+      "disableDirectComposition": false,
+      "disableGpuVsync": false,
+      "disableFrameRateLimit": false
+    }
+  },
+  "seeking": {
+    "artifact": "/Users/user/Documents/GitHub/Reelet/.cache/playback/2026-10-18T00-52-22-152Z/seeks.json",
+    "previewReadyMs": 1949.724959,
+    "summary": [
+      {
+        "category": "initial",
+        "count": 1,
+        "minMs": 10.100000023841858,
+        "medianMs": 10.100000023841858,
+        "p95Ms": 10.100000023841858,
+        "maxMs": 10.100000023841858,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "frame-forward",
+        "count": 12,
+        "minMs": 3.299999952316284,
+        "medianMs": 17.5,
+        "p95Ms": 19,
+        "maxMs": 19,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "frame-backward",
+        "count": 12,
+        "minMs": 1.2999999523162842,
+        "medianMs": 3,
+        "p95Ms": 15.600000023841858,
+        "maxMs": 15.600000023841858,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "cached-reversals-release",
+        "count": 1,
+        "minMs": 15.600000023841858,
+        "medianMs": 15.600000023841858,
+        "p95Ms": 15.600000023841858,
+        "maxMs": 15.600000023841858,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "nearby",
+        "count": 12,
+        "minMs": 1.5999999642372131,
+        "medianMs": 16.899999976158142,
+        "p95Ms": 20.600000023841858,
+        "maxMs": 20.600000023841858,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "distant",
+        "count": 12,
+        "minMs": 3.199999988079071,
+        "medianMs": 17.19999998807907,
+        "p95Ms": 20.100000023841858,
+        "maxMs": 20.100000023841858,
+        "within25ms": 12,
+        "within50ms": 12
+      },
+      {
+        "category": "uncached-sweep-release",
+        "count": 1,
+        "minMs": 16.599999964237213,
+        "medianMs": 16.599999964237213,
+        "p95Ms": 16.599999964237213,
+        "maxMs": 16.599999964237213,
+        "within25ms": 1,
+        "within50ms": 1
+      },
+      {
+        "category": "random-timeline",
+        "count": 120,
+        "minMs": 1.100000023841858,
+        "medianMs": 17.69999998807907,
+        "p95Ms": 20.900000035762787,
+        "maxMs": 25.899999976158142,
+        "within25ms": 119,
+        "within50ms": 120
+      },
+      {
+        "category": "dissolve-reversals-release",
+        "count": 1,
+        "minMs": 16.600000023841858,
+        "medianMs": 16.600000023841858,
+        "p95Ms": 16.600000023841858,
+        "maxMs": 16.600000023841858,
+        "within25ms": 1,
+        "within50ms": 1
+      }
+    ],
+    "scrubs": [
+      {
+        "category": "cached-reversals",
+        "requests": 120,
+        "seconds": 2.0014000000000007,
+        "correctUpdates": 120,
+        "correctUpdatesPerSecond": 59.95802937943438
+      },
+      {
+        "category": "uncached-sweep",
+        "requests": 60,
+        "seconds": 1.0008999999999997,
+        "correctUpdates": 60,
+        "correctUpdatesPerSecond": 59.94604855629935
+      },
+      {
+        "category": "dissolve-reversals",
+        "requests": 120,
+        "seconds": 2.001700000000001,
+        "correctUpdates": 120,
+        "correctUpdatesPerSecond": 59.94904331318377
+      }
+    ],
+    "cache": {
+      "bytes": 267494400,
+      "budget": 268435456,
+      "frames": 129
+    },
+    "allSelectedPtsExact": true
+  },
+  "export": {
+    "ok": true,
+    "result": {
+      "id": "job_bbb0c03e19764dd296a3866444a5ce45",
+      "status": "completed",
+      "kind": "export",
+      "mode": "software",
+      "verification": "full",
+      "output": "/Users/user/Documents/GitHub/Reelet/.cache/macos/startup/dissolve.mp4",
+      "createdAt": "2026-10-18T00:52:54.772Z",
+      "projectRevision": 0,
+      "progress": 1,
+      "phase": "completed",
+      "message": "Checking container and decoding every output frame",
+      "frame": 60,
+      "totalFrames": 60,
+      "fps": 13.954507103035292,
+      "width": 1920,
+      "height": 1080,
+      "duration": 1,
+      "frames": 60,
+      "stats": {
+        "frames": 60,
+        "peakDecodedBytes": 66355200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1269039104,
+        "fullFrameReadback": true,
+        "rejectedPaints": 149,
+        "decodedSourceFrames": 120,
+        "restarts": 2,
+        "renderMs": 4649.8832919999995,
+        "renderFps": 12.903549666123535,
+        "wallMs": 5881.089290999999,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 60,
+          "audioPackets": 48,
+          "decodedFrames": 60,
+          "ms": 440.95324999999957
+        },
+        "indexCacheHits": 2,
+        "indexMs": 3.6564989999999984,
+        "indexing": [
+          {
+            "mediaId": "media_d76529bf57dc44b2a9a217f11b7eb826",
+            "method": "packet-fragment",
+            "cacheHit": true,
+            "frames": 13212,
+            "ms": 2.917083
+          },
+          {
+            "mediaId": "media_3ce8a9b4bcf14e338812a8ed9c0f5a57",
+            "method": "packet-fragment",
+            "cacheHit": true,
+            "frames": 2816,
+            "ms": 0.7394159999999985
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      },
+      "finishedAt": "2026-10-18T00:53:00.688Z"
+    }
+  },
+  "exportIdentity": {
+    "beforeSha256": "e8ba4bd4974547f4d69923760e282dc8fc096748f6a0fa1aafbf29ff2b06b62d",
+    "afterSha256": "e8ba4bd4974547f4d69923760e282dc8fc096748f6a0fa1aafbf29ff2b06b62d",
+    "exactMatch": true
+  }
+}
