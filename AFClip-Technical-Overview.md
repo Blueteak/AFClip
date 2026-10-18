@@ -82,7 +82,7 @@ The existing macOS benchmark is useful experimental tooling, but does not valida
 
 The [Windows rendering measurements](docs/windows-benchmark-results.md) now exercise FFmpeg and offscreen Electron with local gameplay footage. They establish an experimental baseline and record failed color/fallback assumptions. They do not complete the independent project-engine and GUI/CLI prototype below.
 
-The [follow-up rendering experiment](docs/windows-rendering-solutions.md) resolves the sampled color/fallback issues with shared FFmpeg RGB decoding, canvas composition and paint-event readiness. It also demonstrates working QSV encoding through system-memory NV12 input. The temporary whole-clip frame cache must become bounded decoding before this is an editor pipeline.
+The [follow-up rendering experiment](docs/windows-rendering-solutions.md) resolves the sampled color/fallback issues with shared FFmpeg RGB decoding, canvas composition and paint-event readiness. It also demonstrates working QSV encoding through system-memory NV12 input. That experiment used a temporary whole-clip frame cache; the [editing prototype](docs/editing-prototype.md) now uses bounded streaming decoding.
 
 The [shared-texture export experiment](docs/windows-gpu-export.md) keeps composed frames on the GPU through D3D11 BT.709 conversion and NVENC encoding. It removes full-frame CPU readback and the raw-video pipe from the NVIDIA export path. Source decoding and canvas upload still use CPU RGBA data. The existing bitmap/software paths remain available as controls and fallback candidates.
 

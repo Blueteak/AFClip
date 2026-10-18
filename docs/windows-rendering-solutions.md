@@ -2,7 +2,7 @@
 
 Follow-up: [shared-texture GPU export](windows-gpu-export.md) removes the full-frame readback and raw-video pipe that made this version's GPU compositor slower than software composition. The measurements below remain the historical bitmap baseline.
 
-The follow-up experiment resolves the measured color mismatch, provides original-media HEVC software rendering, and makes Intel QSV encoding work. It also replaces per-frame browser video seeks and screenshot capture with decoded RGB frames and Electron paint events. The shared project engine and editor remain unimplemented.
+The follow-up experiment resolves the measured color mismatch, provides original-media HEVC software rendering, and makes Intel QSV encoding work. It also replaces per-frame browser video seeks and screenshot capture with decoded RGB frames and Electron paint events. The later [editing prototype](editing-prototype.md) integrates the engine, editor and bounded source decoding.
 
 ## What changed
 
@@ -80,14 +80,10 @@ npm run bench:solutions -- ".cache/windows-benchmark/<run-directory>"
 
 Outputs go to a unique `.cache/windows-solutions/` directory. The runner deletes its generated RGBA frame caches after a completed run and retains MP4s, captures, logs and JSON. Recordings remain unchanged. The default input checks reject unsupported color tags and full-range sources; these experiments cover the known BT.709 SDR recordings.
 
-## Remaining work
+## Experiment limits
 
-The decoded-cache approach is deliberately small and fixed: six seconds per source, resampled onto a 30 fps project grid. The tested inputs produce about 5.7 GB of temporary RGBA data. This must become a bounded decoder queue/cache before long projects, frame-rate changes, or arbitrary off-grid source requests. The reported seek latencies apply after that cache exists.
+This benchmark uses a fixed six-second source cache resampled to 30 fps, producing about 5.7 GB of temporary RGBA data. Its seek measurements apply after that cache exists. The editor uses bounded streaming decoding instead; see the [editing guide](editing-prototype.md) and [playback notes](timeline-playback.md).
 
-The preload uses synchronous file reads in a dedicated rendering process with context isolation and page Node integration disabled. Its Electron sandbox is disabled because the trusted adapter needs filesystem access. This fixed local fixture is not a security boundary for arbitrary graphic code. The production worker/graphics sandbox still needs implementation.
-
-The new paint-token path does not yet repeat the baseline's renderer-crash recovery check. There is still no project engine, GUI/CLI collaboration, render locking, cancel/restart workflow, sustained visible preview test, or agreed performance acceptance target. The original prototype checklist remains open for those requirements.
-
-Use this pipeline as the next renderer implementation baseline. Keep the RGB conversion contract and explicit source-time selection; replace whole-clip caches with bounded sequential decoding. The software compositor is competitive for this 2D scene, but GPU-specific graphics and heavier compositions still need their own measurements.
+The benchmark preload uses synchronous file reads with context isolation enabled, page Node integration disabled and the Electron sandbox disabled. This trusted fixture does not establish a security boundary for arbitrary graphic code. These bitmap measurements also do not establish performance for heavier compositions or GPU-specific graphics.
 
 References: [Electron offscreen rendering and paint events](https://www.electronjs.org/docs/latest/tutorial/offscreen-rendering), [FFmpeg filter documentation](https://ffmpeg.org/ffmpeg-filters.html), [Windows FFmpeg builds](https://www.gyan.dev/ffmpeg/builds/).

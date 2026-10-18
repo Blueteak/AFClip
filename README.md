@@ -12,8 +12,6 @@ The planned MVP covers supplied footage, music, sound effects, images and HTML/C
 - [Technical Overview](AFClip-Technical-Overview.md): architecture and Windows prototype criteria.
 - [Content Library Overview](content-library-overview.md): standalone library scope, ownership, Inbox lifetime and AFClip integration.
 
-These overviews supersede the earlier design brief.
-
 ## Implementation status
 
 The [editing prototype](docs/editing-prototype.md) loads a project folder, imports source media, commits atomic edits through a background Node engine, updates an Electron GUI over a local change stream, and coordinates headless frame renders and MP4 exports. The same commands handle GUI and CLI edits. Source decoding now streams through bounded live-frame buffers instead of writing a whole-clip RGBA cache.
@@ -46,7 +44,7 @@ Mac measurements and setup are in [macOS performance](docs/macos-performance.md)
 
 Run `af-lib gui` for the standalone library, or `af-lib --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares AFClip's native media presentation and fast-seek implementation.
 
-In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking, the 35-asset GUI annotation pass and remaining scope.
+In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only browser. Assets and ranges can be added to the project bin; annotations are edited in the standalone library. See the [Content Library guide](docs/content-library.md) for commands, measured playback/seeking and remaining scope.
 
 ## Development reload
 
