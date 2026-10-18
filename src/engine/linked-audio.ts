@@ -18,10 +18,12 @@ export function audioOperations(project:Project, op:any) {
  assert(!clip.stream&&!clip.linkId,'Audio is already detached');
  assert(!project.transitions.some(t=>t.fromClipId===clip.id||t.toClipId===clip.id),'Remove the clip’s dissolves before detaching audio');
  const trackId=uid('track'), id=uid('clip'), linkId=uid('link');
- const {transform,...audio}=clip;
- return [put('tracks',{id:trackId,name:`${clip.name||'Clip'} audio`,disabled:project.tracks.find(t=>t.id===clip.trackId)!.disabled,locked:false}),
+ const {transform,...audio}=clip, sourceTrack=project.tracks.find(t=>t.id===clip.trackId)!;
+ const operations:any[]=[put('tracks',{id:trackId,name:`${clip.name||'Clip'} audio`,disabled:sourceTrack.disabled,locked:false,...(sourceTrack.folderId?{folderId:sourceTrack.folderId}:{})}),
   put('clips',{id:clip.id,stream:'video',linkId}),
   put('clips',{...audio,id,trackId,name:`${clip.name||'Clip'} audio`,stream:'audio',linkId})];
+ if(sourceTrack.folderId){const order=project.tracks.map(t=>t.id);order.splice(order.indexOf(sourceTrack.id),0,trackId);operations.push({op:'reorder-tracks',trackIds:order});}
+ return operations;
 }
 
 // Timing edits act on the pair even through the CLI. Explicit edits to both

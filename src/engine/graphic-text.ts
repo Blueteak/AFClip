@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {parse} from 'parse5';
-import {assert,fail} from '../shared/project.ts';
+import {assert,fail,trackLocked} from '../shared/project.ts';
 
 // Only explicit, static, plain-text fields are editable. Never rewrite source code.
 export function graphicFields(dir:string, media:any) {
@@ -35,7 +35,7 @@ export function setGraphicText(state:any,c:any){
  if(c.revision!==info.revision||c.mediaRevision!==info.mediaRevision)fail('CONFLICT','Text changed. Reread the clip before editing.',{clipId:c.clipId,revision:info.revision,mediaRevision:info.mediaRevision});
  assert(typeof c.field==='string'&&(info.fields.some(f=>f.id===c.field)||(c.reset===true&&info.missing.includes(c.field))),'Unknown text field',{field:c.field});
  assert(c.reset===true||typeof c.value==='string','Text value must be a string');
- state.requireUnlocked();if(state.p.tracks.find((t:any)=>t.id===clip.trackId)?.locked)fail('TRACK_LOCKED','Cannot modify a locked track',{trackId:clip.trackId});
+ state.requireUnlocked();if(trackLocked(state.p,clip.trackId))fail('TRACK_LOCKED','Cannot modify a locked track',{trackId:clip.trackId});
  const field=info.fields.find(f=>f.id===c.field);
  if(c.reset===true?!Object.hasOwn(clip.text||{},c.field):field?.value===c.value)return state.inspect();
  const text={...clip.text,...(c.reset===true?{}:{[c.field]:c.value})};if(c.reset===true)delete text[c.field];

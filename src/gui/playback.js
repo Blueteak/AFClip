@@ -15,6 +15,23 @@ class TimelinePlayback {
   }
   setProject(project, mode) {
     if (this.revision === project.revision && this.projectId === project.id && this.mode === mode) return;
+    // Folder organization does not change the picture or audio. Keep playback
+    // alive when collapsing, renaming, grouping, or changing locks.
+    const folderById = new Map((project.folders || []).map(f => [f.id, f]));
+    const renderKey = JSON.stringify({ ...project, folders: undefined,
+      tracks: project.tracks.map(t => ({ id: t.id, disabled: t.disabled || !!folderById.get(t.folderId)?.disabled })),
+    }, (key, value) => {
+      if (key === 'revision' || key === 'relationshipRevisions') return undefined;
+      return value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value;
+    });
+    const keepOrganizationSession = this.ready && this.sessionId && this.renderKey === renderKey && this.mode === mode;
+    this.renderKey = renderKey;
+    if (keepOrganizationSession) {
+      this.revision = project.revision;
+      if (this.native) this.native.setup.project = project;
+      return;
+    }
     // Text overrides only affect the existing graphic iframe. Keep its DOM,
     // decoded video frames and audio instead of starting another preview worker.
     const textBaseKey = JSON.stringify({ ...project, clips: project.clips.map(c => ({ ...c, text: undefined })) }, (key, value) => {
@@ -38,9 +55,9 @@ class TimelinePlayback {
     for(const tr of visualTransitions)pictureMedia.add(tr.assetId);
     for(const c of pictureClips)for(const effect of c.effects||[])pictureMedia.add(effect.assetId);
     const videoKey = JSON.stringify({ ...project,
-      markers: [],
+      markers: [], folders: undefined,
       media: project.media.filter(m => pictureMedia.has(m.id)),
-      tracks: project.tracks.filter(t => pictureTracks.has(t.id)),
+      tracks: project.tracks.filter(t => pictureTracks.has(t.id)).map(t => ({ id: t.id, disabled: t.disabled || !!folderById.get(t.folderId)?.disabled })),
       transitions: visualTransitions,
       clips: pictureClips.map(c => ({ ...c, linkId: undefined, volume: 1, mute: false, volumePoints: [], fadeIn: 0, fadeOut: 0 })),
     }, (key, value) => {

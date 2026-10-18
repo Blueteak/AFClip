@@ -4,7 +4,7 @@ Agent First Clip. Home: [afclip.com](https://afclip.com).
 
 AFClip is a local desktop video editor for game trailers and marketing videos, targeting Windows first. People and agents edit the same project through a GUI or CLI. Every project action must work through the CLI, including editing and exporting with the GUI closed.
 
-The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The implementation includes a shared project engine, CLI, desktop editor, separate export workers and a standalone Content Library for reusable video/audio annotations and named selects. Track folders and other parts of the editing overview remain future work.
+The planned MVP covers supplied footage, music, sound effects, images and HTML/CSS/JavaScript graphics. The implementation includes a shared project engine, CLI, desktop editor, separate export workers and a standalone Content Library for reusable video/audio annotations and named selects. Track folders support collapse, block reordering and inherited Disable/Lock in the GUI and CLI. Other parts of the editing overview remain future work.
 
 ## Design
 
