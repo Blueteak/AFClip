@@ -95,7 +95,7 @@
         <button id="import" class="icon-button small"><svg class="icon"><use href="#i-import"/></svg></button>
       </div>
       <div class="tab-page" data-page="media">
-        <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search media" spellcheck="false"></label>
+        <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search names, tags, notes" aria-label="Search project media by name, tag or notes" spellcheck="false"></label>
         <div id="media-list" class="media-list" tabindex="0"></div>
       </div>
       <div class="tab-page" data-page="history" hidden>
@@ -104,9 +104,10 @@
     </section>
     <div class="splitter v" data-split="left" style="grid-area:s1"></div>
 
-    <section class="panel monitor" style="grid-area:mon">
+    <section id="monitor" class="panel monitor" style="grid-area:mon">
       <div class="panel-tabs">
         <button class="tab active" data-view="frame">Program</button>
+        <button class="tab" data-view="source" id="source-tab" hidden>Source</button>
         <button class="tab" data-view="export" id="export-tab" hidden>Export</button>
         <span class="tab-spacer"></span>
         <span id="frame-state" class="frame-state"></span>
@@ -116,10 +117,19 @@
         <img id="preview" alt="Composited project frame" hidden>
         <div id="native-preview" hidden></div>
         <video id="export-video" hidden></video>
+        <div id="source-stage" class="source-stage" hidden></div>
         <div id="stage-empty" class="stage-empty"></div>
       </div>
       <div id="mini-ruler" class="mini-ruler"><div id="mini-range" class="mini-range"></div><div id="mini-playhead" class="mini-playhead"></div></div>
-      <div class="transport">
+      <div id="source-panel" class="source-panel" hidden>
+        <div id="source-strip" class="source-strip"></div>
+        <div class="transport">
+          <span id="source-time" class="timecode source-time"></span>
+          <div class="transport-buttons" id="source-buttons"></div>
+          <div class="transport-right"><span id="source-duration" class="duration"></span></div>
+        </div>
+      </div>
+      <div id="program-transport" class="transport">
         <input id="timecode" class="timecode" spellcheck="false" autocomplete="off">
         <div class="transport-buttons" id="transport-buttons"></div>
         <div class="transport-right"><span id="duration" class="duration"></span></div>
@@ -175,6 +185,8 @@
   <script src="../render/timeline.cjs"></script>
   <script src="native-preview.js"></script>
   <script src="playback.js"></script>
+  <script src="audio-waveform.js"></script>
+  <script src="source-preview.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

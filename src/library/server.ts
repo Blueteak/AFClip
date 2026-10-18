@@ -9,6 +9,7 @@ import {Jobs} from './jobs.ts';
 import {Intake} from './intake.ts';
 import {assert,fail} from '../shared/project.ts';
 import {atomicJSON} from '../engine/state.ts';
+import waveformTools from '../render/audio-waveform.cjs';
 
 const dir=path.resolve(process.argv[2]);fs.mkdirSync(dir,{recursive:true});
 const lock=path.join(dir,'service.lock'),endpointFile=path.join(dir,'endpoint.json');
@@ -65,6 +66,18 @@ async function command(c:any):Promise<any> {
     case 'jobs':return c.id?db.getJob(c.id):c.ids?c.ids.map((id:string)=>db.getJob(id)):db.jobs();
     case 'cancel':return jobs.cancel(c.id);
     case 'preview':return jobs.preview(c.id);
+    case 'waveform': {
+      const a=ops.asset(c.id),s=ops.source(a),file=ops.location(s);
+      assert(file,'Source unavailable or changed');
+      const total=typeof s.duration==='number'?s.duration:s.duration.num/s.duration.den;
+      const start=Number(c.start??0),duration=Number(c.duration??total-start);
+      assert(Number.isFinite(start)&&Number.isFinite(duration)&&start>=0&&duration>0&&start+duration<=total+1e-6,'Waveform range must be within the source');
+      const channels=s.metadata?.streams?.find((stream:any)=>stream.codec_type==='audio')?.channels;
+      jobs.readers.set(s.id,Date.now());
+      const release=jobs.hold(s.id);
+      try{return await waveformTools.audioWaveform(file,{start,duration,bins:c.bins,channels,sourceId:s.id,cacheDir:path.join(dir,'cache','waveforms')});}
+      finally{release();}
+    }
     case 'artifact':return jobs.requestArtifact(c);
     case 'frames': {const a=ops.asset(c.id);return JSON.parse(fs.readFileSync(path.join(dir,'cache',`${a.sourceId}.frames.json`),'utf8'));}
     case 'cache':return jobs.evict();
@@ -82,7 +95,7 @@ function media(req:http.IncomingMessage,res:http.ServerResponse,file:string) {
   const type:any={'.mp4':'video/mp4','.mkv':'video/x-matroska','.webm':'video/webm','.mov':'video/mp4','.wav':'audio/wav','.mp3':'audio/mpeg','.ogg':'audio/ogg','.flac':'audio/flac','.mjpg':'image/jpeg','.png':'image/png'};
   res.writeHead(range?206:200,{'Content-Type':type[path.extname(file)]||'application/octet-stream','Accept-Ranges':'bytes','Content-Length':end-start+1,...(range?{'Content-Range':`bytes ${start}-${end}/${size}`}:{})});if(req.method==='HEAD')res.end();else{const stream=fs.createReadStream(file,{start,end});stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);}
 }
-const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/annotation-timeline.js':'src/library/gui/annotation-timeline.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/reelet.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/timeline.js':'src/render/timeline.cjs'};
+const staticFiles:Record<string,string>={'/':'src/library/gui/index.html','/app.js':'src/library/gui/app.js','/annotation-timeline.js':'src/library/gui/annotation-timeline.js','/review-tools.js':'src/library/gui/review-tools.js','/library.css':'src/library/gui/styles.css','/reelet.css':'src/gui/styles.css','/native-preview.js':'src/gui/native-preview.js','/audio-waveform.js':'src/gui/audio-waveform.js','/timeline.js':'src/render/timeline.cjs'};
 const server=http.createServer(async(req,res)=>{
   try {
     const u=new URL(req.url||'/',`http://${req.headers.host}`);const host=`127.0.0.1:${(server.address() as any).port}`;
@@ -103,7 +116,7 @@ const server=http.createServer(async(req,res)=>{
       else {const suffix:Record<string,string>={image:'png',audio:'wav',container:'mp4'};assert(suffix[type],'Unknown artifact');file=path.join(cache,`${id}.${suffix[type]}`);}
       media(req,res,file!);return;
     }
-    if(req.method!=='POST'||u.pathname!=='/v1/command')fail('NOT_FOUND','Unknown route');let body='';for await(const chunk of req){body+=chunk;assert(body.length<4*1024**2,'Request too large');}const payload=JSON.parse(body);if(!writer&&!['overview','search','inspect','preview','frames','jobs','prepare','artifact','original','selection'].includes(payload.command))fail('READ_ONLY','Open the standalone library to edit annotations or organization');json(res,{ok:true,result:await command(payload)});
+    if(req.method!=='POST'||u.pathname!=='/v1/command')fail('NOT_FOUND','Unknown route');let body='';for await(const chunk of req){body+=chunk;assert(body.length<4*1024**2,'Request too large');}const payload=JSON.parse(body);if(!writer&&!['overview','search','inspect','preview','waveform','frames','jobs','prepare','artifact','original','selection'].includes(payload.command))fail('READ_ONLY','Open the standalone library to edit annotations or organization');json(res,{ok:true,result:await command(payload)});
   }catch(e:any){if(res.headersSent){res.destroy();return;}json(res,{ok:false,error:{code:e.code||'INTERNAL',message:e.message,details:e.details||{}}},e.code==='CONFLICT'?409:400);}
 });
 server.listen(0,'127.0.0.1',()=>{const url=`http://127.0.0.1:${(server.address() as any).port}`;atomicJSON(endpointFile,{url:url+'/v1',gui:url+'/?token='+token,readerGui:url+'/?token='+readerToken+'&mode=reelet',token,pid:process.pid,catalogDir:dir});});

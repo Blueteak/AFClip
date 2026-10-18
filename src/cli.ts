@@ -32,6 +32,10 @@ const HELP=`Reelet first editing slice. Every command prints JSON except help.
   node src/cli.ts restore <project-dir> [checkpoint-id|latest] --confirm discard-later-edits
 
 Times accept decimal seconds or exact fractions, e.g. 1001/30000.
+Find reusable clips: node src/library/cli.ts search --q TEXT --kind video
+Import a result with one command: node src/cli.ts library-import <project-dir> <result.items[].id>
+Asset IDs import the whole source; range IDs import the saved source selection into the project bin.
+The response includes result.media.id for subsequent timeline edits. Import preserves library provenance.
 Graphics import copies a folder containing index.html into project assets.
 Batch: {preconditions:{"clip:ID":1,"track:ID":1,"occupancy:ID":1,"media:ID":1},
  operations:[{op:"put",collection:"clips",value:{id:"ID",volume:0.5}}]}.

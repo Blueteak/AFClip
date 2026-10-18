@@ -14,6 +14,7 @@ const fmin = (a, b) => secs(a) <= secs(b) ? a : b;
 const ZERO = { num: 0, den: 1 }, ONE = { num: 1, den: 1 };
 
 let snapshot = null;
+let libraryMedia = {}, libraryOffline = false, libraryLoading = false, libraryMediaKey = '';
 const project = () => snapshot?.project;
 const clips = () => project()?.clips || [];
 const tracks = () => project()?.tracks || [];
@@ -74,7 +75,7 @@ const mediaName = m => {
   if (!m) return 'Missing media';
   // Imported graphic folders are renamed to stable IDs, so borrow the name of a clip that uses them.
   if (m.kind === 'graphic') return clips().find(c => c.mediaId === m.id && c.name)?.name || `Graphic ${m.id.slice(-6)}`;
-  return basename(m.path);
+  return libraryMedia[m.id]?.name || m.metadata?.library?.name || basename(m.path);
 };
 const clipName = c => c.name || stem(mediaName(mediaById(c.mediaId)));
 const sourceBound = m => m?.kind === 'video' || m?.kind === 'audio';
@@ -137,6 +138,15 @@ function syncPlayButton() {
   const label = running ? 'Pause' : 'Play';
   if (button && button.getAttribute('aria-label') !== label) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', label); }
 }
+// Source monitor: previews bin media with its own clock. It never touches the timeline session or the project.
+const source = new window.ReeletSourcePreview({
+  api, stage: $('source-stage'), strip: $('source-strip'),
+  format: t => tc(Math.floor(t * fps() + 1e-7)), frameDuration: () => 1 / fps(),
+  onTime: t => drawSourceTime(t),
+  onState: () => { syncSourceTransport(); if (monitorView === 'source') drawMonitor(); refreshSourceInspector(); },
+  onSelect: () => refreshSourceInspector(),
+  onError: error => say(explain(error), 'error'),
+});
 
 
 // ---------------------------------------------------------------- DOM helpers
@@ -191,6 +201,7 @@ function hintItems(items) {
 function idleHint() {
   if (drag) return;
   if (hoverHint) return hintItems(hoverHint);
+  if (monitorView === 'source') return hintItems([{ keys: 'Space', text: 'play source' }, { keys: ['Up', 'Down'], text: 'annotations' }, ...(source.wave ? [{ keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] : []), { keys: 'Esc', text: 'Program' }]);
   if (tool === 'razor') return hintItems([{ text: 'Razor: click a clip to split it' }, { keys: 'V', text: 'back to selection' }]);
   hintItems([{ keys: '?', text: 'Shortcuts' }, { keys: 'Ctrl+Space', text: 'Search commands' }]);
 }
@@ -931,7 +942,7 @@ function addMediaAt(m, trackId, f) {
     if (target && (target.locked || !free(target.id, f, f + len))) target = null;
     if (!target) { target = { id: uid('track'), name: stem(mediaName(m)), disabled: false, locked: false }; ops.push(put('tracks', target)); Object.assign(pre, { [`track:${target.id}`]: 0, [`occupancy:${target.id}`]: 0 }); }
     const sourceIn=m.metadata?.library?.start?fromF(Math.ceil(secs(m.metadata.library.start)*fps()-1e-6)):ZERO;
-    ops.push(put('clips', { id, trackId: target.id, mediaId: m.id, name: m.metadata?.library?.name||stem(mediaName(m)), start: fromF(Math.max(0, f)), duration: fromF(len), sourceIn, speed: ONE, volume: 1, mute: false, fadeIn: ZERO, fadeOut: ZERO }));
+    ops.push(put('clips', { id, trackId: target.id, mediaId: m.id, name: libraryMedia[m.id]?.name || m.metadata?.library?.name || stem(mediaName(m)), start: fromF(Math.max(0, f)), duration: fromF(len), sourceIn, speed: ONE, volume: 1, mute: false, fadeIn: ZERO, fadeOut: ZERO }));
     return { ops, pre, message: `Added “${stem(mediaName(m))}” at ${tc(f)}${trackId && target.id !== trackId ? ' on a new track' : ''}` };
   }).then(ok => { if (ok) select([id]); });
 }
@@ -1056,6 +1067,7 @@ async function playExport() {
   video.play().catch(error => say(error.message, 'error'));
 }
 function togglePlay() {
+  if (monitorView === 'source') { source.togglePlay(); return; }
   if (monitorView === 'export' && finishedExport) { const v = $('export-video'); v.paused ? v.play() : v.pause(); return; }
   clearTimeout(frameTimer);
   if (playback.wantsPlay) { playback.pause(); rememberMarks(); }
@@ -1063,12 +1075,17 @@ function togglePlay() {
 }
 function setMonitorView(view) {
   if (view !== 'frame') playback.pause(false);
+  if (view !== 'source') source.pause();
+  const previous = monitorView;
   monitorView = view;
   for (const t of document.querySelectorAll('.monitor .tab')) t.classList.toggle('active', t.dataset.view === view);
   const video = $('export-video');
   if (view !== 'export') video.pause();
   video.hidden = view !== 'export'; video.controls = view === 'export'; syncPlayButton();
   drawMonitor();
+  if (previous !== view && (previous === 'source' || view === 'source')) { drawInspector(); idleHint(); }
+  // Edits made while browsing sources were not previewed. Bring Program up to date.
+  if (previous === 'source' && view === 'frame' && clips().length) requestFrame(0);
 }
 
 // ---------------------------------------------------------------- Drawing
@@ -1087,7 +1104,7 @@ function draw() {
   playF = Math.min(playF, navEndF());
   $('project-name').textContent = p.name;
   document.title = `${p.name} · Reelet`;
-  drawMedia(); drawInspector(); drawMonitor(); syncChrome();
+  drawMedia(); syncSource(); drawInspector(); drawMonitor(); syncChrome();
   if (drag || editingTrack) deferredDraw = true; else drawTimeline();
   if (!$('history-panel').closest('.tab-page').hidden) drawHistory();
   if (firstLoad) { firstLoad = false; api.ready(); }
@@ -1114,34 +1131,208 @@ function syncChrome() {
   drawPlayhead();
 }
 
+function mediaFolder(m) { return libraryMedia[m.id]?.folder || (m.metadata?.library ? 'Content library' : 'Project media'); }
+function mediaLibraryId(m) {
+  const link = m.metadata?.library;
+  return libraryMedia[m.id]?.importId || (link?.temporary ? link.assetId : link?.rangeId || link?.assetId);
+}
+function filteredMedia() {
+  const query = $('search').value.trim().toLowerCase();
+  return (project()?.media || []).filter(m => {
+    const data = libraryMedia[m.id];
+    return [mediaName(m), m.path, mediaLibraryId(m), m.metadata?.library?.assetId, kindLabel(m.kind), data?.assetName, data?.notes, data?.parentNotes, mediaFolder(m), ...(data?.tags || [])].join('\n').toLowerCase().includes(query);
+  }).sort((a, b) => mediaFolder(a).localeCompare(mediaFolder(b)) || mediaName(a).localeCompare(mediaName(b)) || a.id.localeCompare(b.id));
+}
+async function refreshLibraryMedia() {
+  if (libraryLoading || dragMedia || !project() || !api.libraryMedia) return;
+  libraryLoading = true;
+  const previous = JSON.stringify(libraryMedia), wasOffline = libraryOffline, sourceId = source.mediaId, sourceBefore = JSON.stringify(libraryMedia[sourceId] ?? null);
+  const key = JSON.stringify(project().media.map(m => [m.id, m.metadata?.library]));
+  try {
+    const data = await api.libraryMedia();
+    if (dragMedia) return;
+    // Ignore a response for media removed or replaced while the request was running.
+    if (key !== JSON.stringify(project().media.map(m => [m.id, m.metadata?.library]))) return;
+    libraryMedia = data; libraryOffline = false; libraryMediaKey = key;
+    if (sourceId && sourceId === source.mediaId && JSON.stringify(data[sourceId] ?? null) !== sourceBefore) void source.refreshAnnotations();
+  } catch { libraryOffline = true; libraryMediaKey = key; }
+  finally {
+    libraryLoading = false;
+    if (!dragMedia && (previous !== JSON.stringify(libraryMedia) || wasOffline !== libraryOffline || key !== libraryMediaKey)) drawMedia();
+  }
+}
+setInterval(refreshLibraryMedia, 5000);
+// Keep paused source artifacts leased and pick up range/take edits as well.
+setInterval(() => { if (monitorView === 'source') void source.refreshAnnotations(); }, 20000);
+window.addEventListener('focus', refreshLibraryMedia);
+
+// Thumbnails load lazily, four requests at a time, once per media, path and range. Their <img>
+// nodes survive bin redraws, so metadata polling never reloads or re-decodes them. No retries.
+const thumbs = new Map(), thumbQueue = [], thumbTargets = new WeakMap();
+let thumbActive = 0;
+const thumbKey = m => JSON.stringify([m.id, m.path, secs(m.metadata?.library?.start), secs(m.metadata?.library?.end)]);
+function thumbFor(m) {
+  const key = thumbKey(m);
+  let entry = thumbs.get(key);
+  if (!entry) {
+    const img = new Image(); img.alt = ''; img.decoding = 'async'; img.draggable = false; img.hidden = true;
+    entry = { key, id: m.id, state: api.mediaThumbnail ? 'idle' : 'none', img };
+    img.onload = () => { entry.state = 'ready'; img.hidden = false; };
+    img.onerror = () => { entry.state = 'error'; img.hidden = true; };
+    thumbs.set(key, entry);
+  }
+  return entry;
+}
+function pumpThumbs() {
+  while (thumbActive < 4 && thumbQueue.length) {
+    const entry = thumbQueue.shift();
+    if (thumbs.get(entry.key) !== entry) continue;
+    thumbActive++; entry.state = 'loading';
+    Promise.resolve().then(() => api.mediaThumbnail(entry.id))
+      .then(result => { if (result?.url) entry.img.src = result.url; else entry.state = 'none'; }, () => { entry.state = 'error'; })
+      .finally(() => { thumbActive--; pumpThumbs(); });
+  }
+}
+const thumbObserver = new IntersectionObserver(items => {
+  for (const item of items) {
+    if (!item.isIntersecting) continue;
+    thumbObserver.unobserve(item.target);
+    const entry = thumbTargets.get(item.target);
+    if (entry?.state === 'idle') { entry.state = 'queued'; thumbQueue.push(entry); }
+  }
+  pumpThumbs();
+}, { root: $('media-list'), rootMargin: '120px 0px' });
+
 function drawMedia() {
   const list = $('media-list'), media = project().media, query = $('search').value.trim().toLowerCase();
+  const key = JSON.stringify(media.map(m => [m.id, m.metadata?.library]));
+  if (key !== libraryMediaKey && !libraryLoading) void refreshLibraryMedia();
   const usage = new Map(); for (const c of clips()) usage.set(c.mediaId, (usage.get(c.mediaId) || 0) + 1);
-  $('media-count').textContent = media.length || '';
+  const visible = filteredMedia();
+  $('media-count').textContent = query ? `${visible.length}/${media.length}` : media.length || '';
+  const scrollTop = list.scrollTop;
+  thumbObserver.disconnect();
   list.replaceChildren();
-  for (const m of media.filter(m => mediaName(m).toLowerCase().includes(query))) {
-    const used = usage.get(m.id) || 0, d = secs(m.duration);
-    const meta = m.kind === 'image' ? 'still' : d ? shortTc(Math.round(d * fps())) : '—';
-    const row = h('div', { class: `media-row ${m.kind} ${used ? '' : 'unused'} ${binSelection === m.id ? 'selected' : ''}`, draggable: 'true', dataset: { id: m.id } },
-      icon(kindIcon(m.kind)), h('span', { class: 'name' }, mediaName(m)), h('span', { class: 'meta' }, meta));
+  const live = new Set(media.map(thumbKey));
+  for (const key of thumbs.keys()) if (!live.has(key)) thumbs.delete(key);
+  let folder;
+  for (const m of visible) {
+    const data = libraryMedia[m.id], link = m.metadata?.library;
+    if (mediaFolder(m) !== folder) {
+      folder = mediaFolder(m);
+      list.append(h('div', { class: 'section-title' }, folder));
+    }
+    const used = usage.get(m.id) || 0, d = secs(m.duration), selectedRange = link?.end != null;
+    const status = libraryOffline && link ? 'Library offline, showing saved metadata' : data?.status;
+    const meta = (status ? '! ' : '') + (selectedRange ? '↳ ' : '') + (m.kind === 'image' ? 'still' : d ? shortTc(mediaLength(m)) : '—');
+    const thumb = thumbFor(m), thumbEl = h('span', { class: 'media-thumb' }, icon(kindIcon(m.kind)), thumb.img);
+    if (thumb.state === 'idle') { thumbTargets.set(thumbEl, thumb); thumbObserver.observe(thumbEl); }
+    const row = h('div', { class: `media-row ${m.kind} ${status ? 'missing' : ''} ${used ? '' : 'unused'} ${binSelection === m.id ? 'selected' : ''}`, draggable: 'true', dataset: { id: m.id } },
+      thumbEl, h('span', { class: 'media-text' }, h('span', { class: 'name' }, mediaName(m)), h('span', { class: 'meta' }, meta)));
     row.tip = () => ({ title: mediaName(m), desc: kindLabel(m.kind) + (used ? ` · used in ${used} clip${used > 1 ? 's' : ''}` : ' · not used yet'),
-      meta: [m.metadata?.width ? `${m.metadata.width}×${m.metadata.height}${m.metadata.fps ? ` · ${Math.round(secs(frac(...m.metadata.fps.split('/').map(Number))) * 100) / 100} fps` : ''}` : null, d ? `Duration ${tc(Math.round(d * fps()))}` : null, m.metadata?.authoringPath || m.path].filter(Boolean).join('\n'),
-      hint: [{ keys: '#Drag', text: 'to timeline' }, { keys: '#Double-click', text: 'add at playhead' }] });
-    row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); };
+      meta: [status, selectedRange ? `${link.temporary ? 'Selection' : 'Range'} ${tc(toF(link.start))} → ${tc(toF(link.end))} · saved project timing` : null,
+        data?.tags?.length ? data.tags.join(' · ') : null, data?.notes, data?.parentNotes ? `Source notes: ${data.parentNotes}` : null,
+        data?.takes ? `${data.takes} take${data.takes === 1 ? '' : 's'} in library` : null, link ? `Library ID: ${mediaLibraryId(m)}${link.temporary ? ' · whole source' : ''}` : null,
+        m.metadata?.width ? `${m.metadata.width}×${m.metadata.height}${m.metadata.fps ? ` · ${Math.round(secs(frac(...m.metadata.fps.split('/').map(Number))) * 100) / 100} fps` : ''}` : null, d ? `Source duration ${tc(Math.round(d * fps()))}` : null, m.metadata?.authoringPath || m.path].filter(Boolean).join('\n'),
+      hint: [{ keys: '#Click', text: 'preview' }, { keys: '#Double-click', text: 'add at playhead' }, { keys: '#Drag', text: 'to timeline' }] });
+    row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); openSource(m); };
     row.ondblclick = () => editable() && addMediaAt(m, null, playF);
-    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}]:[]), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
+    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, { label: 'Preview in Source monitor', icon: 'eye', run: () => openSource(m) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}, {label:link.temporary?'Copy source library ID':'Copy library ID',icon:'copy',run:()=>perform(()=>api.copyText(mediaLibraryId(m)), 'Library ID copied')}]:[]), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
     row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-reelet-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
     row.ondragend = () => { dragMedia = null; clearDropGhost(); };
     list.append(row);
   }
-  if (!media.length) list.append(h('div', { class: 'empty-note' }, 'No media yet.', h('br'), h('button', { class: 'link-button', onclick: () => run('import') }, 'Import media'), ' ', kbd('Ctrl+I')));
-  else if (!list.children.length) list.append(h('div', { class: 'empty-note' }, 'Nothing matches that search.'));
+  if (!media.length) list.append(h('div', { class: 'empty-note' }, 'No media yet.', h('br'), h('button', { class: 'link-button', onclick: () => run('import') }, 'Import media'), ' ', kbd('Ctrl+I'), h('br'), h('button', { class: 'link-button', onclick: () => run('library') }, 'Browse content library'), ' ', kbd('Ctrl+L')));
+  else if (!visible.length) list.append(h('div', { class: 'empty-note' }, 'Nothing matches that search.'));
+  list.scrollTop = scrollTop;
 }
 $('media-list').addEventListener('keydown', e => {
-  const media = project()?.media || [], i = media.findIndex(m => m.id === binSelection);
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { binSelection = media[Math.max(0, Math.min(media.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]?.id; drawMedia(); e.preventDefault(); e.stopPropagation(); }
-  else if (e.key === 'Enter' && binSelection && editable()) { addMediaAt(mediaById(binSelection), null, playF); e.preventDefault(); e.stopPropagation(); }
+  const media = filteredMedia(), i = media.findIndex(m => m.id === binSelection);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    binSelection = media[Math.max(0, Math.min(media.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]?.id; drawMedia(); $('media-list').querySelector('.selected')?.scrollIntoView({ block: 'nearest' }); e.preventDefault(); e.stopPropagation();
+    // Held arrows settle before a source loads.
+    clearTimeout(sourceTimer); sourceTimer = setTimeout(() => openSource(mediaById(binSelection)), 90);
+  }
+  else if (e.key === 'Enter' && i >= 0 && editable()) { addMediaAt(media[i], null, playF); e.preventDefault(); e.stopPropagation(); }
 });
+
+const sourceKey = m => JSON.stringify([m.id, m.path, m.metadata?.library ?? null]);
+let sourceTimer = null;
+function openSource(m) {
+  clearTimeout(sourceTimer);
+  if (!m) return;
+  setMonitorView('source');
+  void source.open(m, sourceKey(m));
+}
+// Bin edits can remove or repoint the previewed media.
+function syncSource() {
+  if (!source.mediaId) return;
+  const m = mediaById(source.mediaId);
+  if (!m) { source.clear(); if (monitorView === 'source') setMonitorView('frame'); return; }
+  if (monitorView === 'source' && sourceKey(m) !== source.key) void source.open(m, sourceKey(m));
+}
+function drawSourceTime(t) {
+  $('source-time').textContent = source.timed ? tc(Math.floor(t * fps() + 1e-7)) : source.status === 'ready' ? kindLabel(source.kind) : '';
+}
+function syncSourceTransport() {
+  const timed = source.timed;
+  for (const b of $('source-buttons').querySelectorAll('button')) b.disabled = !timed || (b.dataset.source === 'jump' && !source.blocks.length);
+  const play = $('source-buttons').querySelector('[data-source="play"]'), label = source.running ? 'Pause' : 'Play';
+  if (play && play.getAttribute('aria-label') !== label) { play.replaceChildren(icon(source.running ? 'pause' : 'play')); play.setAttribute('aria-label', label); }
+  $('source-duration').textContent = timed ? tc(Math.round(source.duration * fps())) : '';
+  drawSourceTime(source.time);
+}
+function drawSourceMonitor() {
+  const state = $('frame-state'), loading = source.status === 'loading', warning = source.data?.warning || source.notice;
+  state.className = `frame-state ${loading ? 'busy' : source.status === 'error' || warning ? 'stale' : ''}`;
+  state.replaceChildren(); state.tip = null;
+  if (loading) state.append(icon('render'), 'Loading source');
+  else if (source.status === 'error') { state.append(icon('alert'), 'Unavailable'); state.tip = { title: 'Source unavailable', desc: source.error }; }
+  else if (source.running) state.append(icon('play'), 'Playing');
+  else if (warning) { state.append(icon('alert'), 'Warning'); state.tip = { title: 'Source warning', desc: warning }; }
+  else if (source.status === 'ready') state.append(h('span', {}, source.data?.width && source.kind !== 'audio' ? `${source.data.width}×${source.data.height}` : kindLabel(source.kind)));
+  $('stage').classList.remove('stale');
+  $('stage-busy').hidden = !loading;
+  $('preview').hidden = $('native-preview').hidden = $('stage-empty').hidden = true;
+}
+// Source keys hold JSON, so this key uses a separator the program inspector keys never split on.
+const sourceInspectorKey = () => ['source', source.key, source.status, source.version, source.selected?.key || '', source.notice || ''].join('\u0001');
+function refreshSourceInspector() { if (monitorView === 'source' && sourceInspectorKey() !== inspectorKey) drawInspector(); }
+const staticField = (label, value, tip) => field(label, h('span', { class: 'field-static', tip: { title: label, desc: tip, meta: value } }, value));
+function annotationBody(tags, notes, empty = 'No tags or notes') {
+  const out = [];
+  if (tags?.length) out.push(h('div', { class: 'tag-list' }, tags.map(t => h('span', { class: 'tag-chip' }, t))));
+  if (notes) out.push(h('div', { class: 'insp-notes' }, notes));
+  if (!out.length) out.push(h('div', { class: 'insp-notes empty' }, empty));
+  return out;
+}
+// Library annotations are read-only here. Edit them in the content library.
+function drawSourceInspector(box) {
+  const d = source.data, m = mediaById(source.mediaId) || source.media, kind = source.kind, a = d?.annotations;
+  const at = t => tc(Math.floor(t * fps() + 1e-7)), path = m?.metadata?.authoringPath || m?.path;
+  $('inspector-title').textContent = 'Source';
+  $('inspector-kind').append(icon(kindIcon(kind), 'sm'), kindLabel(kind));
+  box.append(h('div', { class: 'insp-head' }, icon(kindIcon(kind)), h('span', { class: 'insp-title' }, a?.name || d?.name || mediaName(m))),
+    h('div', { class: 'insp-source', tip: { title: mediaName(m), meta: path } }, basename(path) || kindLabel(kind)));
+  if (source.status === 'loading') { box.append(h('div', { class: 'insp-note' }, 'Loading source…')); return; }
+  if (source.status === 'error') { box.append(h('div', { class: 'insp-note warn' }, source.error)); return; }
+  if (!d) return;
+  for (const text of [d.warning, source.notice]) if (text) box.append(h('div', { class: 'insp-note warn' }, text));
+  const range = d.selection;
+  box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Source'),
+    source.duration ? staticField('Duration', at(source.duration)) : null,
+    d.width && kind !== 'audio' ? staticField('Size', `${d.width}×${d.height}`) : null,
+    range ? staticField('Saved range', `${at(range.start)} → ${at(range.end)}`, 'Project timing for this bin item. Adding it to the timeline uses this range.') : null));
+  if (a) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Annotation'), annotationBody(a.tags, a.notes)));
+  const b = source.selected;
+  if (b) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, b.name),
+    staticField('In', at(b.start)), staticField('Out', at(b.end)), staticField('Length', shortTc(Math.max(0, Math.round((b.end - b.start) * fps())))),
+    b.track ? staticField('Track', b.track) : null,
+    b.type === 'take' ? annotationBody(null, b.item.text, 'No transcript') : annotationBody(b.item.tags, b.item.notes)));
+  if (source.blocks.length) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Ranges and takes', h('span', { class: 'tab-spacer' }), String(source.blocks.length)),
+    source.blocks.map(x => h('button', { class: `annotation-item ${x.type} ${x.key === b?.key ? 'selected' : ''}`, onclick: () => source.select(x), tip: { title: x.name, meta: [`${at(x.start)} → ${at(x.end)}`, x.track ? `Track ${x.track}` : null].filter(Boolean).join('\n') } },
+      h('span', { class: 'swatch' }), h('span', { class: 'label' }, x.name), h('span', { class: 'when' }, shortTc(Math.floor(x.start * fps() + 1e-7)))))));
+}
 
 async function drawHistory() {
   const panel = $('history-panel');
@@ -1180,6 +1371,12 @@ function confirmRestore(p) {
 
 function drawMonitor() {
   const p = project(); if (!p) return;
+  const sourceMode = monitorView === 'source';
+  $('monitor').classList.toggle('source-mode', sourceMode);
+  $('source-stage').hidden = $('source-panel').hidden = !sourceMode;
+  $('program-transport').hidden = $('mini-ruler').hidden = sourceMode;
+  $('source-tab').hidden = !source.media;
+  if (sourceMode) { drawSourceMonitor(); drawPlayhead(); return; }
   const busy = !!frameJobId || playback.busy, cur = Math.min(playF, lastFrame());
   const stale = !!shown && !playback.wantsPlay && (shown.f !== cur || shown.revision !== p.revision);
   const state = $('frame-state');
@@ -1271,6 +1468,11 @@ function chip(id, label, cls = '') { const a = actions[id]; return h('button', {
 function drawInspector() {
   const p = project(); if (!p) return;
   const box = $('inspector');
+  if (monitorView === 'source' && source.media) {
+    const key = sourceInspectorKey(), scroll = key.split('\u0001')[1] === inspectorKey.split('\u0001')[1] ? box.scrollTop : 0;
+    inspectorKey = key; box.replaceChildren(); $('inspector-kind').replaceChildren();
+    drawSourceInspector(box); box.scrollTop = scroll; return;
+  }
   const list = selectedClips(), tr = selTransition && transitionById(selTransition), mk = selMarker && markerById(selMarker);
   const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}` : `p:${p.revision}`;
   if (box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join()) return;
@@ -2049,7 +2251,15 @@ function buildChrome() {
   for (const tab of document.querySelectorAll('.bin .tab')) tab.onclick = () => showTab(tab.dataset.tab);
   document.querySelector('.bin [data-tab="media"]').tip = { title: 'Media bin', desc: 'Imported footage, audio, images and graphics. Originals stay where they are.' };
   document.querySelector('.bin [data-tab="history"]').tip = { title: 'History', desc: 'Shared undo/redo and restorable checkpoints.' };
-  for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'export' ? playExport() : setMonitorView('frame');
+  const sourceButton = (name, iconName, title, keys, onclick) => h('button', { class: `icon-button ${name === 'play' ? 'primary' : ''}`, dataset: { source: name }, disabled: true, onclick, tip: { title, keys } }, icon(iconName));
+  $('source-buttons').append(sourceButton('start', 'to-start', 'Go to source start', 'Home', () => source.toStart()), sourceButton('jump', 'prev-edit', 'Previous range or take', 'Up', () => source.jump(-1)),
+    sourceButton('back', 'step-back', 'Back 1 frame', 'Left', () => source.step(-1)), sourceButton('play', 'play', 'Play / pause source', 'Space', () => source.togglePlay()),
+    sourceButton('forward', 'step-forward', 'Forward 1 frame', 'Right', () => source.step(1)), sourceButton('jump', 'next-edit', 'Next range or take', 'Down', () => source.jump(1)),
+    sourceButton('end', 'to-end', 'Go to source end', 'End', () => source.toEnd()));
+  for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'export' ? playExport() : tab.dataset.view === 'source' ? openSource(mediaById(source.mediaId)) : setMonitorView('frame');
+  $('source-tab').tip = { title: 'Source monitor', desc: 'Preview bin media and its library annotations without touching the timeline.' };
+  // Working on the timeline returns the monitor to Program.
+  document.querySelector('.timeline.panel').addEventListener('pointerdown', () => { if (monitorView === 'source') setMonitorView('frame'); }, true);
   document.querySelector('.monitor [data-view="frame"]').tip = { title: 'Program monitor', desc: 'Live timeline preview with audio. Enter renders a full-resolution frame.', keys: 'Enter' };
   $('export-tab').tip = { title: 'Last export', desc: 'Play the most recent finished MP4.', keys: 'Space' };
   $('search').oninput = drawMedia;
@@ -2084,6 +2294,24 @@ function buildChrome() {
 }
 
 // ---------------------------------------------------------------- Keyboard
+// While the Source monitor is up, transport keys drive the source and timeline keys stay inert.
+const SOURCE_SAFE = new Set(['import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
+function sourceShortcut(combo, e) {
+  const keys = {
+    Space: () => { if (!e.repeat) source.togglePlay(); }, Left: () => source.step(-1), Right: () => source.step(1),
+    'Shift+Left': () => source.step(-5), 'Shift+Right': () => source.step(5), Home: () => source.toStart(), End: () => source.toEnd(),
+    Up: () => source.jump(-1), Down: () => source.jump(1), Escape: () => setMonitorView('frame'),
+  };
+  // Waveform zoom while previewing audio; other sources fall through to the usual handling.
+  const zoom = { '=': 1.6, '-': 1 / 1.6, '\\': 0 }[combo];
+  if (zoom != null && source.zoomWave(zoom)) { e.preventDefault(); return true; }
+  if (keys[combo]) { e.preventDefault(); keys[combo](); return true; }
+  const id = keymap.get(combo);
+  if (!id || SOURCE_SAFE.has(id)) return false;
+  e.preventDefault();
+  flashHint([{ text: 'Timeline keys pause while previewing a source' }, { keys: 'Esc', text: 'Program' }]);
+  return true;
+}
 function comboOf(e) {
   let key = e.key;
   if (/^Key[A-Z]$/.test(e.code)) key = e.code.slice(3);
@@ -2109,6 +2337,7 @@ document.addEventListener('keydown', e => {
     const menu = [...$('menubar').children].find(b => b.textContent[0].toUpperCase() === e.code.slice(3));
     if (menu) { e.preventDefault(); menu.dispatchEvent(new Event('open')); openMenuState?.buttons.find(b => !b.disabled)?.classList.add('active'); return; }
   }
+  if (monitorView === 'source' && !drag && sourceShortcut(combo, e)) return;
   if (combo === 'Escape') {
     if (drag) { const d = drag; if (d.type === 'move') d.els.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }); endDrag(); drawTimeline(); say('Drag cancelled'); }
     else if (selPoint) { selPoint = null; drawTimeline(); }
@@ -2125,8 +2354,9 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------------------------------------------------------------- Events and startup
+window.addEventListener('beforeunload', () => source.clear());
 window.reeletPrepareReload = () => {
-  if (!connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId ||
+  if (!connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
   return true;
@@ -2147,6 +2377,10 @@ api.onEvent(async event => {
 applyLayout(); buildMenubar(); buildChrome(); idleHint();
 refresh().then(async () => {
   say('Connected to project');
+  if (project().media.some(m => sourceBound(m) && !m.metadata?.library)) {
+    // Older projects gain identities once; annotation reads never rewrite clips.
+    void api.command({ command: 'library-sync' }).then(() => refresh()).then(refreshLibraryMedia).catch(() => {});
+  }
   const state = await api.command({ command: 'status' });
   const jobs = (Array.isArray(state) ? state : state.jobs || (state.id ? [state] : [])).sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
   for (const job of jobs) await onJob(job, { silent: true });
