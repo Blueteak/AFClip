@@ -2,9 +2,9 @@
 
 Follow-up: [tested rendering fixes](windows-rendering-solutions.md) resolve the sampled color mismatch, enable original-media software HEVC rendering, and demonstrate working Intel QSV encoding. This document preserves the original baseline.
 
-Run on October 16, 2026, Pacific time. The repository contained design documents but no runnable editor or checked-in benchmark. This work adds the [Windows experiment runner](../benchmarks/windows/README.md) and tests its rendering path with local gameplay footage.
+Run on October 16, 2026, Pacific time. The repository contained design documents but no runnable editor or checked-in benchmark. The run introduced the [Windows experiment runner](../benchmarks/windows/README.md) and tested its rendering path with local gameplay footage.
 
-The renderer is not ready for architecture acceptance. The simple composed export is slower than real time, GPU/software color conversion differs, native software HEVC preview fails, and Intel QSV cannot initialize with the tested binary and driver. The shared project engine and GUI/CLI workflow do not exist yet.
+At that baseline, composed export was slower than real time, GPU/software color conversion differed, native software HEVC preview failed, and Intel QSV could not initialize with the tested binary and driver. For the implemented engine and GUI/CLI workflow, see the [editing guide](editing-prototype.md); current playback targets and measurements are in [playback notes](timeline-playback.md).
 
 ## Reproduce and inspect
 
@@ -75,29 +75,3 @@ Direct HEVC preview with Chromium acceleration disabled produces black video, ze
 GPU and software captures differ in SDR color despite using the same source tags and forced sRGB browser output. Each exported file closely matches the capture from its own mode, but that is insufficient to establish consistent color when switching paths. The maximum observed patch difference is 13/255, above this experiment's 5/255 tolerance. The conversion cause is unresolved and must be investigated before accepting the renderer.
 
 Preview measurements cover three seconds of muted playback in an offscreen window with two animated overlays and one visible video. They are not sustained visible-GUI playback or live audio-sync acceptance tests. Ten seeks give only a small sample; their nearest-rank p95 equals their maximum.
-
-## Prototype checklist
-
-| Requirement from the technical overview | Evidence/status |
-| --- | --- |
-| CLI starts independent engine; Electron attaches and receives edits | Untested, engine and editor are absent |
-| Editing/export after closing GUI | Hidden rendering process exports, but the actual GUI-close/headless-edit workflow is unimplemented |
-| Deterministic graphic seeks and frame readiness | Passed for the fixed local HTML fixture and generated media |
-| Trimmed media, dissolve, overlapping graphics, offline synchronized audio | Passed in a fixed five-second composition |
-| Stretching and project-frame-rate changes preserve timing | Untested |
-| VFR frame selection | Passed at nine requested times using actual PTS and encoded frame identities |
-| VFR audio synchronization | Untested; audio/flash export test uses CFR footage |
-| SDR color consistency | Same-mode export checks pass; GPU/software preview consistency fails |
-| Worker failure isolation | Forced renderer crash and reload passes; project-state survival is untested |
-| Hardware and software fallback | NVIDIA path works; native software HEVC fails; explicit H.264 proxy works; Intel QSV fails; AMD untested |
-| Preview/seek/export/transfer measurements | Measured on this machine with the limits above |
-| Command responsiveness under rendering | Engine absent; only the standalone controller event loop was observed |
-| Agreed numerical performance targets | Not yet agreed |
-
-## Next work
-
-Resolve the GPU/software color difference and compare the current seek/capture implementation against sequential source decoding and a cheaper frame-transfer path. Keep source-decoding fallback explicit, including HEVC. Investigate a newer pinned FFmpeg build for Intel QSV before rejecting that path.
-
-Then prove the smallest complete engine workflow: one persistent project process, CLI import/edit, an attached GUI receiving the same change, GUI close, and original-media export. Measure real command round trips while exporting. Do not count the benchmark controller as that engine.
-
-Suggested targets for agreement, not current acceptance criteria: at most 1% preview frame drops over 30 seconds at 1080p60; p95 seek-to-frame below 150 ms using an allowed proxy; at least real-time 1080p30 composed export; p95 engine command response below 50 ms under render load. These short experiments do not establish those targets, and the present capture path falls below the suggested export rate.

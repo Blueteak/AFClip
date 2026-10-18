@@ -139,7 +139,7 @@ Audio source previews in both apps draw channel peaks and RMS levels from cached
 
 The read-only browser also allows temporary In/Out marks, which are inserted without creating library annotations. CLI callers use `library-import PROJECT ASSET --selection '{"revision":N,"sourceId":"SOURCE_ID","startSample":0,"endSample":22050}'`, or `startFrame`/`endFrame` for prepared video. The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
 
-## Source monitor and CLI integration, 2026-10-18
+## Source monitor and CLI integration
 
 In AFClip's Source monitor, **I** marks In and **O** marks Out. Video Out includes the displayed frame; stored end frame indices are exclusive. Audio marks use source samples. **Clear marks** or `Alt+X` returns to the bin item's saved selection. Select an annotation or take and choose **Use as In/Out** to copy its boundaries into a temporary selection. **Insert at playhead** or Enter inserts on a new track. **Edit in library** opens the standalone annotation writer.
 
@@ -175,9 +175,9 @@ Project reference updates are persisted to `.afclip/library-outbox.json` before 
 
 ## Local verification, 2026-10-17
 
-The default catalog contains **10 video assets and 25 SFX**, plus **two optional ranges**. All 35 assets have tags and notes saved through GUI controls with author `agent`. Videos were inspected in the GUI; SFX were previewed and annotated using their source labels, without claiming an acoustic analysis. Samples came from `D:\Recordings` and five packs under `D:\Audio Effects`: board-game dice, UI/menu, spell impacts, armored footsteps and impacts.
+On October 17, the verification catalog contained **10 video assets and 25 SFX**, plus **two optional ranges**. All 35 assets received tags and notes through GUI controls with author `agent`. Videos were inspected in the GUI; SFX were previewed and annotated using their source labels, without claiming an acoustic analysis. Samples came from `D:\Recordings` and five packs under `D:\Audio Effects`: board-game dice, UI/menu, spell impacts, armored footsteps and impacts.
 
-The [verification record](content-library-validation.json) stores counts, exact range boundaries and performance results. A catalog checkpoint named `Initial 35-asset GUI annotation pass` preserves the completed annotation pass.
+The [verification record](content-library-validation.json) stores counts, exact range boundaries and performance results. The pass created a catalog checkpoint named `Initial 35-asset GUI annotation pass`.
 
 Verified manually:
 
