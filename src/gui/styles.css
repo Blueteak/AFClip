@@ -546,3 +546,11 @@ kbd, .kbd {
 .welcome .t-body { line-height: 1.7; }
 .welcome .kbd-group { vertical-align: -3px; margin: 0 1px; }
 @keyframes rise { from { transform: translateY(6px); opacity: 0; } }
+
+.graphic-text-hits { position:absolute; left:50%; top:50%; transform-origin:center; pointer-events:none; }
+.graphic-text-hit { position:absolute; padding:0; border:0; border-radius:0; background:transparent; pointer-events:auto; cursor:text; }
+.graphic-text-hit:hover { background:transparent; outline:1px solid #75baff; }
+.native-layer { pointer-events:none; }
+.insp-section textarea { width:100%; min-width:0; resize:vertical; color:inherit; background:var(--bg-2); border:1px solid var(--line-2); padding:5px; font:inherit; }
+
+.text-reset { margin:2px 12px 6px; }

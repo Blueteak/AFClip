@@ -14,6 +14,8 @@ window.NativePreview = class NativePreview {
     host.replaceChildren(this.stage);
     this.resize = new ResizeObserver(() => this.fit()); this.resize.observe(host.parentElement); this.fit();
     this.message = e => {
+      const entry = [...this.entries.values()].find(v => v.media.kind === 'graphic' && v.content?.contentWindow === e.source);
+      if (entry && typeof e.data?.type === 'string' && e.data.type.startsWith('reelet-text-')) { this.textMessage(entry, e.data); return; }
       const p = this.pending.get(e.data?.requestId);
       if (!p || p.source !== e.source) return;
       if (e.data.type === 'reelet-ready' || e.data.type === 'reelet-error') {
@@ -33,12 +35,44 @@ window.NativePreview = class NativePreview {
         iframe.sandbox = 'allow-scripts'; iframe.style.width = graphic.width + 'px'; iframe.style.height = graphic.height + 'px';
         iframe.style.transform = `translate(-50%,-50%) scale(${Math.min(setup.width / graphic.width, setup.height / graphic.height)})`;
         entry.loaded = new Promise((resolve, reject) => { iframe.onload = resolve; iframe.onerror = () => reject(new Error('Graphic could not load')); });
-        entry.loaded.catch(this.onError); iframe.src = graphic.url; entry.content = iframe; layer.append(iframe);
+        entry.loaded.catch(this.onError); iframe.src = graphic.url; entry.content = iframe; iframe.style.pointerEvents = 'none'; layer.append(iframe);
+        const hits = document.createElement('div'); hits.className = 'graphic-text-hits';
+        Object.assign(hits.style, {width:iframe.style.width, height:iframe.style.height, transform:iframe.style.transform});
+        entry.hits = hits; layer.append(hits);
       } else if (media.kind === 'image') {
         const img = new Image(); img.src = media.url; entry.content = img; layer.append(img);
         entry.loaded = img.decode(); entry.loaded.catch(this.onError);
       }
     }
+  }
+  textMessage(entry, data) {
+    if (data.type === 'reelet-text-fields' && Array.isArray(data.fields)) {
+      entry.hits.replaceChildren();
+      if (entry.clip.track.locked) return;
+      for (const field of data.fields.slice(0, 256)) {
+        if (!field.visible || ![field.x,field.y,field.width,field.height].every(Number.isFinite)) continue;
+        const hit = document.createElement('button'); hit.className = 'graphic-text-hit';
+        hit.setAttribute('aria-label', `Edit ${field.id}`);
+        Object.assign(hit.style, {left:field.x+'px',top:field.y+'px',width:field.width+'px',height:field.height+'px'});
+        hit.onpointerdown = event => { event.preventDefault(); event.stopPropagation(); this.requestText(entry, field.id); };
+        entry.hits.append(hit);
+      }
+    } else if (data.type === 'reelet-text-request') this.requestText(entry, data.field);
+    else if (data.type === 'reelet-text-end') {
+      entry.content.style.pointerEvents = 'none'; entry.hits.hidden = false;
+      this.host.dispatchEvent(new CustomEvent('graphic-text-end', {detail:{...data,clipId:entry.clip.id}}));
+    }
+  }
+  requestText(entry, field) {
+    if (entry.clip.track.locked) return;
+    this.host.dispatchEvent(new CustomEvent('graphic-text-start', {detail:{clipId:entry.clip.id,field,activate:() => {
+      entry.content.style.pointerEvents = 'auto'; entry.hits.hidden = true;
+      entry.content.contentWindow.postMessage({type:'reelet-text-edit',field}, '*');
+    }}}));
+  }
+  finishText(cancel = false) {
+    for (const entry of this.entries.values()) if (entry.media.kind === 'graphic')
+      entry.content.contentWindow.postMessage({type:'reelet-text-finish',cancel}, '*');
   }
   fit() {
     const box = this.host.parentElement.getBoundingClientRect();
@@ -229,7 +263,7 @@ window.NativePreview = class NativePreview {
       const id = ++this.requestId;
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Graphic did not acknowledge playback time')); }, 10000);
       this.pending.set(id, { source: entry.content.contentWindow, resolve, reject, timer });
-      entry.content.contentWindow.postMessage({ type: 'reelet-render', requestId: id, time }, '*');
+      entry.content.contentWindow.postMessage({ type: 'reelet-render', requestId: id, time, text: entry.clip.text || {}, editable: !entry.clip.track.locked }, '*');
     })).finally(() => {
       entry.graphicBusy = null;
       if (entry.graphicNext != null && !this.closed) { const next = entry.graphicNext; entry.graphicNext = null; this.graphic(entry, next).catch(this.onError); }

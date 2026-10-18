@@ -224,7 +224,7 @@ app.whenReady().then(async () => {
     } catch (error) { mediaLibraryEndpoint = null; throw error; }
   });
   handle('command', payload => {
-    if (!payload || !['apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('import', async kind => {

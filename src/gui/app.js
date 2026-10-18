@@ -15,6 +15,7 @@ const ZERO = { num: 0, den: 1 }, ONE = { num: 1, den: 1 };
 
 let snapshot = null;
 let libraryMedia = {}, libraryOffline = false, libraryLoading = false, libraryMediaKey = '';
+let graphicTextEdit = null, textCommit = null;
 const project = () => snapshot?.project;
 const clips = () => project()?.clips || [];
 const tracks = () => project()?.tracks || [];
@@ -967,7 +968,7 @@ function jobFraction(job) {
   const p = typeof job.progress === 'number' ? job.progress : d.fraction ?? d.progress ?? (d.frame && d.totalFrames ? d.frame / d.totalFrames : 0);
   return Math.max(0, Math.min(1, Number(p) || 0));
 }
-function requestFrame(delay = 100) { clearTimeout(frameTimer); frameTimer = setTimeout(() => { if (clips().length && !playback.wantsPlay && monitorView === 'frame') playback.seek(secs(fromF(Math.min(playF, lastFrame()))), false); }, delay); }
+function requestFrame(delay = 100) { if (graphicTextEdit) return; clearTimeout(frameTimer); frameTimer = setTimeout(() => { if (!graphicTextEdit && clips().length && !playback.wantsPlay && monitorView === 'frame') playback.seek(secs(fromF(Math.min(playF, lastFrame()))), false); }, delay); }
 async function renderFrame(force) {
   playback.pause(false); setMonitorView('frame');
   clearTimeout(frameTimer);
@@ -1090,6 +1091,7 @@ function setMonitorView(view) {
 
 // ---------------------------------------------------------------- Drawing
 function draw() {
+  if (graphicTextEdit) return;
   const p = project(); if (!p) return;
   playback.setProject(p, prefs.renderMode);
   if (!p.clips.length) { shown = null; $('preview').removeAttribute('src'); }
@@ -1534,6 +1536,30 @@ function drawClipInspector(box, c) {
     field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked })),
     field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked }))));
 
+  if (m?.kind === 'graphic') {
+    const section = h('div', {class:'insp-section'}, h('div', {class:'section-title'}, 'Text'));
+    box.append(section);
+    api.command({command:'text-fields',clipId:c.id}).then(info => {
+      if (!section.isConnected) return;
+      for (const item of info.fields) {
+        const input = h('textarea', {rows:2, value:item.value, disabled:locked, 'aria-label':item.id});
+        let base;
+        input.onfocus = () => { clearTimeout(frameTimer); playback.pause(false); base = {revision:info.revision,mediaRevision:info.mediaRevision}; graphicTextEdit = {inspector:true,clipId:c.id,field:item.id,...base,predecessor:textCommit}; };
+        input.onkeydown = e => { if (e.key === 'Escape') {input.value=item.value;input.blur();} };
+        input.onblur = () => {
+          const edit = graphicTextEdit, value = input.value; graphicTextEdit = null;
+          if (value !== item.value) commitGraphicText(edit, value).then(result => {
+            if (result?.project) { info.revision = result.project.clips.find(clip => clip.id === c.id).revision; item.value = value; }
+          });
+          else if (playback.revision !== project().revision && !textCommit) {draw();requestFrame(0);}
+        };
+        section.append(field(item.id, input));
+        if (item.overridden) section.append(h('button', {class:'chip-button text-reset', onclick:() => perform(() => api.command({command:'text-set',clipId:c.id,field:item.id,reset:true,revision:info.revision,mediaRevision:info.mediaRevision}), 'Text reset'), disabled:locked}, `Reset ${item.id}`));
+      }
+      for (const id of info.missing) section.append(h('button', {class:'chip-button text-reset', disabled:locked, onclick:() => perform(() => api.command({command:'text-set',clipId:c.id,field:id,reset:true,revision:info.revision,mediaRevision:info.mediaRevision}), 'Missing text override removed')}, `Remove missing field ${id}`));
+      if (!info.fields.length && !info.missing.length) section.remove();
+    }).catch(error => { if (section.isConnected) section.append(h('p',{},explain(error))); });
+  }
   if (clipVisual(c)) {
     const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message);
     box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Transform'),
@@ -2353,10 +2379,53 @@ document.addEventListener('keydown', e => {
   run(id, 'key');
 });
 
+function commitGraphicText(edit, value) {
+  const pending = {clipId:edit.clipId,revision:edit.revision,mediaRevision:edit.mediaRevision};
+  // Switching fields can begin a new draft before the previous save returns.
+  // Only advance its base through our own accepted edit, never an external one.
+  pending.promise = perform(async () => {
+    let revision = edit.revision;
+    const prior = edit.predecessor;
+    if (prior && prior.clipId === edit.clipId && prior.revision === revision && prior.mediaRevision === edit.mediaRevision) {
+      const result = await prior.promise;
+      if (!result?.project) throw new Error('The previous text edit was not saved. Select the field again.');
+      revision = result.project.clips.find(c => c.id === edit.clipId)?.revision;
+    }
+    return api.command({command:'text-set',clipId:edit.clipId,field:edit.field,revision,mediaRevision:edit.mediaRevision,value});
+  }, 'Text updated');
+  textCommit = pending;
+  pending.promise.finally(() => { if (textCommit === pending) textCommit = null; });
+  return pending.promise;
+}
+
+// Direct text editing keeps the preview alive until commit/cancel. Revisions are
+// captured at entry, not refreshed at commit, so external edits cannot be lost.
+$('native-preview').addEventListener('graphic-text-start', event => {
+  if (graphicTextEdit || (editsInFlight && !textCommit) || !editable()) return;
+  const {clipId, field, activate} = event.detail, clip = clipById(clipId);
+  if (!clip || trackById(clip.trackId)?.locked) return;
+  clearTimeout(frameTimer); playback.pause(false);
+  graphicTextEdit = {clipId,field,revision:clip.revision,mediaRevision:mediaById(clip.mediaId).revision,predecessor:textCommit};
+  selection = new Set([clipId]); selTransition = selPoint = selMarker = null;
+  drawInspector(); drawTimeline(); activate();
+});
+$('native-preview').addEventListener('graphic-text-end', async event => {
+  const edit = graphicTextEdit, data = event.detail;
+  if (!edit || edit.clipId !== data.clipId || edit.field !== data.field) return;
+  graphicTextEdit = null;
+  if (!data.cancel) {
+    await commitGraphicText(edit, data.value);
+  }
+  else { await refresh(); requestFrame(0); }
+});
+document.addEventListener('pointerdown', () => {
+  if (graphicTextEdit) playback.native?.finishText();
+}, true);
+
 // ---------------------------------------------------------------- Events and startup
 window.addEventListener('beforeunload', () => source.clear());
 window.reeletPrepareReload = () => {
-  if (!connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
+  if (graphicTextEdit || !connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
   return true;
