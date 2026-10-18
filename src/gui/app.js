@@ -18,6 +18,7 @@ const project = () => snapshot?.project;
 const clips = () => project()?.clips || [];
 const tracks = () => project()?.tracks || [];
 const transitions = () => project()?.transitions || [];
+const markers = () => project()?.markers || [];
 const displayTracks = () => [...tracks()].reverse();
 const rate = () => project()?.fps || { num: 30, den: 1 };
 const fps = () => secs(rate());
@@ -29,6 +30,9 @@ const startF = c => toF(c.start);
 const endF = c => toF(endOf(c));
 const timelineEndF = () => Math.max(0, ...clips().map(c => Math.ceil(secs(endOf(c)) * fps() - 1e-8)));
 const lastFrame = () => Math.max(0, timelineEndF() - 1);
+// Markers may sit past the last clip. They stay reachable without lengthening the sequence or its exports.
+const markerF = m => toF(m.time);
+const navEndF = () => Math.max(timelineEndF(), ...markers().map(markerF));
 const tc = f => {
   const n = nominal(), a = Math.abs(Math.round(f)), s = Math.floor(a / n);
   return (f < 0 ? '-' : '') + [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60, a % n].map(x => String(x).padStart(2, '0')).join(':');
@@ -59,6 +63,8 @@ const clipById = id => byId(clips(), id);
 const trackById = id => byId(tracks(), id);
 const mediaById = id => byId(project()?.media || [], id);
 const transitionById = id => byId(transitions(), id);
+const markerById = id => byId(markers(), id);
+const sortedMarkers = () => [...markers()].sort((a, b) => secs(a.time) - secs(b.time) || a.id.localeCompare(b.id));
 const clipsOn = trackId => clips().filter(c => c.trackId === trackId);
 const strip = ({ revision, ...rest }) => rest;
 const uid = prefix => `${prefix}_${crypto.randomUUID().replaceAll('-', '')}`;
@@ -94,7 +100,7 @@ function applyLayout() {
 
 // ---------------------------------------------------------------- UI state
 let playF = 0, inF = null, outF = null, tool = 'select', pps = 40, fitZoom = true;
-let selection = new Set(), selTransition = null, selPoint = null, binSelection = null, clipboard = null;
+let selection = new Set(), selTransition = null, selPoint = null, selMarker = null, binSelection = null, clipboard = null;
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', finishedExport = null, monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
@@ -253,7 +259,7 @@ function run(id, via = 'mouse') {
   return true;
 }
 const editable = () => !!project() && !exportJobId;
-const hasSelection = () => selection.size > 0 || !!selTransition;
+const hasSelection = () => selection.size > 0 || !!selTransition || !!selMarker;
 
 action('import', { menu: 'File', group: 1, label: 'Import media…', icon: 'import', keys: ['Ctrl+I'], desc: 'Add footage, music, sound effects or images. Originals stay where they are.', enabled: editable, run: () => importMedia() });
 action('library', { menu: 'File', group: 1, label: 'Browse content library…', icon: 'folder', keys: ['Ctrl+L'], desc: 'Browse and preview reusable assets and ranges. Edit annotations in the standalone library.', run: () => api.library() });
@@ -267,7 +273,7 @@ action('undo', { menu: 'Edit', group: 1, label: 'Undo', icon: 'undo', keys: ['Ct
 action('redo', { menu: 'Edit', group: 1, label: 'Redo', icon: 'redo', keys: ['Ctrl+Shift+Z', 'Ctrl+Y'], enabled: () => editable() && !!snapshot?.history?.redo, run: () => history('redo') });
 action('copy', { menu: 'Edit', group: 2, label: 'Copy', icon: 'copy', keys: ['Ctrl+C'], enabled: () => selection.size > 0, run: copySelection });
 action('paste', { menu: 'Edit', group: 2, label: 'Paste at playhead', icon: 'paste', keys: ['Ctrl+V'], enabled: () => editable() && !!clipboard, run: paste });
-action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys: ['Delete', 'Backspace'], desc: 'Remove the selection and leave a gap.', enabled: () => editable() && hasSelection(), run: deleteSelection });
+action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys: ['Delete', 'Backspace'], desc: 'Remove the selected clips, dissolve, volume point or marker. Clips leave a gap.', enabled: () => editable() && hasSelection(), run: deleteSelection });
 action('rippleDelete', { menu: 'Edit', group: 2, label: 'Ripple delete In/Out range', icon: 'trash', keys: ['Shift+Delete'], desc: 'Remove the marked range across all tracks and close the gap. Out includes its frame. Affected locked tracks block the edit.', enabled: () => editable() && inF != null && outF != null && outF >= inF, run: () => rippleDelete(inF, outF + 1) });
 action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().map(c => c.id)) });
 action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl+Shift+A'], enabled: hasSelection, run: () => select([]) });
@@ -283,13 +289,17 @@ action('nudgeRight5', { label: 'Nudge right 5 frames', keys: ['Alt+Shift+Right']
 
 action('renderFrame', { menu: 'Timeline', group: 1, label: 'Render frame', icon: 'render', keys: ['Enter'], desc: 'Render the exact frame at the playhead from original media.', enabled: () => clips().length > 0 && !exportJobId, run: () => renderFrame(true) });
 action('play', { menu: 'Timeline', group: 1, label: 'Play / pause', icon: 'play', keys: ['Space'], desc: 'Play the timeline with synchronized audio. Pause to inspect the current frame.', enabled: () => clips().length > 0 && connected, run: togglePlay });
-action('markIn', { menu: 'Timeline', group: 2, label: 'Mark In', icon: 'in', keys: ['I'], desc: 'Start the export range at the playhead.', enabled: () => !!project(), run: () => setMarks(playF, outF != null && outF < playF ? null : outF) });
+action('markIn', { menu: 'Timeline', group: 2, label: 'Mark In', icon: 'in', keys: ['I'], desc: 'Start the export range at the playhead.', enabled: () => !!project(), run: () => setMarks(Math.min(playF, lastFrame()), outF != null && outF < playF ? null : outF) });
 action('markOut', { menu: 'Timeline', group: 2, label: 'Mark Out', icon: 'out', keys: ['O'], desc: 'End the export range on the playhead frame.', enabled: () => !!project(), run: () => setMarks(inF != null && inF > playF ? null : inF, Math.min(playF, lastFrame())) });
 action('goIn', { menu: 'Timeline', group: 2, label: 'Go to In', keys: ['Shift+I'], enabled: () => inF != null, run: () => seek(inF, true) });
 action('goOut', { menu: 'Timeline', group: 2, label: 'Go to Out', keys: ['Shift+O'], enabled: () => outF != null, run: () => seek(outF, true) });
 action('clearMarks', { menu: 'Timeline', group: 2, label: 'Clear In and Out', keys: ['Ctrl+Shift+X'], enabled: () => inF != null || outF != null, run: () => setMarks(null, null) });
+action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker…', icon: 'marker', keys: ['M'], desc: 'Name a marker at the playhead. Markers are shared with the CLI, snap moves and trims, and never change the export length.', enabled: editable, run: () => markerDialog(null, playF) });
+action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerDialog(markerById(selMarker)) });
+action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Up'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
+action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Down'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
 action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top. Any media can go on any track.', enabled: editable, run: () => addTrack() });
-action('snap', { menu: 'Timeline', group: 3, label: 'Snapping', icon: 'magnet', keys: ['S'], desc: 'Snap moves and trims to clip edges, the playhead and In/Out. Hold Alt while dragging to bypass.', checked: () => prefs.snap, run: () => { prefs.snap = !prefs.snap; savePrefs(); say(`Snapping ${prefs.snap ? 'on' : 'off'}`); syncChrome(); } });
+action('snap', { menu: 'Timeline', group: 3, label: 'Snapping', icon: 'magnet', keys: ['S'], desc: 'Snap moves and trims to clip edges, markers, the playhead and In/Out. Hold Alt while dragging to bypass.', checked: () => prefs.snap, run: () => { prefs.snap = !prefs.snap; savePrefs(); say(`Snapping ${prefs.snap ? 'on' : 'off'}`); syncChrome(); } });
 action('selectTool', { menu: 'Timeline', group: 4, label: 'Selection tool', icon: 'pointer', keys: ['V'], desc: 'Select, move and trim clips.', checked: () => tool === 'select', run: () => setTool('select') });
 action('razorTool', { menu: 'Timeline', group: 4, label: 'Razor tool', icon: 'scissors', keys: ['C'], desc: 'Click a clip to split it at that frame.', checked: () => tool === 'razor', run: () => setTool('razor') });
 action('prevEdit', { menu: 'Timeline', group: 5, label: 'Previous edit point', icon: 'prev-edit', keys: ['Up'], run: () => seekEdit(-1) });
@@ -445,7 +455,7 @@ function openShortcuts() {
   groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
-    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
+    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Double-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['More actions', ['#Right-click']],
   ], joined: true });
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
@@ -519,6 +529,9 @@ function edit(build, message, extra = {}) {
       if (error.message.includes('Unsupported object field') && ops.some(op => op.collection === 'clips' && op.value?.volumePoints !== undefined)) {
         throw new Error('The project engine is older than the volume-point controls. Restart Reelet and its project engine to enable volume points. Saved edits are preserved; session undo history resets.');
       }
+      if (error.message.includes('supported collection') && ops.some(op => op.collection === 'markers')) {
+        throw new Error('The project engine is older than markers. Restart Reelet and its project engine to enable markers. Saved edits are preserved; session undo history resets.');
+      }
       throw error;
     }
     return true;
@@ -534,13 +547,14 @@ const selectedClips = () => [...selection].map(clipById).filter(Boolean);
 function select(ids, mode = 'replace') {
   if (mode === 'replace') selection = new Set(ids);
   else for (const id of ids) mode === 'toggle' && selection.has(id) ? selection.delete(id) : selection.add(id);
-  selTransition = null; selPoint = null;
+  selTransition = null; selPoint = null; selMarker = null;
   drawTimeline(); drawInspector(); syncChrome();
 }
-function selectTransition(id) { selection = new Set(); selTransition = id; selPoint = null; drawTimeline(); drawInspector(); syncChrome(); }
+function selectTransition(id) { selection = new Set(); selTransition = id; selPoint = null; selMarker = null; drawTimeline(); drawInspector(); syncChrome(); }
+function selectMarker(id) { selection = new Set(); selTransition = null; selPoint = null; selMarker = id; drawTimeline(); drawInspector(); syncChrome(); }
 function setTool(next) { tool = next; syncChrome(); drawTimeline(); idleHint(); }
 function seek(f, render = false) {
-  playF = Math.max(0, Math.min(Math.round(f), Math.max(timelineEndF(), 0)));
+  playF = Math.max(0, Math.min(Math.round(f), navEndF()));
   rememberMarks();
   // seek() notifies synchronously and redraws the monitor/playhead. Avoid
   // rebuilding them and the monitor tabs several times for each drag sample.
@@ -553,6 +567,14 @@ function seekEdit(direction) {
   const points = [...new Set(clips().flatMap(c => [startF(c), endF(c)]))].sort((a, b) => a - b);
   const target = direction < 0 ? points.filter(p => p < playF).pop() : points.find(p => p > playF);
   if (target != null) seek(target, true);
+}
+// Markers sharing a frame are stepped through one at a time, in sorted order.
+function seekMarker(direction) {
+  const list = sortedMarkers(), i = list.findIndex(m => m.id === selMarker);
+  const target = i >= 0 && markerF(list[i]) === playF ? list[i + direction]
+    : direction < 0 ? list.filter(m => markerF(m) < playF).pop() : list.find(m => markerF(m) > playF);
+  if (!target) { say(direction < 0 ? 'No earlier marker' : 'No later marker'); return; }
+  selectMarker(target.id); seek(markerF(target), true);
 }
 function setMarks(i, o) { inF = i; outF = o; rememberMarks(); drawPlayhead(); syncChrome(); say(i == null && o == null ? 'In and Out cleared' : `Range ${i == null ? 'start' : tc(i)} → ${o == null ? 'end' : tc(o)}`); }
 function rememberMarks() { const id = project()?.id; if (!id) return; prefs.marks[id] = { in: inF, out: outF, play: playF }; clearTimeout(rememberMarks.t); rememberMarks.t = setTimeout(savePrefs, 400); }
@@ -636,7 +658,44 @@ function gapAt(trackId, frame) {
   const start = Math.ceil(before * fps() - 1e-8), end = Math.floor(after * fps() + 1e-8);
   return Number.isFinite(end) && end > start ? { start, end } : null;
 }
+// Markers are global: no track lock applies, and every edit asserts the snapshot it was built from.
+function addMarker(name, f) {
+  const id = uid('marker'), at = Math.max(0, f);
+  return edit(() => ({ ops: [put('markers', { id, name, time: fromF(at) })], pre: { [`marker:${id}`]: 0 }, message: `Added marker “${name}” at ${tc(at)}` })).then(ok => { if (ok) selectMarker(id); return ok; });
+}
+// Only changed fields are sent, so renaming keeps an off-grid time from an earlier frame rate exact.
+function changeMarker(id, { name, f }) {
+  return edit(() => {
+    const m = markerById(id); if (!m) return refuse('The marker no longer exists');
+    const value = { id };
+    if (name != null && name !== m.name) value.name = name;
+    if (f != null && f !== markerF(m)) value.time = fromF(Math.max(0, f));
+    if (!value.name && !value.time) return null;
+    return { ops: [put('markers', value)], message: value.time ? `Moved marker “${value.name || m.name}” to ${tc(Math.max(0, f))}` : `Renamed marker to “${value.name}”` };
+  });
+}
+function deleteMarker(id) {
+  if (selMarker === id) selMarker = null;
+  return edit(() => { const m = markerById(id); return m ? { ops: [remove('markers', id)], message: `Removed marker “${m.name}”` } : refuse('The marker no longer exists'); });
+}
+function markerDialog(m, f0 = m ? markerF(m) : playF) {
+  playback.pause(false);
+  let f = f0;
+  const name = h('input', { value: m ? m.name : `Marker ${markers().length + 1}`, maxlength: 256, spellcheck: 'false', placeholder: 'Marker name' });
+  const time = timeInput(f0, v => { f = v; });
+  const body = h('div', { class: 'dialog-body' },
+    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Name'), name),
+    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Time'), time));
+  dialog({ title: m ? 'Edit marker' : 'Add marker', iconName: 'marker', body,
+    buttons: [...(m ? [{ label: 'Delete', run: () => { deleteMarker(m.id); } }] : []), { label: 'Cancel' }, { label: m ? 'Save' : 'Add', kind: 'primary', keys: 'Enter', run: () => {
+      const v = name.value.trim(); if (!v) { name.focus(); return false; }
+      if (m) changeMarker(m.id, { name: v, f }); else addMarker(v, f);
+    } }] });
+  setTimeout(() => name.select(), 0);
+}
+
 function deleteSelection() {
+  if (selMarker) return deleteMarker(selMarker);
   if (selPoint && selection.size === 1 && selection.has(selPoint.clipId)) return deletePoint(selPoint);
   const tid = selTransition, ids = [...selection];
   selection = new Set(); selTransition = null;
@@ -926,8 +985,9 @@ function draw() {
   }
   for (const id of [...selection]) if (!clipById(id)) selection.delete(id);
   if (selTransition && !transitionById(selTransition)) selTransition = null;
+  if (selMarker && !markerById(selMarker)) selMarker = null;
   if (firstLoad && !selection.size && p.clips.length) selection.add([...p.clips].sort((a, b) => secs(a.start) - secs(b.start))[0].id);
-  playF = Math.min(playF, timelineEndF());
+  playF = Math.min(playF, navEndF());
   $('project-name').textContent = p.name;
   document.title = `${p.name} · Reelet`;
   drawMedia(); drawInspector(); drawMonitor(); syncChrome();
@@ -1114,14 +1174,15 @@ function chip(id, label, cls = '') { const a = actions[id]; return h('button', {
 function drawInspector() {
   const p = project(); if (!p) return;
   const box = $('inspector');
-  const list = selectedClips(), tr = selTransition && transitionById(selTransition);
-  const key = tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}` : `p:${p.revision}`;
+  const list = selectedClips(), tr = selTransition && transitionById(selTransition), mk = selMarker && markerById(selMarker);
+  const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}` : `p:${p.revision}`;
   if (box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join()) return;
   inspectorKey = key;
   const scroll = box.scrollTop;
   box.replaceChildren();
   $('inspector-kind').replaceChildren();
-  if (tr) drawTransitionInspector(box, tr);
+  if (mk) drawMarkerInspector(box, mk);
+  else if (tr) drawTransitionInspector(box, tr);
   else if (list.length === 1) drawClipInspector(box, list[0]);
   else if (list.length > 1) {
     $('inspector-title').textContent = 'Inspector';
@@ -1194,6 +1255,19 @@ function drawTransitionInspector(box, t) {
     h('div', { class: 'insp-note' }, `Up to ${shortTc(room(t.alignment))} with the footage available at this cut.`),
     h('div', { class: 'insp-actions' }, chip('delete', null, 'danger')));
 }
+function drawMarkerInspector(box, m) {
+  const disabled = !editable(), beyond = secs(m.time) * fps() > timelineEndF() + 1e-8;
+  $('inspector-title').textContent = 'Marker';
+  $('inspector-kind').append(icon('marker', 'sm'), 'Timeline');
+  const name = h('input', { value: m.name, maxlength: 256, disabled, spellcheck: 'false', tip: { title: 'Marker name', desc: 'Shown on the ruler. Agents see markers through the CLI.' } });
+  name.onkeydown = e => { if (e.key === 'Enter') name.blur(); if (e.key === 'Escape') { name.value = m.name; name.blur(); } };
+  name.onblur = () => { const v = name.value.trim(); if (v && v !== m.name) changeMarker(m.id, { name: v }); else name.value = m.name; };
+  box.append(h('div', { class: 'insp-head' }, icon('marker'), name),
+    h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Timing'),
+      field('Time', timeInput(markerF(m), f => changeMarker(m.id, { f }), { disabled }), { tip: 'Where the marker sits on the timeline. Markers apply to every track.' })),
+    ...(beyond ? [h('div', { class: 'insp-note' }, 'After the last clip. Exports are unaffected.')] : []),
+    h('div', { class: 'insp-actions' }, chip('prevMarker', 'Previous'), chip('nextMarker', 'Next'), chip('delete', null, 'danger')));
+}
 function drawSequenceInspector(box, p) {
   $('inspector-title').textContent = 'Sequence';
   const disabled = !editable();
@@ -1214,7 +1288,7 @@ function drawSequenceInspector(box, p) {
       field('Frame rate', rateSelect, { tip: 'Changing it keeps every cut at the same time in seconds. Later edits snap to the new frame grid.' }),
       field('Duration', h('span', { class: 'numeric', style: { font: '11.5px var(--mono)', color: 'var(--text-2)' } }, tc(timelineEndF())))),
     h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Contents'),
-      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${p.clips.length} clips · ${p.transitions.length} dissolves · ${p.media.length} media`)),
+      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${p.clips.length} clips · ${p.transitions.length} dissolves · ${markers().length} markers · ${p.media.length} media`)),
     h('div', { class: 'insp-note' }, 'Select a clip to edit its timing, audio and framing.'));
 }
 
@@ -1223,7 +1297,7 @@ const lanesWidth = () => Math.max(200, $('tl-scroll').clientWidth - HEAD_W);
 const frameX = f => f / fps() * pps;
 const xFrame = x => Math.round(x / pps * fps());
 function contentWidth() {
-  const endS = Math.max(timelineEndF() / fps(), 5);
+  const endS = Math.max(navEndF() / fps(), 5);
   return fitZoom ? lanesWidth() : Math.max(lanesWidth(), Math.ceil(endS * pps + lanesWidth() * .5));
 }
 function drawRuler(width) {
@@ -1239,13 +1313,40 @@ function drawRuler(width) {
     parts.push(h('div', { class: 'tick major', style: { left: `${frameX(f)}px` } }, h('span', {}, label)));
     if (minor) for (let i = 1; i < minor; i++) parts.push(h('div', { class: 'tick', style: { left: `${frameX(f + i * step / minor)}px` } }));
   }
-  ruler.replaceChildren(...parts, h('div', { class: 'ruler-range', hidden: true }), h('div', { class: 'ruler-head' }));
+  ruler.replaceChildren(...parts, h('div', { class: 'ruler-range', hidden: true }), ...rulerMarkers(), h('div', { class: 'ruler-head' }));
+}
+// Markers at the same instant share one flag. Its label shows the selected (or first) name and a count.
+function markerGroups() {
+  const groups = [];
+  for (const m of sortedMarkers()) { const g = groups.at(-1); if (g && sameTime(g[0].time, m.time)) g.push(m); else groups.push([m]); }
+  return groups;
+}
+function rulerMarkers() {
+  const groups = markerGroups(), lastF = timelineEndF();
+  return groups.map((g, i) => {
+    const m = g.find(o => o.id === selMarker) || g[0], left = secs(m.time) * pps;
+    const room = i + 1 < groups.length ? (secs(groups[i + 1][0].time) - secs(m.time)) * pps - 12 : 180;
+    const beyond = secs(m.time) * fps() > lastF + 1e-8;
+    const el = h('div', { class: `marker ${g.some(o => o.id === selMarker) ? 'selected' : ''} ${beyond ? 'beyond' : ''}`, dataset: { id: m.id }, style: { left: `${left}px` } },
+      room >= 28 ? h('span', { class: 'marker-name', style: { maxWidth: `${Math.min(180, room)}px` } }, m.name, g.length > 1 ? h('b', {}, ` +${g.length - 1}`) : null) : null);
+    el.group = g;
+    el.tip = () => ({ title: g.length > 1 ? plural(g.length, 'marker') : m.name, follow: true,
+      meta: [tc(markerF(m)), ...(g.length > 1 ? g.map(o => `· ${o.name}`) : []), beyond ? 'After the last clip. Exports are unaffected.' : null].filter(Boolean).join('\n'),
+      hint: [{ keys: '#Click', text: g.length > 1 ? 'go to / cycle' : 'go to' }, { keys: '#Drag', text: 'move' }, { keys: '#Double-click', text: 'edit' }, { keys: 'Delete', text: 'remove' }, { keys: ['Shift+Up', 'Shift+Down'], text: 'prev / next' }] });
+    return el;
+  });
+}
+function drawMarkerLine(f) {
+  for (const old of document.querySelectorAll('.marker-line')) old.remove();
+  const m = markerById(selMarker);
+  if (!m && f == null) return;
+  $('tl-overlay').append(h('div', { class: 'marker-line', style: { left: `${f != null ? frameX(f) : secs(m.time) * pps}px` } }));
 }
 function drawTimeline() {
   const p = project(); if (!p) return;
   if (drag || editingTrack) { deferredDraw = true; return; }
   deferredDraw = false;
-  if (fitZoom) pps = Math.max(2, (lanesWidth() - 24) / Math.max(timelineEndF() / fps(), 5));
+  if (fitZoom) pps = Math.max(2, (lanesWidth() - 24) / Math.max(navEndF() / fps(), 5));
   const width = contentWidth();
   $('tl-inner').style.width = `${HEAD_W + width}px`;
   drawRuler(width);
@@ -1255,7 +1356,7 @@ function drawTimeline() {
   for (const t of displayTracks()) host.append(trackRow(t, width));
   if (!p.tracks.length) host.append(h('div', { class: 'tl-empty-note' }, 'Drag media here from the bin, or double-click it to add it at the playhead.'));
   $('tl-empty').style.width = `${HEAD_W + width}px`;
-  drawPlayhead(); pinLabels();
+  drawMarkerLine(); drawPlayhead(); pinLabels();
 }
 // Keep clip names readable when a clip starts left of the visible area.
 function pinLabels() {
@@ -1493,6 +1594,7 @@ function snapTargets(exclude = new Set()) {
   const set = new Set([0, playF]);
   if (inF != null) set.add(inF); if (outF != null) set.add(outF + 1);
   for (const c of clips()) if (!exclude.has(c.id)) { set.add(startF(c)); set.add(endF(c)); }
+  for (const m of markers()) if (!exclude.has(m.id)) set.add(markerF(m));
   return [...set];
 }
 function snapFrame(edges, targets, e) {
@@ -1573,7 +1675,7 @@ function beginTrim(e, c, edge) {
 function onDragMove(e) {
   if (!drag) return;
   if (drag.type === 'audio') { audioDrag(e); return; }
-  if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
+  if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
 }
 function moveDrag(e) {
   const d = drag, dx = e.clientX - d.x0;
@@ -1676,6 +1778,23 @@ function onDragUp(e) {
     });
     return;
   }
+  if (d.type === 'marker') {
+    endDrag();
+    if (!d.moved) {
+      // A second click on an already selected stack cycles through its markers.
+      const g = d.group, next = d.wasSelected && g.length > 1 ? g[(g.findIndex(m => m.id === d.m.id) + 1) % g.length] : d.m;
+      if (next !== d.m) selectMarker(next.id);
+      seek(markerF(next), true);
+      return;
+    }
+    drawTimeline();
+    if (d.f !== d.f0) edit(() => {
+      const current = markerById(d.m.id);
+      if (!current || current.revision !== d.m.revision) return refuse('The marker changed during the drag. Nothing was applied.');
+      return { ops: [put('markers', { id: current.id, time: fromF(d.f) })], message: `Moved marker “${current.name}” to ${tc(d.f)}` };
+    });
+    return;
+  }
   if (d.type === 'move') {
     moveDrag(e);
     for (const el of d.els) { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }
@@ -1716,7 +1835,40 @@ function scrubber(el, frameAt) {
 }
 scrubber($('ruler'), x => laneFrame(x));
 scrubber($('mini-ruler'), x => { const r = $('mini-ruler').getBoundingClientRect(); return Math.round((x - r.left) / r.width * timelineEndF()); });
-$('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
+// Marker flags sit inside the ruler, so they claim the pointer before the scrubber sees it.
+let lastMarkerDown = null;
+$('ruler').addEventListener('pointerdown', e => {
+  const el = e.target.closest('.marker'); if (!el) return;
+  e.stopPropagation();
+  if (e.button !== 0 || drag) return;
+  e.preventDefault();
+  const g = el.group, m = g.find(x => x.id === selMarker) || markerById(el.dataset.id) || g[0], now = Date.now();
+  if (lastMarkerDown && g.some(x => x.id === lastMarkerDown.id) && now - lastMarkerDown.at < 400) { lastMarkerDown = null; if (can('editMarker')) markerDialog(m); return; }
+  lastMarkerDown = { id: m.id, at: now };
+  const wasSelected = selMarker === m.id;
+  if (!wasSelected) selectMarker(m.id);
+  startDrag({ type: 'marker', m, group: g, wasSelected, x0: e.clientX, f0: markerF(m), f: markerF(m), moved: false,
+    el: $('ruler').querySelector(`.marker[data-id="${m.id}"]`), targets: snapTargets(new Set([m.id])) });
+}, true);
+function markerDrag(e) {
+  const d = drag;
+  if (!d.moved && (Math.abs(e.clientX - d.x0) < 4 || !editable())) return;
+  if (!d.moved) { d.moved = true; hintItems([{ keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]); }
+  let f = d.f0 + xFrame(e.clientX - d.x0);
+  f += snapFrame([f], d.targets, e);
+  d.f = Math.max(0, f);
+  if (d.el) { d.el.style.left = `${frameX(d.f)}px`; d.el.classList.add('dragging'); }
+  drawMarkerLine(d.f);
+  readout(`${d.m.name}   ${tc(d.f)}`);
+}
+$('ruler').addEventListener('contextmenu', e => {
+  const el = e.target.closest('.marker'), at = Math.max(0, laneFrame(e.clientX));
+  if (!el) { contextMenu(e, [{ label: `Add marker at ${tc(at)}…`, icon: 'marker', disabled: !editable(), run: () => markerDialog(null, at) }, { action: 'addMarker' }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
+  const g = el.group, m = g.find(x => x.id === selMarker) || g[0];
+  selectMarker(m.id);
+  contextMenu(e, [{ label: 'Go to marker', icon: 'step-forward', run: () => seek(markerF(m), true) }, { action: 'editMarker' }, '-', { label: 'Delete marker', icon: 'trash', disabled: !editable(), run: () => deleteMarker(m.id) }]);
+});
+$('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: 'M', text: 'add marker' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
 $('mini-ruler').tip = { title: 'Sequence overview', hint: [{ keys: '#Click', text: 'jump' }, { keys: '#Drag', text: 'scrub' }] };
 $('tl-scroll').addEventListener('wheel', e => {
   if (!e.ctrlKey) return;
