@@ -9,6 +9,7 @@ export function rippleOperations(project:Project, start:Time, end:Time) {
  assert(cmp(start,ZERO)>=0&&cmp(end,start)>0,'Ripple range must have 0 <= start < end');
  for(const t of [start,end])assert((BigInt(t.num)*BigInt(project.fps.num))%(BigInt(t.den)*BigInt(project.fps.den))===0n,'Ripple boundaries must land on the project frame grid');
  const delta=sub(end,start), operations:any[]=[], newIds:string[]=[];
+ const rightLinks=new Map<string,string>();
  const pieces=new Map<string,{first:Clip;last:Clip}>();
  const put=(collection:string,value:any)=>operations.push({op:'put',collection,value});
  const remove=(collection:string,id:string)=>operations.push({op:'remove',collection,id});
@@ -31,7 +32,7 @@ export function rippleOperations(project:Project, start:Time, end:Time) {
   if(right){
    const duration=sub(finish,end), id=left?`clip_${randomUUID().replaceAll('-','')}`:clip.id;
    last={...clip,id,start,sourceIn:add(clip.sourceIn,mul(sub(end,clip.start),clip.speed)),duration,fadeIn:ZERO,fadeOut:min(clip.fadeOut,duration)};
-   if(left)newIds.push(id);
+   if(left){newIds.push(id);if(clip.linkId){if(!rightLinks.has(clip.linkId))rightLinks.set(clip.linkId,`link_${randomUUID().replaceAll('-','')}`);last.linkId=rightLinks.get(clip.linkId);}}
    put('clips',last);first||=last;
   }
   pieces.set(clip.id,{first:first!,last:last!});

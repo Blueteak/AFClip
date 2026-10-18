@@ -27,7 +27,7 @@ function automationGain(clip, local) {
   return a.value + (b.value - a.value) * easeInOut((source - seconds(a.time)) / (seconds(b.time) - seconds(a.time)));
 }
 function audioGain(clip, local) {
-  if (clip.mute) return 0;
+  if (clip.mute || clip.stream === 'video') return 0;
   const fi = seconds(clip.fadeIn), fo = seconds(clip.fadeOut);
   return (clip.volume ?? 1) * automationGain(clip, local)
     * (fi ? easeInOut(local / fi) : 1) * (fo ? easeInOut((seconds(clip.duration) - local) / fo) : 1);
@@ -77,7 +77,7 @@ function at(plan, time) {
       const p = clamp((time - tr.start) / tr.duration);
       if (tr.side === 'in') { visual *= p; audio *= p; } else audio *= 1 - p;
     }
-    return { clipId: c.id, mediaId: c.mediaId, kind: c.media.kind, sourceTime: c.sourceIn + local * c.speed,
+    return { clipId: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : c.media.kind, sourceTime: c.sourceIn + local * c.speed,
       opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }

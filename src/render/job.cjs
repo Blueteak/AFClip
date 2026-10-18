@@ -29,7 +29,7 @@ async function run(name, binary, args, capture = false, forward = false) {
 async function audioMix(plan, begin, end) {
   const args = ['-hide_banner', '-y'], filters = [], names = []; let n = 0;
   for (const c of plan.clips) {
-    if (!c.media.metadata.hasAudio || c.mute || c.volume === 0 || c.visibleEnd <= begin || c.visibleStart >= end) continue;
+    if (c.stream === 'video' || !c.media.metadata.hasAudio || c.mute || c.volume === 0 || c.visibleEnd <= begin || c.visibleStart >= end) continue;
     const start = Math.max(begin, c.visibleStart), finish = Math.min(end, c.visibleEnd), length = finish - start;
     const source = c.sourceIn + (start - c.start) * c.speed;
     args.push('-ss', String(Math.max(0, source)), '-t', String(length * c.speed), '-i', path.resolve(config.projectDir, c.media.path));
@@ -40,7 +40,8 @@ async function audioMix(plan, begin, end) {
     if (c.fadeOut) terms.push(ease(`(${c.duration}-${local})/${c.fadeOut}`));
     for (const tr of c.transitions) terms.push(tr.side === 'in' ? `max(0,min(1,(t+${start - tr.start})/${tr.duration}))` : `max(0,min(1,(${tr.end - start}-t)/${tr.duration}))`);
     const label = `a${n}`;
-    const gain = c.volumePoints?.length ? `aeval='val(ch)*(${terms.join('*')})':c=same` : `volume='${terms.join('*')}':eval=frame`;
+    // Normalize layout before aeval; the bundled FFmpeg can crash on mono c=same.
+    const gain = c.volumePoints?.length ? `aformat=channel_layouts=stereo,aeval='val(ch)*(${terms.join('*')})':c=same` : `volume='${terms.join('*')}':eval=frame`;
     filters.push(`[${n}:a:0]aresample=48000,asetrate=${Math.round(48000 * c.speed)},aresample=48000,atrim=duration=${length},asetpts=PTS-STARTPTS,${gain},adelay=${Math.round((start - begin) * 48000)}S:all=1[${label}]`);
     names.push(`[${label}]`); n++;
   }
