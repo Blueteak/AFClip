@@ -29,6 +29,32 @@ The **Takes** track sits above the full clip. Drag to create a take immediately 
 
 `Space` plays/pauses, `Ctrl+Z` undoes and `Ctrl+Shift+Z` redoes. Right-click a folder or collection in the sidebar to rename, move or delete it. Use the CLI for collection membership, explicit replacement media and catalog purge.
 
+## CLI review and agent workflow
+
+CLI `search` and `overview` now return compact responses by default. Search keeps IDs, revisions, media kind, duration, folders, tags, notes, availability and cached preparation state. Range results include their parent ID/name and exact boundaries. `--full` restores full source metadata; `inspect` remains detailed. `--fields id,name,revision` projects search items, or selected overview fields. Direct service requests and GUI consumers retain their previous full responses unless they request `compact:true`.
+
+Use `search --folder inbox` for only Inbox items. `--include-inbox` searches both Inbox and the main library. The ambiguous old `--inbox` CLI flag now returns an error explaining both alternatives. Unknown options and invalid enum/numeric values fail before contacting the service. `help COMMAND`, `COMMAND --help` and `schema [COMMAND]` expose supported fields, types and revision rules. Structured `call` remains available for exact API requests.
+
+```powershell
+node src/library/cli.ts search --folder inbox --assetsOnly --fields id,name,revision
+node src/library/cli.ts prepare --ids ASSET_ID --level index --wait
+node src/library/cli.ts artifact --id ASSET_ID --type contact-sheet --start 0 --end 20 --count 8 --wait
+node src/library/cli.ts waveform --id AUDIO_ID --summary
+node src/library/cli.ts schema range-save
+```
+
+`prepare --level index` creates exact video frame boundaries without seek proxies or decoded audio. It enables frame-based range annotations. Audio needs only verified source metadata for sample-based ranges. Default `--level preview` retains full preparation. Cached preparation flags describe generated artifacts, not whether an original file can already play.
+
+The single worker prioritizes verification, then review artifacts, then index preparation, then other jobs, then full previews. Jobs within each class remain FIFO. Running jobs are not interrupted. This keeps a batch of queued full previews from delaying every contact sheet; it does not promise immediate execution while a long job is active.
+
+Contact sheets return `artifact.sourceName`, `columns`, and a `frames` manifest containing zero-based row-major `tile` indices and measured `timeSeconds` in source time. The image stays uncluttered. `--wait` merges the completed manifest into the artifact response; asynchronous callers can read it from `jobs[].result`. Cached sheets return the same manifest. There may be fewer sampled frames than requested when the source interval contains fewer frames.
+
+`waveform --summary` omits sample arrays and defaults to 2048 bins. It returns `sourceSampleRate` for annotation sample boundaries, `decodedSampleRate` for waveform data, and peak/activity timing. Timing is approximate to `summary.timeResolutionSeconds`. Activity uses a fixed -40 dBFS peak threshold; silence returns no activity and no peak time. These are signal measurements, not semantic or musical annotations. Detailed waveform responses retain the original channel arrays and add the same summary/rate fields.
+
+CLI responses distinguish `status: accepted`, `complete`, and `failed`. `--wait` writes progress JSON to stderr at phase changes and every two seconds, and one final response to stdout. Jobs expose queue position, enqueue elapsed time and running time. Failed/cancelled jobs produce `ok:false` and a nonzero exit code. `--timeout SECONDS` defaults to 300; timeout returns `WAIT_TIMEOUT` and job IDs without cancelling work. Import/rescan waits cover the jobs returned by that command; directory scans can enqueue separate verification work.
+
+Batch results are ordered snapshots: each operation returns its resulting ID/revision at that point. A later operation on the same item must use the revision produced by earlier operations. Creating/changing a range also increments its parent asset revision, and tag assignment changes increment tag revisions. Inspect related objects before building another batch. The entire batch rolls back on conflict.
+
 ## CLI operations
 
 Every GUI operation calls `/v1/command`. The CLI accepts the operation name followed by `--field value`, or exact JSON with `call request.json` / `call -`. All responses are JSON. Author defaults to `agent`; the GUI defaults to `human` and allows choosing `agent` for a GUI-driven annotation pass.

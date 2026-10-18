@@ -3,6 +3,7 @@ import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {libraryEndpoint,request} from './client.ts';
+import {commandSchema,globals,schema} from './command-schema.ts';
 const help=`Content Library. GUI and CLI use the same local catalog and operation contract.
 
   npm run library -- gui [--id ASSET] [--dev]
@@ -18,7 +19,7 @@ const help=`Content Library. GUI and CLI use the same local catalog and operatio
   npm run library -- tag-rename|tag-delete|tag-merge --id ID --revision N [--name NAME] [--target ID --targetRevision N] [--confirm clear-assignments]
   npm run library -- range-save --assetId ID --revision N --name NAME --startFrame 0 --endFrame 120
   npm run library -- range-save --assetId ID --revision N --name NAME --startSample 0 --endSample 48000
-  npm run library -- prepare [--ids ID,ID | --folder ID] [--wait]
+  npm run library -- prepare [--ids ID,ID | --folder ID] [--level index|preview] [--wait]
   npm run library -- source-folder-save --path PATH --folder ID [--watched --hierarchy]
   npm run library -- source-folders
   npm run library -- rescan [--id SOURCE_FOLDER_ID | PATH] [--hierarchy] [--wait]
@@ -39,19 +40,73 @@ Search result.items[].id is the stable direct-access asset or range ID. Pass it 
   node src/cli.ts library-import <project-dir> <id>
 This adds the source or selected range to the project bin and returns result.media.id.
 Follow nextOffset until complete when searching across multiple pages.
+Search and overview default to compact results; --full restores complete metadata.
+Search --folder inbox selects only Inbox; --include-inbox includes it with the library.
+waveform --summary returns timing/level summaries without sample arrays.
+Use help COMMAND or COMMAND --help for fields; schema [COMMAND] returns JSON discovery.
+--fields id,name,revision projects search items or overview fields.
+--wait emits progress on stderr; --timeout SECONDS defaults to 300.
 `;
-async function main(){const args=process.argv.slice(2),command=args.shift();if(!command||['help','--help','-h'].includes(command)){console.log(help);return;}
-  const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false;
-  const numbers=new Set(['revision','targetRevision','limit','offset','bytes','startFrame','endFrame','startSample','endSample','minDuration','maxDuration','width','count','columns','frame','rangeOffset']);
-  for(let i=0;i<args.length;i++){if(!args[i].startsWith('--')){positionals.push(args[i]);continue;}const key=args[i].slice(2);if(key==='wait'){wait=true;continue;}if(key==='dev'){c.dev=true;continue;}if(['deleted','assetsOnly','inbox','hierarchy','watched'].includes(key)){c[key]=args[i+1]==='false'?false:true;if(['true','false'].includes(args[i+1]))i++;continue;}const value=args[++i];if(value===undefined)throw new Error(`Missing --${key} value`);if(key==='catalog')catalog=value;else c[key]=numbers.has(key)?Number(value):['tags','ids','members'].includes(key)?value.split(',').filter(Boolean):value;}
+async function main(){
+  const args=process.argv.slice(2),command=args.shift();
+  if(!command||['--help','-h'].includes(command)){console.log(help);return;}
+  if(command==='schema'||command==='help'||args.includes('--help')||args.includes('-h')){
+    const target=['schema','help'].includes(command)?args[0]:command;
+    console.log(command==='help'&&!target?help:JSON.stringify({ok:true,result:schema(target)},null,2));return;
+  }
+  const definition=commandSchema[command];if(!definition)throw new Error(`Unknown command: ${command}. Use schema to list commands.`);
+  const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false,timeout=300;
+  const allowed={...globals,...definition.fields};
+  for(let i=0;i<args.length;i++){
+    if(!args[i].startsWith('--')){positionals.push(args[i]);continue;}
+    const key=args[i].slice(2),type=allowed[key];
+    if(!type)throw new Error(key==='inbox'?'Use --folder inbox for Inbox only, or --include-inbox to include it with the library.':`Unknown --${key} for ${command}. Use ${command} --help.`);
+    let value:any;
+    if(type==='boolean'){value=args[i+1]!=='false';if(['true','false'].includes(args[i+1]))i++;}
+    else {value=args[++i];if(value===undefined||value.startsWith('--'))throw new Error(`Missing --${key} value`);
+      if(type==='number'){value=Number(value);if(!Number.isFinite(value))throw new Error(`--${key} requires a finite number`);}
+      else if(type==='list')value=value.split(',').filter(Boolean);
+      else if(type==='json')value=JSON.parse(value);
+      else if(type.includes('|')&&!type.split('|').includes(value))throw new Error(`--${key} must be ${type}`);
+    }
+    if(key==='catalog')catalog=value;else if(key==='wait')wait=value;else if(key==='timeout')timeout=value;else c[key==='include-inbox'?'inbox':key]=value;
+  }
+  if(timeout<=0)throw new Error('--timeout must be positive seconds');
+  if(positionals.length>(['import','register','rescan','call'].includes(command)?1:0))throw new Error(`Unexpected positional argument for ${command}`);
+  if(['import','register','rescan'].includes(command)&&positionals[0])c.path=path.resolve(positionals[0]);
+  let payload=c;
+  if(command==='call'){
+    if(!positionals[0])throw new Error('call requires a JSON file or - for stdin');
+    payload=JSON.parse(fs.readFileSync(positionals[0]==='-'?0:positionals[0],'utf8'));if(c.author)payload.author=c.author;
+  }
+  if(['search','overview'].includes(command)){c.compact=!c.full;delete c.full;}
+  const fields=c.fields;delete c.fields;
   const ep=await libraryEndpoint(catalog);let result:any;
   if(command==='endpoint')result=ep;
-  else if(command==='gui'){const child=spawn(process.execPath,[fileURLToPath(new URL('./launch.cjs',import.meta.url)),'--catalog',ep.catalogDir,...(c.dev?['--dev']:[]),ep.gui+(c.id?'&asset='+encodeURIComponent(c.id):'')],{detached:true,windowsHide:true,stdio:'ignore'});child.unref();result={opened:true,dev:!!c.dev,url:ep.gui};}
-  else {if(['import','register','rescan'].includes(command)&&positionals[0])c.path=path.resolve(positionals[0]);
-    const payload=command==='call'?JSON.parse(fs.readFileSync(positionals[0]==='-'?0:positionals[0],'utf8')):c;
-    result=await request(ep,'/command',payload);
-    if(wait&&result.jobs?.length){const ids=result.jobs.map((j:any)=>j.id);let pending=true;while(pending){const selected=await request(ep,'/command',{command:'jobs',ids});pending=selected.some((j:any)=>['queued','running'].includes(j.status));if(!pending){result={...result,jobs:selected};if(selected.some((j:any)=>['failed','cancelled'].includes(j.status)))process.exitCode=1;}else await new Promise(r=>setTimeout(r,250));}}
+  else if(command==='gui'){
+    const child=spawn(process.execPath,[fileURLToPath(new URL('./launch.cjs',import.meta.url)),'--catalog',ep.catalogDir,...(c.dev?['--dev']:[]),ep.gui+(c.id?'&asset='+encodeURIComponent(c.id):'')],{detached:true,windowsHide:true,stdio:'ignore'});child.unref();result={opened:true,dev:!!c.dev,url:ep.gui};
+  }else result=await request(ep,'/command',payload);
+  let status='complete',error:any;
+  if(result.jobs?.length){
+    const ids=result.jobs.map((j:any)=>j.id),deadline=Date.now()+timeout*1000;let last='',lastProgress=0;
+    for(;;){
+      const selected=await request(ep,'/command',{command:'jobs',ids});result={...result,jobs:selected};
+      const failed=selected.filter((j:any)=>['failed','cancelled'].includes(j.status));
+      const pending=selected.some((j:any)=>['queued','running'].includes(j.status));
+      status=pending?'accepted':'complete';
+      if(wait){const progress=selected.map((j:any)=>({id:j.id,status:j.status,phase:j.phase,queuePosition:j.queuePosition,elapsedMs:j.elapsedMs,runningMs:j.runningMs}));
+        const signature=JSON.stringify(progress.map(({elapsedMs,runningMs,...j}:any)=>j));
+        if(signature!==last||Date.now()-lastProgress>=2000){console.error(JSON.stringify({progress}));last=signature;lastProgress=Date.now();}}
+      if(failed.length){status='failed';error={code:'JOB_FAILED',message:'Background work failed or was cancelled',details:{jobs:failed}};break;}
+      if(!pending||!wait)break;
+      if(Date.now()>=deadline){status='accepted';error={code:'WAIT_TIMEOUT',message:'Wait timed out; jobs remain active. Inspect jobs or cancel explicitly.',details:{ids}};break;}
+      await new Promise(r=>setTimeout(r,Math.min(500,Math.max(1,deadline-Date.now()))));
+    }
+    const artifactJob=result.jobs.find((j:any)=>j.kind==='artifact'&&j.status==='completed');
+    if(result.artifact&&artifactJob?.result)result.artifact={...result.artifact,...artifactJob.result};
   }
-  console.log(JSON.stringify({ok:true,result},null,2));
+  if(fields){const project=(o:any)=>Object.fromEntries(fields.map((key:string)=>{if(!(key in o))throw new Error(`Unknown result field: ${key}`);return [key,o[key]];}));result=command==='search'?{...result,items:result.items.map(project)}:project(result);}
+  if(error)process.exitCode=1;
+  console.log(JSON.stringify({ok:!error,status,result,...(error?{error}:{})},null,2));
 }
-main().catch(e=>{console.error(JSON.stringify({ok:false,error:{code:e.code||'CLI',message:e.message,details:e.details||{}}},null,2));process.exitCode=1;});
+main().catch(e=>{console.log(JSON.stringify({ok:false,error:{code:e.code||'CLI',message:e.message,details:e.details||{}}},null,2));process.exitCode=1;});

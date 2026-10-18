@@ -10,6 +10,7 @@ import {Intake} from './intake.ts';
 import {assert,fail} from '../shared/project.ts';
 import {atomicJSON} from '../engine/state.ts';
 import waveformTools from '../render/audio-waveform.cjs';
+import {waveformSummary} from './waveform-summary.ts';
 
 const dir=path.resolve(process.argv[2]);fs.mkdirSync(dir,{recursive:true});
 const lock=path.join(dir,'service.lock'),endpointFile=path.join(dir,'endpoint.json');
@@ -34,7 +35,7 @@ function importFiles(c:any) {
 async function command(c:any):Promise<any> {
   assert(c&&typeof c.command==='string','Command required');let result:any;
   switch(c.command) {
-    case 'overview':return ops.overview();
+    case 'overview':return ops.overview(c.compact);
     case 'search':return ops.browse(c);
     case 'inspect':return ops.inspect(c.id,c);
     case 'selection':{const a=ops.asset(c.id);db.check(a,c.revision);assert(a.sourceId===c.sourceId,'Source version changed; select it again');return {...ops.inspect(a.id),...ops.nativeBounds(a,c),temporary:true};}
@@ -62,8 +63,8 @@ async function command(c:any):Promise<any> {
     case 'checkpoint': {assert(c.name?.trim(),'Checkpoint name required');const id=uid('checkpoint');db.db.prepare('INSERT INTO checkpoints VALUES (?,?,?,?)').run(id,now(),c.name,JSON.stringify(db.db.prepare('SELECT * FROM records').all()));db.db.exec('DELETE FROM checkpoints WHERE id NOT IN (SELECT id FROM checkpoints ORDER BY time DESC LIMIT 10)');result={id,name:c.name};break;}
     case 'checkpoints':return db.db.prepare('SELECT id,time,name FROM checkpoints ORDER BY time DESC').all();
     case 'checkpoint-restore': {assert(c.confirm==='discard-later-edits','Confirm discard-later-edits');const p:any=db.db.prepare('SELECT * FROM checkpoints WHERE id=?').get(c.id);assert(p,'Unknown checkpoint');result=db.transaction('Restore checkpoint',c.author||'agent',()=>{const rows=JSON.parse(p.data),ids=new Set(rows.map((r:any)=>r.id));for(const row of db.db.prepare('SELECT id,kind FROM records').all() as any[])if(!ids.has(row.id)&&!['source','alias'].includes(row.kind)){const current=db.get(row.id);if(row.kind==='asset')db.put('asset',{...current,deleted:true});else db.remove(row.id);}for(const row of rows)if(!['source','alias'].includes(db.maybe(row.id)?.recordType))db.put(row.kind,JSON.parse(row.data));return {restored:p.id};});break;}
-    case 'prepare': {const assets=c.ids?c.ids.map((id:string)=>ops.asset(id)):db.all('asset').filter(a=>!a.deleted&&(!c.folder||a.folder===c.folder));result={jobs:assets.map((a:any)=>{if(ops.source(a).status!=='verified')jobs.enqueue('verify',a.id);return jobs.enqueue('prepare',a.id);})};break;}
-    case 'jobs':return c.id?db.getJob(c.id):c.ids?c.ids.map((id:string)=>db.getJob(id)):db.jobs();
+    case 'prepare': {assert(c.level===undefined||['index','preview'].includes(c.level),'Preparation level must be index or preview');const assets=c.ids?c.ids.map((id:string)=>ops.asset(id)):db.all('asset').filter(a=>!a.deleted&&(!c.folder||a.folder===c.folder));result={jobs:assets.map((a:any)=>{if(ops.source(a).status!=='verified')jobs.enqueue('verify',a.id);return jobs.describe(jobs.enqueue('prepare',a.id,c.level||'preview'));})};break;}
+    case 'jobs':{const queue=db.queuedJobs();return c.id?jobs.describe(db.getJob(c.id),queue):(c.ids?c.ids.map((id:string)=>db.getJob(id)):db.jobs()).map((j:any)=>jobs.describe(j,queue));}
     case 'cancel':return jobs.cancel(c.id);
     case 'preview':return jobs.preview(c.id);
     case 'waveform': {
@@ -75,7 +76,12 @@ async function command(c:any):Promise<any> {
       const channels=s.metadata?.streams?.find((stream:any)=>stream.codec_type==='audio')?.channels;
       jobs.readers.set(s.id,Date.now());
       const release=jobs.hold(s.id);
-      try{return await waveformTools.audioWaveform(file,{start,duration,bins:c.bins,channels,sourceId:s.id,cacheDir:path.join(dir,'cache','waveforms')});}
+      try{
+        const waveform=await waveformTools.audioWaveform(file,{start,duration,bins:c.bins??(c.summary?2048:undefined),channels,sourceId:s.id,cacheDir:path.join(dir,'cache','waveforms')});
+        const sourceSampleRate=Number(s.metadata?.streams?.find((stream:any)=>stream.codec_type==='audio')?.sample_rate)||null;
+        const summary=waveformSummary(waveform,sourceSampleRate);
+        return c.summary?summary:{...waveform,...summary};
+      }
       finally{release();}
     }
     case 'artifact':return jobs.requestArtifact(c);

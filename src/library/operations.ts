@@ -17,6 +17,17 @@ export class Operations {
     const source=this.source(o),file=this.location(source);
     return {...o,libraryId:this.db.meta('id'),source,availability:file?'available':'unavailable',path:file||source.locations[0],...(options.relationships===false?{}:this.relationships(o.id,options))};
   }
+  summary(id:string) {
+    const o=this.db.resolve(id),a=o.recordType==='range'?this.asset(o.assetId):o,s=this.source(a);
+    const cache=path.join(this.db.dir,'cache');
+    return {id:o.id,revision:o.revision,recordType:o.recordType,kind:a.kind,name:o.name,
+      ...(o.recordType==='range'?{assetId:a.id,assetName:a.name,start:o.start,end:o.end,boundaries:o.boundaries}:{}),
+      sourceId:a.sourceId,folder:a.folder,tags:o.tags,notes:o.notes,
+      duration:o.recordType==='range'?seconds(o.end)-seconds(o.start):a.duration,
+      availability:this.location(s)?'available':'unavailable',sourceStatus:s.status,
+      preparation:{index:a.kind==='audio'?s.status==='verified':fs.existsSync(path.join(cache,`${s.id}.frames.json`)),
+        preview:fs.existsSync(path.join(cache,`${s.id}.${a.kind==='audio'?'wav':'preview.json'}`))}};
+  }
   browse(c:any) {
     const start=performance.now(),limit=Math.max(1,Math.min(200,Number(c.limit)||60)),offset=Math.max(0,Number(c.offset)||0);
     const clauses=['i.deleted=?'],params:any[]=[c.deleted?1:0];let textSearch=false;
@@ -29,14 +40,14 @@ export class Operations {
     if(c.minDuration!==undefined){clauses.push('i.duration>=?');params.push(Number(c.minDuration));}
     if(c.maxDuration!==undefined){clauses.push('i.duration<=?');params.push(Number(c.maxDuration));}
     const rows=this.db.db.prepare(`SELECT i.id FROM ${textSearch?'search_text JOIN search_items i ON i.rowid=search_text.rowid':'search_items i'} WHERE ${clauses.join(' AND ')} ORDER BY ${textSearch?'search_text.rowid':'i.name,i.id'} LIMIT ? OFFSET ?`).all(...params,limit+1,offset) as any[];
-    const more=rows.length>limit;return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),items:rows.slice(0,limit).map(r=>this.inspect(r.id,{relationships:false})),offset,nextOffset:more?offset+limit:null,complete:!more,elapsedMs:performance.now()-start};
+    const more=rows.length>limit;return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),items:rows.slice(0,limit).map(r=>c.compact?this.summary(r.id):this.inspect(r.id,{relationships:false})),offset,nextOffset:more?offset+limit:null,complete:!more,elapsedMs:performance.now()-start};
   }
   relationships(id:string,options:any={}) {
     const offset=Math.max(0,Number(options.rangeOffset)||0),rows=this.db.db.prepare("SELECT id FROM records WHERE kind='range' AND json_extract(data,'$.assetId')=? ORDER BY id LIMIT 201 OFFSET ?").all(id,offset) as any[];
     const count=(this.db.db.prepare("SELECT COUNT(*) n FROM records WHERE kind='range' AND json_extract(data,'$.assetId')=?").get(id) as any).n;
     return {ranges:rows.slice(0,200).map(r=>this.db.get(r.id)),rangePage:{offset,total:count,nextOffset:rows.length>200?offset+200:null,complete:rows.length<=200},references:this.db.related('reference','assetId',id)};
   }
-  overview() {return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),folders:this.db.all('folder'),tags:this.db.all('tag'),collections:this.db.all('collection'),counts:this.db.db.prepare('SELECT folder,kind,count FROM asset_counts WHERE count>0').all(),history:this.db.history(),jobs:this.db.jobs(),cacheBudget:this.db.meta('cacheBudget')};}
+  overview(compact=false) {return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),folders:this.db.all('folder'),tags:this.db.all('tag'),collections:this.db.all('collection'),counts:this.db.db.prepare('SELECT folder,kind,count FROM asset_counts WHERE count>0').all(),...(compact?{jobCounts:this.db.db.prepare("SELECT json_extract(data,'$.status') status,COUNT(*) count FROM jobs GROUP BY status").all()}:{history:this.db.history(),jobs:this.db.jobs()}),cacheBudget:this.db.meta('cacheBudget')};}
   annotations(c:any,o:any) {
     const a=o.recordType==='range'?this.asset(o.assetId):o;
     assert(!a.deleted&&!a.purged&&a.folder!=='inbox','Promote Inbox items before annotating');

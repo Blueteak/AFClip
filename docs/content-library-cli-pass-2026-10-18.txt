@@ -32,3 +32,11 @@ Final result
 - All 13 preparation jobs and 8 contact-sheet jobs completed. Eleven initial queued preparations were deliberately cancelled and requeued behind contact sheets.
 - Video review used six sampled images per source. Gauntlet includes an approximate exclusion range for its ending debug console.
 - No application implementation changes were made during this pass. These optimization candidates remain follow-up work.
+
+Implementation follow-up, 2026-10-18
+- Implemented queued-job priorities, index-only preparation, compact CLI search/overview and field selection, explicit Inbox flags, per-command schema/help, measured contact-sheet frame manifests, waveform summaries with both sample rates, and structured job progress/completion/failure/timeout reporting.
+- Direct API/GUI search and overview retain full responses by default. CLI users can use --full. Existing --inbox CLI calls now fail with migration instructions.
+- Thirteen disposable integration checks passed, covering filtering, parsing/schema, atomic revision ordering, compact/full compatibility, field projection, silence, index-only ranges, waveform timing/rates, cached contact-sheet manifest, preview preparation/progress, queue order, job failure, and timeout behavior. Test programs, fixtures and catalogs were removed after verification.
+- Generated fixture search: 1,254 bytes compact versus 9,223 bytes full, about 86% less output. Overview: 2,310 versus 3,810 bytes.
+- Separate cold catalogs on Boss_Beams_1.mp4, 12.6 seconds of 2560x1440 gameplay: index-only 11.9 seconds / 203,699 cache bytes; full preview 14.4 seconds / 2,630,929 bytes. One run per mode, including CLI waiting overhead; not a broad throughput benchmark.
+- Priority scheduling does not interrupt active work. An artifact still waits for the currently running job. Full video decoding for an exact frame index remains the largest preparation cost in this sample.
