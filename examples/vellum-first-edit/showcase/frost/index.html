@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Ice crystals grow in from the frame edges over the clip, refracting and sparkling.
+const pass = AFGL(document.getElementById('output'), `
+uniform float reach, refraction, sparkle; uniform vec3 ice;
+float ridged(vec2 p) { float v = 0., a = .5; for (int i = 0; i < 5; i++) { v += a * (1. - abs(noise(p) * 2. - 1.)); p = rot(.7) * p * 2.1 + 3.; a *= .5; } return v; }
+void main() {
+  vec2 ar = vec2(aspect(), 1.);
+  vec2 q = st * ar;
+  vec2 e = min(st, 1. - st) * vec2(ar.x, 1.);
+  float edge = min(e.x, e.y);
+  float n = fbm(q * 4. + seed);
+  float grow = reach * ease(progress * 1.4);
+  float mask = smoothstep(grow * .55 + .02, grow * .55 - .06, edge + (n - .5) * .18);
+  float veins = pow(ridged(q * 7. + seed), 3.);
+  vec2 g = vec2(fbm(q * 9. + 1.), fbm(q * 9. + 7.)) - .5;
+  vec3 base = A(st + g * refraction * mask).rgb;
+  vec3 frosted = mix(base, ice, .55 + .35 * veins);
+  frosted += ice * veins * .5;
+  vec3 col = mix(base, frosted, mask);
+  col = mix(col, col * vec3(.9, 1., 1.12), .35);
+  vec2 cell = floor(q * 140.);
+  float tw = .5 + .5 * sin(time * 9. + hash(cell) * 40.);
+  col += vec3(1.) * step(.992, hash(cell + 3.)) * tw * mask * sparkle;
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

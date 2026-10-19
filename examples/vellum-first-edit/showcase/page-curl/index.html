@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// The outgoing shot is a vellum page rolling over a cylinder from right to left.
+// Its back shows parchment with the image bleeding through.
+const pass = AFGL(document.getElementById('output'), `
+uniform float angle, radius, showThrough; uniform vec3 paper;
+vec2 ar; vec2 n;
+bool onPage(vec2 q) { return q.x >= 0. && q.x <= ar.x && q.y >= 0. && q.y <= 1.; }
+vec3 back(vec2 q, float light) {
+  vec3 img = A(q / ar).rgb;
+  float lum = dot(img, vec3(.299, .587, .114));
+  float fibre = fbm(q * vec2(40., 6.) + seed) * .12;
+  vec3 parchment = paper * (.9 + fibre) - vec3(.12, .1, .06) * smoothstep(.3, .9, fbm(q * 3.));
+  return mix(parchment, parchment * (.55 + .6 * lum) * vec3(1., .96, .9), showThrough) * light;
+}
+void main() {
+  ar = vec2(aspect(), 1.);
+  float a = radians(180. - angle); n = vec2(cos(a), sin(a));
+  vec2 P = st * ar;
+  float c0 = dot(vec2(0), n), c1 = dot(vec2(ar.x, 0), n), c2 = dot(vec2(0, 1), n), c3 = dot(ar, n);
+  float lo = min(min(c0, c1), min(c2, c3)), hi = max(max(c0, c1), max(c2, c3));
+  float r = radius;
+  float pos = mix(lo - .02, hi + r * PI * .5 + .02, ease(progress) * .8 + progress * .2);
+  float u = dot(P, n) - pos;
+  vec3 col;
+  bool done = false;
+  if (u > 0.) {
+    float s = u + PI * r; vec2 q = P - (2. * u + PI * r) * n;
+    if (onPage(q)) { col = back(q, .95 - .25 * exp(-u * 8.)); done = true; }
+    else {
+      // Flat page with the curl's shadow falling on it.
+      float sh = 1.;
+      vec2 q2 = P - (2. * max(u - .03, 0.) + PI * r) * n;
+      if (onPage(q2)) sh = .55 + .45 * smoothstep(0., .06, u);
+      col = A(st).rgb * sh; done = true;
+    }
+  } else if (u > -r) {
+    float t1 = asin(clamp(-u / r, -1., 1.)), t2 = PI - t1;
+    vec2 q = P + (-r * t2 - u) * n;
+    if (onPage(q)) { col = back(q, .55 + .45 * sin(t2 * .5 + .4)); done = true; }
+    else {
+      q = P + (-r * t1 - u) * n;
+      if (onPage(q)) { col = A(q / ar).rgb * (.35 + .65 * cos(t1)); done = true; }
+    }
+  }
+  if (!done) {
+    // Revealed incoming page, darkened under the lifted sheet.
+    float sh = 1. - .6 * exp((u + r) * 7.);
+    col = B(st).rgb * clamp(sh, .35, 1.);
+  }
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

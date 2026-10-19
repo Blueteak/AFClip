@@ -156,6 +156,12 @@ node benchmarks/windows/playback.cjs examples/vellum-first-edit 42 1080 --reuse-
 af-clip export examples/vellum-first-edit exports/transitions.mp4 --start 7 --end 25 --mode gpu --verify full --wait
 ```
 
+`node examples/vellum-first-edit/showcase.mjs` pushes the format further:
+WebGL/Canvas transitions on every cut (ember burn, glass shatter, glitch,
+vortex, page curl, zoom punch, hex flip), stacked effects, HTML overlays,
+kinetic type, a boss HUD and a 2x2 split-screen from clip transforms. Packages
+live in `examples/vellum-first-edit/showcase/`; `--sync` reloads edited copies.
+
 These are opt-in diagnostics. Performance records count completed asset renders
 as well as source-video presentation; they do not measure physical scanout.
 Temporal sampling, keyframes, nested-scene editing and overlapping transition

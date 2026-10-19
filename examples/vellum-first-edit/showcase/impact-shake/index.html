@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Each hit time (seconds into the clip) adds a decaying camera shake, zoom punch,
+// shockwave ring and chromatic spike.
+const pass = AFGL(document.getElementById('output'), `
+uniform float shake, zoom, shock, energy, since; uniform vec2 jolt; uniform vec3 flash;
+void main() {
+  vec2 ar = vec2(aspect(), 1.);
+  vec2 c = (st - .5) * ar;
+  c /= 1. + zoom * energy;
+  c += jolt * shake;
+  float r = length(c), R = since * 1.6;
+  float ring = exp(-abs(r - R) * 18.) * exp(-since * 3.);
+  c += normalize(c + 1e-5) * ring * shock;
+  vec2 p = c / ar + .5;
+  vec2 dir = (p - .5) * .03 * energy;
+  vec3 col = vec3(A(p + dir).r, A(p).g, A(p - dir).b);
+  col += flash * (ring * .5 + energy * energy * .25);
+  col *= 1. - .4 * energy * smoothstep(.3, 1., length((st - .5) * ar));
+  o = vec4(col, 1.);
+}`);
+window.render = c => {
+  const local = c.progress * c.duration, hits = c.params.hits.split(',').map(Number).filter(Number.isFinite);
+  let energy = 0, since = 9;
+  const jolt = [0, 0];
+  for (const h of hits) {
+    const dt = local - h;
+    if (dt < 0) continue;
+    const e = Math.exp(-dt * 5);
+    since = Math.min(since, dt);
+    energy += e;
+    // Deterministic shake: frequency-varied sines per hit.
+    jolt[0] += Math.sin(dt * 71 + h * 13) * e; jolt[1] += Math.cos(dt * 57 + h * 7) * e;
+  }
+  return pass(c, { ...c.params, energy: Math.min(energy, 1.5), since, jolt });
+};
+</script>

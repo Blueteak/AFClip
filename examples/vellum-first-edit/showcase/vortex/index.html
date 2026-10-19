@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// The outgoing shot spirals into a portal that opens onto the incoming shot.
+const pass = AFGL(document.getElementById('output'), `
+uniform float twist, rays; uniform vec3 ring, core;
+vec2 toUv(vec2 c) { return mirror(c / vec2(aspect(), 1.) + .5); }
+void main() {
+  vec2 ar = vec2(aspect(), 1.), c = (st - .5) * ar;
+  float r = length(c), ang = atan(c.y, c.x);
+  float p = progress;
+  float R = pow(smoothstep(.12, .92, p), 1.6) * 1.25;
+  float wob = (fbm(vec2(ang * 3., time * 2.)) - .5) * .06 * (1. - p);
+  // Outgoing: twisted and pulled inward.
+  float ta = twist * p * p * exp(-r * 1.8);
+  vec2 ca = rot(ta) * c * (1. + p * 1.2 * exp(-r * 2.));
+  vec3 a = A(toUv(ca)).rgb * (1. - .55 * p * exp(-max(r - R, 0.) * 4.));
+  // Incoming: unwinds as the portal widens.
+  float tb = -twist * .6 * (1. - p) * exp(-r * 1.5);
+  vec2 cb = rot(tb) * c * (1. + (1. - p) * .5);
+  vec3 b = B(toUv(cb)).rgb;
+  float inside = smoothstep(R + .01, R - .01, r + wob);
+  vec3 col = mix(a, b, inside);
+  float edge = exp(-abs(r + wob - R) * 38.) * step(.001, R) * (1. - smoothstep(.85, 1., p));
+  float spokes = .55 + .45 * sin(ang * 12. + time * 9. + r * 30.);
+  col += ring * edge * 2.2 * spokes + core * exp(-abs(r + wob - R) * 140.) * edge;
+  // Light rays streaming from the core.
+  float ray = pow(max(0., sin(ang * rays + seed)), 24.) * exp(-r * 2.5) * smoothstep(.04, .3, r) * smoothstep(.0, .25, p) * (1. - smoothstep(.45, .75, p));
+  col += mix(ring, core, .5) * ray * 1.4;
+  col += core * exp(-r * 18.) * smoothstep(.0, .3, p) * (1. - smoothstep(.4, .8, p)) * 1.5;
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Barrel lens distortion with pulsing radial chromatic dispersion.
+const pass = AFGL(document.getElementById('output'), `
+uniform float dispersion, barrel, pulse;
+vec2 lens(vec2 p, float k) { vec2 c = (p - .5) * vec2(aspect(), 1.); float r2 = dot(c, c); c *= 1. + k * r2; return c / vec2(aspect(), 1.) * (1. - k * .25) + .5; }
+void main() {
+  float beat = .55 + .45 * pow(.5 + .5 * sin(time * pulse * 2. * PI), 4.);
+  float d = dispersion * beat;
+  vec3 col;
+  col.r = A(lens(st, barrel + d * 6.)).r;
+  col.g = A(lens(st, barrel)).g;
+  col.b = A(lens(st, barrel - d * 6.)).b;
+  vec2 c = (st - .5) * vec2(aspect(), 1.);
+  col *= 1. - .35 * smoothstep(.4, 1.1, length(c));
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

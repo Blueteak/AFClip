@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Outgoing shot chars and burns away from an origin, revealing the incoming shot through an ember edge.
+const pass = AFGL(document.getElementById('output'), `
+uniform vec2 origin; uniform vec3 ember; uniform float roughness;
+void main() {
+  vec2 ar = vec2(aspect(), 1.);
+  float n = fbm(st * ar * 2.2 + seed) * .75 + fbm(st * ar * 9. + seed) * .25;
+  float d = distance(st * ar, origin * ar) / length(ar) * 1.1 + (n - .5) * roughness;
+  float t = mix(-.25, 1.25, ease(progress) * .85 + progress * .15);
+  float e = d - t;
+  // Heat haze distorts the incoming shot near the front.
+  vec2 haze = vec2(noise(st * 30. + time * 4.), noise(st * 30. - time * 4.)) - .5;
+  vec3 b = B(st + haze * .012 * exp(-abs(e) * 12.)).rgb;
+  vec3 a = A(st).rgb;
+  float char = smoothstep(.0, .16, e);
+  a *= mix(vec3(.08, .04, .02), vec3(1.), char);
+  a = mix(a, a * vec3(1.15, .85, .6), (1. - smoothstep(.0, .2, e)) * .6);
+  float burnt = smoothstep(.004, -.004, e);
+  vec3 col = mix(a, b, burnt);
+  float glow = exp(-abs(e) * 38.) * (.65 + .7 * noise(st * ar * 60. + time * 6.));
+  vec3 hot = mix(ember, vec3(1., .92, .65), exp(-abs(e) * 120.));
+  col += hot * glow * 1.8;
+  col += ember * exp(-max(e, 0.) * 18.) * (1. - burnt) * .25;
+  // Sparks lift off the burning edge.
+  vec2 g = st * ar * 90. + vec2(0., time * 25.);
+  float spark = step(.985, hash(floor(g))) * exp(-abs(e - .02) * 25.) * smoothstep(.5, .0, length(fract(g) - .5));
+  col += vec3(1., .75, .35) * spark * 2.;
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, { origin: [c.params.originX, c.params.originY], ember: c.params.ember, roughness: c.params.roughness });
+</script>

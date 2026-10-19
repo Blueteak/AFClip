@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Cinzel;src:url('./Cinzel.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+#shade{position:absolute;inset:0;background:radial-gradient(ellipse 60% 55% at 50% 50%,rgba(8,5,16,.82),rgba(8,5,16,.35) 60%,transparent 85%)}
+#burst{position:absolute;left:50%;top:50%;width:1600px;height:1600px;margin:-800px 0 0 -800px;border-radius:50%;mix-blend-mode:screen}
+#circle{position:absolute;left:50%;top:50%;width:760px;height:760px;margin:-380px 0 0 -380px;overflow:visible}
+#circle *{fill:none}
+#stage{position:absolute;left:0;right:0;top:50%;transform:translateY(-58%);perspective:1100px;text-align:center}
+#title{display:inline-flex;gap:6px;font:600 168px/1 Cinzel;letter-spacing:18px;transform-style:preserve-3d}
+.ch{display:inline-block;transform-origin:50% 80%;background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent}
+#sub{margin-top:30px;font:500 26px Cinzel;color:#efe3c4;white-space:nowrap}
+#rule{width:620px;height:2px;margin:26px auto 0}
+</style></head><body>
+<div id="shade"></div><div id="burst"></div>
+<svg id="circle" viewBox="-100 -100 200 200"><g id="rings"></g></svg>
+<div id="stage"><div id="title"></div><div id="rule"></div><div id="sub"></div></div>
+<script>
+'use strict';
+const clamp = x => Math.max(0, Math.min(1, x)), smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const back = x => { x = clamp(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id), NS = 'http://www.w3.org/2000/svg';
+let built = '';
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; }
+function build(p, random) {
+  const title = $('title'); title.textContent = '';
+  for (const ch of p.title) { const s = document.createElement('span'); s.className = 'ch'; s.textContent = ch === ' ' ? ' ' : ch; title.append(s); }
+  $('sub').textContent = p.subtitle;
+  const g = $('rings'); g.textContent = '';
+  // Concentric rings, a rotating rune band, and an inscribed hexagram.
+  const rings = [[92, 1.4], [86, .6], [62, 1], [56, .5]].map(([r, w]) => el('circle', { r, 'stroke-width': w }, g));
+  const band = el('g', {}, g);
+  for (let i = 0; i < 36; i++) {
+    const a = i / 36 * Math.PI * 2, r0 = 66, r1 = 82, k = random();
+    const path = k < .33 ? `M${r0} -3 L${r1} 0 L${r0} 3` : k < .66 ? `M${r0} 0 L${r1} 0 M${(r0 + r1) / 2} -4 L${(r0 + r1) / 2} 4` : `M${r0} -3 L${r1} 3 M${r0} 3 L${r1} -3`;
+    el('path', { d: path, transform: `rotate(${a * 180 / Math.PI})`, 'stroke-width': .8 }, band);
+  }
+  const star = el('g', {}, g);
+  for (const off of [0, 60]) { const pts = [0, 1, 2].map(i => { const a = (off + i * 120 - 90) * Math.PI / 180; return `${Math.cos(a) * 56},${Math.sin(a) * 56}`; }); el('polygon', { points: pts.join(' '), 'stroke-width': .8 }, star); }
+  return { rings, band, star };
+}
+let parts;
+window.render = ({ time: t, params: p, random }) => {
+  const key = p.title + '|' + p.subtitle;
+  if (key !== built) { parts = build(p, random); built = key; }
+  const exit = smooth((t - p.exitAt) / 1.3), alive = 1 - exit;
+  // Rune circle draws itself, then rotates.
+  const draw = smooth(t / 1.8);
+  parts.rings.forEach((c, i) => { const len = 2 * Math.PI * c.r.baseVal.value; c.style.strokeDasharray = len; c.style.strokeDashoffset = len * (1 - smooth((t - i * .15) / 1.6)) * (i % 2 ? -1 : 1); });
+  for (const e of $('rings').querySelectorAll('*')) { e.style.stroke = p.gold; }
+  parts.band.setAttribute('transform', `rotate(${t * 14})`); parts.band.style.opacity = smooth((t - .5) / 1);
+  parts.star.setAttribute('transform', `rotate(${-t * 8})`); parts.star.style.opacity = smooth((t - .9) / 1) * .8;
+  const circle = $('circle');
+  circle.style.opacity = (draw * .85) * alive;
+  circle.style.transform = `scale(${1 + exit * .6}) rotate(${exit * 40}deg)`;
+  circle.style.filter = `drop-shadow(0 0 ${6 + 10 * Math.sin(t * 2) ** 2}px ${p.glow})`;
+  // Flash as the title lands.
+  const flash = Math.exp(-Math.abs(t - 1.75) * 4.5) * smooth(t / 1.75);
+  $('burst').style.background = `radial-gradient(circle, ${p.glow}${Math.round(flash * 200).toString(16).padStart(2, '0')}, transparent 55%)`;
+  $('shade').style.opacity = smooth(t / .8) * alive;
+  // Letters flip up out of the page with a stagger.
+  const chars = [...$('title').children], n = chars.length;
+  chars.forEach((s, i) => {
+    const k = (t - .7 - i * .09) / .9, e = back(k), v = smooth(k);
+    const out = smooth((t - p.exitAt - (n - i) * .05) / .9);
+    s.style.opacity = v * (1 - out);
+    s.style.transform = `translateZ(${(1 - e) * -400}px) rotateX(${(1 - e) * -95}deg) translateY(${out * -70}px)`;
+    s.style.filter = `blur(${(1 - v) * 10 + out * 14}px) drop-shadow(0 0 ${18 + 30 * flash}px ${p.glow}aa)`;
+    // Shimmer sweeps across the gold gradient.
+    const sweep = clamp((t - 1.7) / 1.6) * 260 - i * 8;
+    s.style.backgroundImage = `linear-gradient(100deg, ${p.gold} 0%, #fff6dd ${40}%, ${p.gold} ${50}%, #9b6a2c 100%)`;
+    s.style.backgroundPosition = `${100 - sweep}% 0`;
+  });
+  const sub = $('sub'), sv = smooth((t - 2.1) / 1);
+  sub.style.opacity = sv * alive; sub.style.letterSpacing = `${8 + 14 * sv}px`;
+  const rule = $('rule'), rv = smooth((t - 1.8) / 1.2);
+  rule.style.background = `linear-gradient(90deg, transparent, ${p.gold} 30%, #fff 50%, ${p.gold} 70%, transparent)`;
+  rule.style.transform = `scaleX(${rv})`; rule.style.opacity = alive;
+};
+</script></body></html>

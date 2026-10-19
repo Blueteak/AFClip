@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+// Rising embers. Every particle position is a closed-form function of time,
+// so any frame can be rendered in any order.
+const canvas = document.getElementById('output'), ctx = canvas.getContext('2d');
+let sprite = null, spriteKey = '';
+function glow(color, core) {
+  const s = new OffscreenCanvas(64, 64), g = s.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  r.addColorStop(0, core); r.addColorStop(.18, color); r.addColorStop(.45, color + '55'); r.addColorStop(1, color + '00');
+  g.fillStyle = r; g.fillRect(0, 0, 64, 64); return s;
+}
+window.render = ({ width: w, height: h, time: t, progress, duration, params: q, random }) => {
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  if (spriteKey !== q.color + q.core) { sprite = glow(q.color, q.core); spriteKey = q.color + q.core; }
+  ctx.clearRect(0, 0, w, h);
+  const local = progress * duration, env = Math.min(1, local / Math.max(q.fade, 1e-3), (duration - local) / Math.max(q.fade, 1e-3));
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < q.count; i++) {
+    const x0 = random(), phase0 = random(), speed = .6 + random() * .8, sz = (.25 + random() ** 3 * 1.2) * q.size, wob = random() * 6.28, f = .5 + random() * 1.5;
+    const life = 1 / (q.rise * speed + 1e-6);
+    const phase = (phase0 + t / life) % 1;
+    const y = h * (1.08 - phase * 1.25);
+    const x = x0 * (w + 200) - 100 + Math.sin(t * f + wob) * 30 + q.drift * phase * 3;
+    const flicker = .65 + .35 * Math.sin(t * 13 * f + wob * 5);
+    const a = Math.sin(phase * Math.PI) * flicker * env;
+    if (a <= 0) continue;
+    const d = 26 * sz * (1 - phase * .5);
+    ctx.globalAlpha = Math.min(1, a);
+    ctx.drawImage(sprite, x - d, y - d, d * 2, d * 2);
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+};
+</script>

@@ -1,0 +1,33 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Blocky displacement, slice tearing and RGB split while blocks flip between shots.
+const pass = AFGL(document.getElementById('output'), `
+uniform float intensity, split, fps; uniform vec3 tint;
+vec3 pick(vec2 p, float useB) { return mix(A(p).rgb, B(p).rgb, useB); }
+void main() {
+  float amt = pow(sin(PI * progress), .7) * intensity;
+  float f = floor(time * fps);
+  vec2 s = st;
+  // Horizontal slice tearing.
+  float row = floor(st.y * mix(18., 60., hash(vec2(f, 3.))));
+  float tear = step(1. - amt * .45, hash(vec2(row, f))) * (hash(vec2(row, f + 9.)) - .5);
+  s.x += tear * .25 * amt;
+  // Macroblock displacement.
+  vec2 cell = floor(st * vec2(24., 14.) / mix(1., 3., hash(vec2(f, 1.))));
+  float blk = step(1. - amt * .22, hash(cell + f * .37));
+  s += blk * (vec2(hash(cell + 5.), hash(cell + 11.)) - .5) * .12 * amt;
+  // Blocks switch to the incoming shot ahead of the global cut.
+  float useB = step(hash(cell * 1.7 + f * .13), smoothstep(.25, .75, progress));
+  useB = mix(useB, step(.5, progress), 1. - amt);
+  float sp = split * amt * (1. + 3. * blk);
+  vec3 col = vec3(pick(s + vec2(sp, 0.), useB).r, pick(s, useB).g, pick(s - vec2(sp, sp * .3), useB).b);
+  // Posterize corrupted blocks and tint them.
+  col = mix(col, floor(col * 4.) / 4. * mix(vec3(1.), tint * 1.6, .6), blk * .45 * amt);
+  float scan = .85 + .15 * sin(st.y * res.y * 1.4 + time * 40.);
+  col *= mix(1., scan, amt);
+  col += (hash(st * res + f) - .5) * .18 * amt;
+  col += tint * step(.992, hash(vec2(row * 3., f))) * amt;
+  o = vec4(clamp(col, 0., 1.), 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

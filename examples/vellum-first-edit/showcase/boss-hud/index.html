@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Cinzel;src:url('./Cinzel.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent;font-family:Cinzel}
+svg{position:absolute;inset:0;width:1920px;height:1080px;overflow:visible}
+#panel{position:absolute;left:120px;top:120px;width:760px}
+#label{font:600 22px Cinzel;letter-spacing:12px;opacity:.9}
+#name{font:700 76px/1.05 Cinzel;letter-spacing:6px;color:#fff;margin-top:10px;text-shadow:0 4px 30px rgba(0,0,0,.8)}
+#hp{position:relative;height:18px;margin-top:22px;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.45);clip-path:polygon(0 0,100% 0,97% 100%,0 100%)}
+#hpLag,#hpFill{position:absolute;left:0;top:0;bottom:0}
+#hpLag{background:#fff6}
+#ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 37px,rgba(0,0,0,.6) 37px 39px)}
+#scan{position:absolute;left:0;right:0;height:140px;pointer-events:none}
+</style></head><body>
+<div id="scan"></div>
+<svg id="svg"><g id="frame"></g><g id="reticle"></g><path id="leader" fill="none" stroke-width="2"/></svg>
+<div id="panel"><div id="label"></div><div id="name"></div><div id="hp"><div id="hpLag"></div><div id="hpFill"></div><div id="ticks"></div></div></div>
+<script>
+'use strict';
+// Target-lock HUD: corner brackets snap in, the name decodes from scrambled glyphs,
+// a reticle locks onto a target and the health bar takes damage.
+const clamp = x => Math.max(0, Math.min(1, x)), smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const outBack = x => { x = clamp(x); const c = 2.2; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const $ = id => document.getElementById(id), NS = 'http://www.w3.org/2000/svg';
+const GLYPHS = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ#%&*+=<>/\\';
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; }
+function decode(text, k, t, random) {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const r = random();
+    if (text[i] === ' ' || i / text.length < k) out += text[i];
+    else if (i / text.length < k + .35) out += GLYPHS[Math.floor((r + Math.floor(t * 24) * .618) * GLYPHS.length) % GLYPHS.length];
+  }
+  return out;
+}
+let built = false;
+window.render = ({ progress, duration, params: p, random }) => {
+  const t = progress * duration, end = duration - t, exit = smooth(1 - end / .5), alive = 1 - exit;
+  const W = 1920, H = 1080, c = p.color;
+  if (!built) {
+    const f = $('frame');
+    for (let i = 0; i < 4; i++) el('path', { fill: 'none', 'stroke-width': 4, 'stroke-linecap': 'square' }, f);
+    const r = $('reticle');
+    el('circle', { r: 70, fill: 'none', 'stroke-width': 2, 'stroke-dasharray': '30 14' }, r);
+    el('circle', { r: 46, fill: 'none', 'stroke-width': 1.2 }, r);
+    for (let i = 0; i < 4; i++) el('path', { d: 'M0 -100 L0 -82', 'stroke-width': 3, transform: `rotate(${i * 90})` }, r);
+    el('path', { d: 'M-8 0 L8 0 M0 -8 L0 8', 'stroke-width': 2 }, r);
+    built = true;
+  }
+  // Corner brackets travel in from the frame edge.
+  const snap = outBack(t / .5), m = 60 + (1 - snap) * -120, L = 120;
+  const corners = [[m, m, 1, 1], [W - m, m, -1, 1], [W - m, H - m, -1, -1], [m, H - m, 1, -1]];
+  [...$('frame').children].forEach((e, i) => { const [x, y, sx, sy] = corners[i]; e.setAttribute('d', `M${x} ${y + sy * L} L${x} ${y} L${x + sx * L} ${y}`); e.setAttribute('stroke', c); e.style.opacity = clamp(t / .2) * alive; e.style.filter = `drop-shadow(0 0 8px ${c})`; });
+  // Reticle spirals in onto the target and locks.
+  const lock = smooth((t - .3) / .9), tx = p.targetX * W, ty = p.targetY * H;
+  const rx = tx + (1 - lock) * 380 * Math.cos(t * 3), ry = ty + (1 - lock) * 260 * Math.sin(t * 3);
+  const pulse = lock >= 1 ? 1 + .06 * Math.sin(t * 10) : 1;
+  const ret = $('reticle');
+  ret.setAttribute('transform', `translate(${rx} ${ry}) rotate(${t * 40 + (1 - lock) * 180}) scale(${(2.4 - 1.4 * lock) * pulse})`);
+  ret.setAttribute('stroke', c); ret.style.opacity = clamp((t - .2) / .3) * alive; ret.style.filter = `drop-shadow(0 0 10px ${c})`;
+  // Leader line from the panel to the locked target.
+  const lead = smooth((t - 1.1) / .5), px = 120 + 760, py = 330;
+  const leader = $('leader');
+  leader.setAttribute('d', `M${px} ${py} L${tx - 80} ${py} L${tx - 80} ${ty}`);
+  const length = Math.abs(tx - 80 - px) + Math.abs(ty - py);
+  leader.style.strokeDasharray = length; leader.style.strokeDashoffset = length * (1 - lead);
+  leader.setAttribute('stroke', c); leader.style.opacity = .8 * alive;
+  // Label and decoded name.
+  const label = $('label'), name = $('name');
+  label.style.color = c; label.textContent = decode(p.label, smooth((t - .2) / .6) * 1.01, t, random);
+  name.textContent = decode(p.name, smooth((t - .5) / .9) * 1.01, t, random);
+  $('panel').style.opacity = alive; $('panel').style.transform = `translateX(${exit * -60}px)`;
+  name.style.textShadow = `0 0 26px ${c}88, 0 4px 30px rgba(0,0,0,.8)`;
+  // Health fills, then takes stepped damage with a white lag bar.
+  const fill = smooth((t - .8) / .7), drain = p.health * smooth((t - 2) / 1.6);
+  const hpFill = $('hpFill'), hpLag = $('hpLag');
+  hpFill.style.width = `${(fill - drain) * 100}%`; hpFill.style.background = `linear-gradient(90deg, ${c}, #ffd3a0)`; hpFill.style.boxShadow = `0 0 16px ${c}`;
+  hpLag.style.width = `${(fill - p.health * smooth((t - 2.4) / 1.6)) * 100}%`;
+  $('hp').style.opacity = smooth((t - .7) / .3);
+  // Scanline sweep.
+  const scan = $('scan'), sy = ((t * .6) % 1) * (H + 280) - 140;
+  scan.style.top = `${sy}px`; scan.style.background = `linear-gradient(180deg, transparent, ${c}22 70%, ${c}66 98%, transparent)`; scan.style.opacity = alive * .7;
+};
+</script></body></html>

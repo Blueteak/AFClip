@@ -1,0 +1,68 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+// Outgoing shot cracks radially from an impact point, then its shards fly toward camera.
+const canvas = document.getElementById('output'), ctx = canvas.getContext('2d');
+let cache = null;
+// Polar web: jittered rings and spokes around the impact, each cell split into two triangles.
+function shards(w, h, ix, iy, rings, spokes, random) {
+  const reach = Math.hypot(Math.max(ix, w - ix), Math.max(iy, h - iy)) * 1.15, verts = [];
+  for (let k = 1; k <= rings; k++) {
+    const row = [];
+    for (let j = 0; j < spokes; j++) {
+      const a = (j + (random() - .5) * .55) / spokes * Math.PI * 2, r = reach * Math.pow((k - .3 + random() * .5) / rings, 1.5);
+      row.push([ix + Math.cos(a) * r, iy + Math.sin(a) * r]);
+    }
+    verts.push(row);
+  }
+  const list = [], add = t => list.push({ t, spin: (random() - .5) * 2, lift: .5 + random(), shade: random() });
+  for (let j = 0; j < spokes; j++) add([[ix, iy], verts[0][j], verts[0][(j + 1) % spokes]]);
+  for (let k = 0; k < rings - 1; k++) for (let j = 0; j < spokes; j++) {
+    const n = (j + 1) % spokes, a = verts[k][j], b = verts[k][n], c = verts[k + 1][n], d = verts[k + 1][j];
+    if (random() < .5) { add([a, b, c]); add([a, c, d]); } else { add([a, b, d]); add([b, c, d]); }
+  }
+  return list;
+}
+const ease = x => x * x * (3 - 2 * x), clamp = x => Math.max(0, Math.min(1, x));
+window.render = ({ width: w, height: h, inputs: [a, b], progress: p, params: q, random, seed }) => {
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  const ix = q.impactX * w, iy = q.impactY * h, diag = Math.hypot(w, h);
+  const key = [w, h, q.impactX, q.impactY, q.rings, q.spokes, seed].join();
+  if (cache?.key !== key) cache = { key, list: shards(w, h, ix, iy, Math.round(q.rings), Math.round(q.spokes), random) };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, w, h);
+  // Incoming shot pushes in from behind the glass.
+  const push = 1.15 - .15 * ease(clamp((p - .15) / .85));
+  ctx.save(); ctx.translate(w / 2, h / 2); ctx.scale(push, push); ctx.drawImage(b, -w / 2, -h / 2, w, h); ctx.restore();
+  const crack = clamp(p / .2), fly = clamp((p - .2) / .8);
+  for (const s of cache.list) {
+    const [p0, p1, p2] = s.t, cx = (p0[0] + p1[0] + p2[0]) / 3, cy = (p0[1] + p1[1] + p2[1]) / 3;
+    const dx = cx - ix, dy = cy - iy, r = Math.hypot(dx, dy) / diag, len = Math.hypot(dx, dy) || 1;
+    const local = clamp((fly - r * .35) / (1 - r * .35)), k = Math.pow(local, 1.4);
+    const z = 1 + k * s.lift * 4 * q.force * (1.2 - r);
+    ctx.save();
+    ctx.globalAlpha = 1 - clamp((local - .35) / .4);
+    if (ctx.globalAlpha <= 0) { ctx.restore(); continue; }
+    ctx.translate(cx + dx / len * k * w * .5 * q.force, cy + dy / len * k * h * .4 * q.force + k * h * .3);
+    ctx.rotate(s.spin * k * 4);
+    ctx.scale(z, z);
+    ctx.translate(-cx, -cy);
+    ctx.beginPath(); ctx.moveTo(...p0); ctx.lineTo(...p1); ctx.lineTo(...p2); ctx.closePath();
+    ctx.save(); ctx.clip(); ctx.drawImage(a, 0, 0, w, h);
+    // Facets catch light differently once loose.
+    ctx.fillStyle = q.tint; ctx.globalAlpha *= (.06 + .3 * s.shade) * clamp(local * 4); ctx.fill();
+    ctx.restore();
+    // Cracks race outward from the impact before the shards separate.
+    const reveal = clamp((crack * 1.4 - r * 1.6) * 5);
+    if (reveal > 0) { ctx.lineWidth = 1.6 / z; ctx.strokeStyle = `rgba(235,250,255,${.85 * reveal * (1 - local)})`; ctx.stroke(); }
+    ctx.restore();
+  }
+  // Impact flash.
+  const flash = Math.exp(-Math.abs(p - .2) * 20);
+  const g = ctx.createRadialGradient(ix, iy, 0, ix, iy, diag * .45);
+  g.addColorStop(0, `rgba(255,255,255,${.9 * flash})`); g.addColorStop(.25, `rgba(190,240,255,${.35 * flash})`); g.addColorStop(1, 'rgba(190,240,255,0)');
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+  return canvas;
+};
+</script>

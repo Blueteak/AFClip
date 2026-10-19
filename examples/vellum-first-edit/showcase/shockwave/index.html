@@ -1,0 +1,50 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+// Flash, expanding rings, light rays and ballistic sparks from a single impact at clip start.
+const canvas = document.getElementById('output'), ctx = canvas.getContext('2d');
+const clamp = x => Math.max(0, Math.min(1, x));
+window.render = ({ width: w, height: h, progress, duration, params: q, random }) => {
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  const t = progress * duration, cx = q.centerX * w, cy = q.centerY * h, diag = Math.hypot(w, h);
+  ctx.clearRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'lighter';
+  // Initial flash.
+  const flash = Math.exp(-t * 7);
+  let g = ctx.createRadialGradient(cx, cy, 0, cx, cy, diag * .6);
+  g.addColorStop(0, q.hot); g.addColorStop(.15, q.color); g.addColorStop(1, q.color + '00');
+  ctx.globalAlpha = flash; ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  // Rays.
+  const rays = 28, rayA = Math.exp(-t * 2.2);
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(t * .25);
+  for (let i = 0; i < rays; i++) {
+    const a = i / rays * Math.PI * 2 + random() * .2, len = diag * (.3 + random() * .4) * (1 - Math.exp(-t * 6)), wid = .01 + random() * .025;
+    g = ctx.createLinearGradient(0, 0, Math.cos(a) * len, Math.sin(a) * len);
+    g.addColorStop(0, q.hot); g.addColorStop(.3, q.color + '88'); g.addColorStop(1, q.color + '00');
+    ctx.globalAlpha = rayA * .5; ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, len, a - wid, a + wid); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+  // Rings.
+  for (let i = 0; i < q.rings; i++) {
+    const k = t - i * .12; if (k < 0) continue;
+    const r = diag * .7 * (1 - Math.exp(-k * 2.6)), a = Math.exp(-k * 2.4);
+    ctx.globalAlpha = a; ctx.strokeStyle = i ? q.color : q.hot; ctx.lineWidth = (i ? 3 : 8) * (1 + k * 3);
+    ctx.shadowColor = q.color; ctx.shadowBlur = 30;
+    ctx.beginPath(); ctx.ellipse(cx, cy, r, r * .62, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+  // Sparks with drag and gravity.
+  ctx.lineCap = 'round';
+  for (let i = 0; i < q.debris; i++) {
+    const a = random() * Math.PI * 2, v = 600 + random() ** 2 * 2400, life = .6 + random() * 1.6, drag = 2.2, hot = random() < .3, width = 1.5 + random() * 2.5;
+    if (t > life) continue;
+    const s = v * (1 - Math.exp(-drag * t)) / drag, x = cx + Math.cos(a) * s, y = cy + Math.sin(a) * s * .7 + 260 * t * t;
+    const sp = v * Math.exp(-drag * t), tail = Math.min(80, sp * .03);
+    ctx.globalAlpha = clamp(1 - t / life);
+    ctx.strokeStyle = hot ? q.hot : q.color; ctx.lineWidth = width;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - Math.cos(a) * tail, y - Math.sin(a) * tail * .7); ctx.stroke();
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+};
+</script>

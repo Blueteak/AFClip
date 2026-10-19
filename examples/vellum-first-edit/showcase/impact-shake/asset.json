@@ -1,0 +1,12 @@
+{
+  "apiVersion": 1,
+  "role": "effect",
+  "name": "Impact shake",
+  "parameters": {
+    "hits": { "type": "text", "default": "0.4, 2.1, 3.3, 5.6", "label": "Hit times (s)" },
+    "shake": { "type": "number", "default": 0.025, "min": 0, "max": 0.1, "step": 0.001 },
+    "zoom": { "type": "number", "default": 0.08, "min": 0, "max": 0.4, "step": 0.005 },
+    "shock": { "type": "number", "default": 0.04, "min": 0, "max": 0.15, "step": 0.002, "label": "Shockwave" },
+    "flash": { "type": "color", "default": "#ff5533" }
+  }
+}

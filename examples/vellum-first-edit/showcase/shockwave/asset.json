@@ -1,0 +1,13 @@
+{
+  "apiVersion": 1,
+  "role": "content",
+  "name": "Shockwave burst",
+  "parameters": {
+    "color": { "type": "color", "default": "#f1cf86" },
+    "hot": { "type": "color", "default": "#ffffff" },
+    "rings": { "type": "number", "default": 3, "min": 1, "max": 8, "step": 1 },
+    "debris": { "type": "number", "default": 220, "min": 0, "max": 800, "step": 1 },
+    "centerX": { "type": "number", "default": 0.5, "min": 0, "max": 1, "step": 0.01 },
+    "centerY": { "type": "number", "default": 0.5, "min": 0, "max": 1, "step": 0.01 }
+  }
+}

@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Radial zoom blur punches through the cut with chromatic separation, a flash, and an anamorphic streak.
+const pass = AFGL(document.getElementById('output'), `
+uniform float strength, flash; uniform vec3 leak, streak;
+vec3 zoomBlur(float useB, float scale, float k) {
+  vec3 acc = vec3(0.);
+  vec2 c = vec2(.5);
+  float j = hash(st * res);
+  for (int i = 0; i < 24; i++) {
+    float f = (float(i) + j) / 24.;
+    vec2 base = c + (st - c) / scale;
+    vec2 pr = c + (base - c) * (1. - k * f * 1.08), pg = c + (base - c) * (1. - k * f), pb = c + (base - c) * (1. - k * f * .92);
+    acc += useB > .5 ? vec3(B(pr).r, B(pg).g, B(pb).b) : vec3(A(pr).r, A(pg).g, A(pb).b);
+  }
+  return acc / 24.;
+}
+void main() {
+  float p = progress;
+  float k = strength * pow(1. - abs(p * 2. - 1.), 1.5);
+  vec3 col = p < .5 ? zoomBlur(0., 1. + p * p * 3., k) : zoomBlur(1., 1. + (1. - p) * (1. - p) * 2.2, k);
+  float fl = exp(-abs(p - .5) * 16.) * flash;
+  col += vec3(1.) * fl;
+  // Drifting warm light leak.
+  vec2 ar = vec2(aspect(), 1.);
+  vec2 lp = vec2(mix(-.3, 1.3, p), .3 + .2 * sin(p * 3. + seed));
+  float leakMask = exp(-length((st - lp) * ar * vec2(.6, 1.)) * 2.2) * sin(PI * p);
+  col = 1. - (1. - col) * (1. - leak * leakMask * .7);
+  // Horizontal anamorphic streak through the centre.
+  float s = exp(-abs(st.y - .5) * 90.) * exp(-abs(st.x - .5) * 2.) * sin(PI * p);
+  col += streak * s * 1.6;
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

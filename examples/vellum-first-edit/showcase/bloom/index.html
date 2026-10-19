@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Single-pass bloom from thresholded highlights plus radial god rays from a drifting light source.
+const pass = AFGL(document.getElementById('output'), `
+uniform float threshold, intensity, rays; uniform vec3 tint;
+vec3 bright(vec2 p) { vec3 c = A(p).rgb; return c * smoothstep(threshold, 1., dot(c, vec3(.333))); }
+void main() {
+  vec3 base = A(st).rgb, glow = vec3(0.);
+  float total = 0.;
+  for (int i = 0; i < 32; i++) {
+    float f = float(i), a = f * 2.39996, r = sqrt(f / 32.) * .045;
+    vec2 off = vec2(cos(a), sin(a)) * r * vec2(1. / aspect(), 1.);
+    float w = 1. - f / 32.;
+    glow += bright(st + off) * w; total += w;
+  }
+  glow /= total;
+  vec2 light = vec2(.5 + .15 * sin(time * .4), .25);
+  vec3 shafts = vec3(0.);
+  vec2 dir = (st - light) / 40.;
+  vec2 p = st;
+  float decay = 1.;
+  for (int i = 0; i < 40; i++) { p -= dir; shafts += bright(p) * decay; decay *= .95; }
+  shafts /= 40.;
+  vec3 col = base + glow * intensity * 2. * mix(vec3(1.), tint, .5) + shafts * rays * 3. * tint;
+  // Soft shoulder only above 0.8 keeps midtones untouched.
+  col = mix(col, .8 + .2 * (1. - exp(-(col - .8) * 5.)), step(.8, col));
+  o = vec4(col, 1.);
+}`);
+window.render = c => pass(c, c.params);
+</script>

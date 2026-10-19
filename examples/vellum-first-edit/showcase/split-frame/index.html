@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+svg{position:absolute;inset:0;width:1920px;height:1080px}
+text{font:600 28px Georgia,serif;letter-spacing:6px}
+</style></head><body>
+<svg id="svg"></svg>
+<script>
+'use strict';
+// Gold frame for a 2x2 split-screen of transformed video clips: gutters, traced
+// borders, numerals and a centre emblem. Clip opacity handles each tile reveal.
+const clamp = x => Math.max(0, Math.min(1, x)), smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const NS = 'http://www.w3.org/2000/svg', svg = document.getElementById('svg');
+function el(tag, attrs, parent = svg) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.append(e); return e; }
+let parts;
+window.render = ({ progress, duration, params: p }) => {
+  const t = progress * duration, end = duration - t, exit = smooth(1 - end / .4), alive = 1 - exit;
+  const W = 1920, H = 1080, g = p.gap;
+  if (!parts) {
+    const gutter = el('path', { fill: '#07050c' });
+    const tiles = [0, 1, 2, 3].map(() => el('rect', { fill: 'none', 'stroke-width': 3 }));
+    const labels = [0, 1, 2, 3].map(() => el('text', {}));
+    const emblem = el('g', {});
+    el('circle', { r: 44, fill: '#07050c', 'stroke-width': 3 }, emblem);
+    el('rect', { x: -18, y: -18, width: 36, height: 36, fill: 'none', 'stroke-width': 3, transform: 'rotate(45)' }, emblem);
+    el('circle', { r: 6 }, emblem);
+    parts = { gutter, tiles, labels, emblem };
+  }
+  const open = smooth(t / .35), half = g / 2 * open;
+  // Gutters: a cross that grows from the centre.
+  const cx = W / 2, cy = H / 2, gx = W / 2 * open, gy = H / 2 * open;
+  parts.gutter.setAttribute('d', `M${cx - gx} ${cy - half}H${cx + gx}V${cy + half}H${cx - gx}Z M${cx - half} ${cy - gy}H${cx + half}V${cy + gy}H${cx - half}Z`);
+  parts.gutter.style.opacity = alive;
+  const names = p.labels.split(',');
+  const boxes = [[0, 0], [1, 0], [0, 1], [1, 1]];
+  parts.tiles.forEach((r, i) => {
+    const [bx, by] = boxes[i], x = bx ? cx + g / 2 : 0, y = by ? cy + g / 2 : 0, w = W / 2 - g / 2, h = H / 2 - g / 2;
+    const k = smooth((t - .1 - i * p.stagger) / .6), len = 2 * (w + h);
+    for (const [a, v] of Object.entries({ x: x + 14, y: y + 14, width: w - 28, height: h - 28, stroke: p.color })) r.setAttribute(a, v);
+    r.style.strokeDasharray = len; r.style.strokeDashoffset = len * (1 - k) * (i % 2 ? 1 : -1);
+    r.style.opacity = alive; r.style.filter = `drop-shadow(0 0 6px ${p.color})`;
+    const lab = parts.labels[i];
+    lab.textContent = names[i] || '';
+    lab.setAttribute('x', x + 40); lab.setAttribute('y', y + h - 40); lab.setAttribute('fill', p.color);
+    lab.style.opacity = smooth((t - .4 - i * p.stagger) / .4) * alive;
+  });
+  const e = smooth((t - .2) / .5);
+  parts.emblem.setAttribute('transform', `translate(${cx} ${cy}) rotate(${t * 30 + (1 - e) * -180}) scale(${e * (1 - exit)})`);
+  parts.emblem.setAttribute('stroke', p.color); parts.emblem.setAttribute('fill', p.color);
+  parts.emblem.style.filter = `drop-shadow(0 0 12px ${p.color})`;
+};
+</script></body></html>

@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script src="gl.js"></script><script>
+// Split-tone grade, film grain, vignette and letterbox bars that slide in over the opening of the clip.
+const pass = AFGL(document.getElementById('output'), `
+uniform float grade, grain, vignette, bars, barsIn; uniform vec3 shadows, highlights;
+void main() {
+  vec4 src = A(st); vec3 c = src.rgb;
+  float l = dot(c, vec3(.299, .587, .114));
+  vec3 toned = c + (shadows - .5) * (1. - l) * .5 + (highlights - .5) * l * .45;
+  toned = mix(vec3(l), toned, 1.15);
+  toned = (toned - .5) * 1.08 + .5;
+  c = mix(c, toned, grade);
+  vec2 v = (st - .5) * vec2(aspect() * .8, 1.);
+  c *= 1. - vignette * smoothstep(.25, .95, length(v));
+  float g = hash(st * res * .5 + floor(time * 24.) * 17.13) - .5;
+  c += g * grain * (1. - l * .5);
+  float b = bars * (barsIn > 0. ? ease(progress / barsIn) : 1.);
+  float edge = min(st.y, 1. - st.y);
+  c *= smoothstep(b - .0015, b + .0015, edge);
+  o = vec4(clamp(c, 0., 1.) * src.a, src.a);
+}`);
+window.render = c => pass(c, c.params);
+</script>

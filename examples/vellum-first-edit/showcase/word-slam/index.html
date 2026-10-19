@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Cinzel;src:url('./Cinzel.ttf') format('truetype');font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;width:1920px;height:1080px;overflow:hidden;background:transparent}
+.layer{position:absolute;inset:0;display:flex;align-items:center;padding:0 140px;font-weight:900;font-family:Cinzel;line-height:1;white-space:nowrap}
+#kicker{position:absolute;left:0;right:0;font:600 30px Cinzel;letter-spacing:16px;padding:0 150px}
+#bar{position:absolute;height:6px}
+</style></head><body>
+<div id="echo1" class="layer"></div><div id="echo2" class="layer"></div>
+<div id="red" class="layer"></div><div id="cyan" class="layer"></div><div id="main" class="layer"></div>
+<div id="bar"></div><div id="kicker"></div>
+<script>
+'use strict';
+// Kinetic word: slams in from scale with an RGB split, leaves outline echoes, then slices out.
+const clamp = x => Math.max(0, Math.min(1, x)), smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const outExpo = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * clamp(x));
+const $ = id => document.getElementById(id);
+window.render = ({ progress, duration, params: p }) => {
+  const t = progress * duration, end = duration - t;
+  const justify = { left: 'flex-start', center: 'center', right: 'flex-end' }[p.align];
+  const slam = outExpo(t / .35), settle = 1 + .05 * clamp(t / duration);
+  const scale = (3.2 - 2.2 * slam) * settle;
+  const split = (1 - slam) * 60 + 6 * Math.exp(-t * 6);
+  const exit = smooth(1 - end / .35);
+  const clip = `inset(${exit * 50}% 0 ${exit * 50}% 0)`;
+  for (const id of ['main', 'red', 'cyan', 'echo1', 'echo2']) {
+    const e = $(id); e.textContent = p.word; e.style.justifyContent = justify; e.style.fontSize = p.size + 'px';
+    e.style.letterSpacing = `${(1 - slam) * 40 + 10 + t * 4}px`; e.style.clipPath = clip;
+    e.style.transformOrigin = p.align === 'left' ? '140px 50%' : p.align === 'right' ? 'calc(100% - 140px) 50%' : '50% 50%';
+  }
+  const blur = (1 - slam) * 16;
+  $('main').style.color = p.color; $('main').style.opacity = slam;
+  $('main').style.transform = `scale(${scale}) translateX(${exit * 80}px)`;
+  $('main').style.filter = `blur(${blur}px) drop-shadow(0 6px 30px rgba(0,0,0,.7))`;
+  $('red').style.color = '#ff2a4a'; $('cyan').style.color = p.accent;
+  for (const [id, dir] of [['red', -1], ['cyan', 1]]) {
+    const e = $(id); e.style.mixBlendMode = 'screen'; e.style.opacity = slam * .85 * (.4 + .6 * Math.exp(-t * 2));
+    e.style.transform = `scale(${scale}) translate(${dir * split + exit * 80 * (1 + dir * .5)}px, ${dir * split * .2}px)`; e.style.filter = `blur(${blur}px)`;
+  }
+  // Outline echoes ripple outward after impact.
+  [['echo1', 0], ['echo2', .18]].forEach(([id, delay]) => {
+    const k = clamp((t - .3 - delay) / 1.1), e = $(id);
+    e.style.color = 'transparent'; e.style.webkitTextStroke = `2px ${p.accent}`;
+    e.style.opacity = (1 - k) * (k > 0 ? .8 : 0); e.style.transform = `scale(${1 + k * .35})`;
+  });
+  const bar = $('bar'), bw = smooth((t - .25) / .5) * (1 - exit);
+  bar.style.background = `linear-gradient(90deg, ${p.accent}, ${p.color})`; bar.style.boxShadow = `0 0 18px ${p.accent}`;
+  bar.style.width = `${bw * 520}px`; bar.style.top = `${540 + p.size * .52}px`;
+  bar.style.left = p.align === 'left' ? '150px' : p.align === 'right' ? `${1770 - bw * 520}px` : `${960 - bw * 260}px`;
+  const k = $('kicker'), kv = smooth((t - .45) / .5) * (1 - exit);
+  k.textContent = p.kicker; k.style.color = p.accent; k.style.textAlign = p.align; k.style.opacity = kv;
+  k.style.top = `${540 - p.size * .5 - 60}px`; k.style.transform = `translateY(${(1 - kv) * 20}px)`;
+};
+</script></body></html>

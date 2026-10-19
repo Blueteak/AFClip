@@ -1,0 +1,54 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+// Hexagonal tiles flip in a wave from the centre; each tile's edge-on moment flashes a gold rune.
+const canvas = document.getElementById('output'), ctx = canvas.getContext('2d');
+const clamp = x => Math.max(0, Math.min(1, x)), ease = x => x * x * (3 - 2 * x);
+let cache = null;
+function layout(w, h, size, random) {
+  const tiles = [], dx = Math.sqrt(3) * size, dy = size * 1.5;
+  for (let row = -1, y = 0; y < h + size * 2; row++, y = row * dy) for (let col = -1; col * dx < w + dx; col++) {
+    const x = col * dx + (row & 1 ? dx / 2 : 0);
+    const strokes = Array.from({ length: 3 }, () => [random(), random(), random(), random()]);
+    tiles.push({ x, y, jitter: random(), strokes });
+  }
+  return tiles;
+}
+function hexPath(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; ctx[i ? 'lineTo' : 'moveTo'](x + r * Math.cos(a), y + r * Math.sin(a)); }
+  ctx.closePath();
+}
+window.render = ({ width: w, height: h, inputs: [a, b], progress: p, params: q, random, seed }) => {
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  const key = [w, h, q.size, seed].join();
+  if (cache?.key !== key) cache = { key, tiles: layout(w, h, q.size, random) };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = '#05040a'; ctx.fillRect(0, 0, w, h);
+  const maxD = Math.hypot(w / 2, h / 2), r = q.size, span = 1 - q.spread;
+  for (const t of cache.tiles) {
+    const d = Math.hypot(t.x - w / 2, t.y - h / 2) / maxD;
+    const local = ease(clamp((p - (d * .85 + t.jitter * .15) * q.spread) / span));
+    const sx = Math.cos(local * Math.PI), src = local < .5 ? a : b, edge = 1 - Math.abs(sx);
+    const lift = 1 + .18 * Math.sin(local * Math.PI);
+    ctx.save();
+    ctx.translate(t.x, t.y); ctx.scale(Math.max(Math.abs(sx), .02) * lift, lift); ctx.translate(-t.x, -t.y);
+    hexPath(t.x, t.y, r + 1); ctx.save(); ctx.clip();
+    ctx.drawImage(src, t.x - r * 1.2, t.y - r * 1.2, r * 2.4, r * 2.4, t.x - r * 1.2, t.y - r * 1.2, r * 2.4, r * 2.4);
+    if (edge > 0) { ctx.globalAlpha = edge * .75; ctx.fillStyle = q.gold; ctx.fill(); }
+    ctx.restore();
+    if (local > 0 && local < 1) {
+      ctx.globalAlpha = Math.sin(local * Math.PI); ctx.strokeStyle = q.gold; ctx.lineWidth = 2.5;
+      ctx.shadowColor = q.gold; ctx.shadowBlur = 18; hexPath(t.x, t.y, r * .96); ctx.stroke();
+      if (q.runes) {
+        ctx.globalAlpha = edge; ctx.strokeStyle = '#fff6dc'; ctx.lineWidth = 3; ctx.beginPath();
+        for (const [x0, y0, x1, y1] of t.strokes) { ctx.moveTo(t.x + (x0 - .5) * r, t.y + (y0 - .5) * r * 1.2); ctx.lineTo(t.x + (x1 - .5) * r, t.y + (y1 - .5) * r * 1.2); }
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+  }
+  return canvas;
+};
+</script>
