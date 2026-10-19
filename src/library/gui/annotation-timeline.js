@@ -143,11 +143,9 @@ async function newAnnotationPopover(trackId=window.activeAnnotationTrack,x){
   if(isSpanTrack(trackId))return createSpan(Math.min(markIn,markOut),Math.max(markIn,markOut),x,trackId);
   if(!canAnnotate())return;
   const a=state.selected;
-  if(a.kind==='video'&&!preview?.pts.length)preview=await api('preview',{id:a.id});
-  if(state.selected.id!==a.id)return;
   const start=Math.min(markIn,markOut),end=Math.max(markIn,markOut);
   if(end<=start)throw new Error('Drag a range or set different In and Out points first');
-  const boundaries=annotationBounds(a,start,end);
+  const boundaries=await annotationBounds(a,start,end);if(!boundaries)return;
   const record=await api('range-save',{assetId:a.id,revision:a.revision,trackId,name:'Annotation',tags:[],notes:'',...boundaries});
   await refresh();
   if(state.selected?.id!==a.id)return;
@@ -273,17 +271,40 @@ function beginTimelineGesture(e,lane,mode,range){
       window.activeAnnotationTrack=g.trackId;markIn=g.start;markOut=g.end;state.temporarySelection=true;showMarks();
       if(mode==='create'){if(isSpanTrack(g.trackId))await createSpan(g.start,g.end,event.clientX,g.trackId);else await newAnnotationPopover(g.trackId,event.clientX);return;}
       if(isSpan(range)){const draft=annotationDrafts.get(range.id);if(draft)await savePopoverDraft(range,draft);await changeSpans(a.id,takes=>{Object.assign(takes[spanIndex(takes,range)],{start:g.start,end:g.end});},spanField(range));annotationDrafts.delete(range.id);selectedSpan=spanRecords().find(t=>t.trackId===range.trackId&&t.start===g.start&&t.end===g.end);state.temporarySelection=false;return;}
-      if(a.kind==='video'&&!preview?.pts.length)preview=await api('preview',{id:a.id});
-      await api('range-save',{id:range.id,assetId:a.id,revision:range.revision,trackId:g.trackId,...annotationBounds(a,g.start,g.end)});state.temporarySelection=false;await refresh();
+      const boundaries=await annotationBounds(a,g.start,g.end);if(!boundaries)return;
+      await api('range-save',{id:range.id,assetId:a.id,revision:range.revision,trackId:g.trackId,...boundaries});state.temporarySelection=false;await refresh();
     }catch(error){timelineError(error);}finally{window.drawAnnotationTimeline();}
   };
   const up=e=>finish(e),cancel=e=>finish(e,true);
   window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',cancel);
   move(e);
 }
-function annotationBounds(a,start,end){
+async function annotationBounds(a,start,end){
   if(a.kind==='audio'){const rate=Number(a.source.metadata.streams.find(s=>s.codec_type==='audio').sample_rate);const first=Math.round(start*rate),last=Math.min(Math.floor(a.duration*rate),Math.round(end*rate));return {startSample:first,endSample:Math.max(first+1,last)};}
-  if(!preview?.pts.length)throw new Error('Prepare this video for review before editing annotations');
-  const frame=t=>{const i=preview.pts.findIndex(p=>p>=t-1e-7);return i<0?preview.pts.length:i;};const first=Math.min(preview.pts.length-1,frame(start));return {startFrame:first,endFrame:Math.max(first+1,frame(end))};
+  const generation=state.previewGeneration,current=()=>state.selected?.id===a.id&&state.selected.sourceId===a.sourceId&&state.previewGeneration===generation;
+  let data=preview;
+  requestsInFlight++;
+  try{
+    if(!data?.pts.length)data=await api('preview',{id:a.id});
+    if(!current())return null;
+    if(!data.pts.length){
+      say('Indexing video for annotation…');
+      const {jobs}=await api('prepare',{ids:[a.id],level:'index'}),deadline=Date.now()+300000;
+      for(;;){
+        if(!current())return null;
+        const job=await api('jobs',{id:jobs[0].id});
+        if(['failed','cancelled'].includes(job.status))throw new Error(job.error||'Video indexing cancelled');
+        if(job.status==='completed')break;
+        if(Date.now()>deadline)throw new Error('Video indexing is still running. Try the annotation again when it finishes.');
+        await new Promise(resolve=>setTimeout(resolve,250));
+      }
+      data=await api('preview',{id:a.id});
+    }
+    if(!current())return null;
+    if(data.source.id!==a.sourceId)throw new Error('Source changed. Select the video again.');
+    if(!data.pts.length)throw new Error('No video frames available for annotation');
+    preview=data;
+    const frame=t=>{const i=data.pts.findIndex(p=>p>=t-1e-7);return i<0?data.pts.length:i;};const first=Math.min(data.pts.length-1,frame(start));return {startFrame:first,endFrame:Math.max(first+1,frame(end))};
+  }finally{requestsInFlight--;}
 }
 window.drawAnnotationTimeline();

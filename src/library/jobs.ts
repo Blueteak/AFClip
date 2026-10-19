@@ -200,6 +200,7 @@ export class Jobs {
     const a=this.ops.asset(id),s=this.ops.source(a),cache=path.join(this.db.dir,'cache');this.readers.set(s.id,Date.now());
     if(s.status==='verified'&&this.ops.location(s)&&!fs.existsSync(path.join(cache,`${s.id}.png`)))this.enqueue('thumbnail',a.id);
     let prepared:any={};try{prepared=JSON.parse(fs.readFileSync(path.join(cache,`${s.id}.preview.json`),'utf8'));}catch{}
+    if(!prepared.pts?.length){try{const index=JSON.parse(fs.readFileSync(path.join(cache,`${s.id}.frames.json`),'utf8'));prepared.pts=index.ticks.map((tick:number)=>tick*index.timeBase.num/index.timeBase.den);}catch{}}
     const route=(type:string)=>`/v1/media/${s.id}/${type}`;
     if(prepared.seekProxy&&!fs.existsSync(prepared.seekProxy.file))prepared.seekProxy=null;
     if(prepared.seekProxy)prepared.seekProxy={...prepared.seekProxy,url:route('seek')};
