@@ -118,6 +118,9 @@ kbd, .kbd {
 .tab-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .search { display: flex; align-items: center; gap: 6px; margin: 8px 8px 6px; height: 26px; padding: 0 8px; border-radius: 4px; background: var(--bg-2); border: 1px solid var(--line); color: var(--text-3); }
 .search:focus-within { border-color: var(--accent); }
+.media-search { display: flex; align-items: center; gap: 4px; margin: 8px 8px 6px; }
+.media-search .search { flex: 1; min-width: 0; margin: 0; }
+.media-search > button { flex-shrink: 0; }
 .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--text); }
 .search input::-webkit-search-cancel-button { filter: invert(.6); }
 .media-list { flex: 1; overflow: auto; padding: 0 4px 8px; }
@@ -150,6 +153,8 @@ kbd, .kbd {
 .history-panel { flex: 1; overflow: auto; padding: 4px 0 10px; }
 .section-title { display: flex; align-items: center; gap: 6px; padding: 10px 12px 6px; font-size: 11px; font-weight: 600; color: var(--text-3); }
 .section-title .tab-spacer { flex: 1; }
+.section-title button { font: inherit; color: inherit; }
+.section-title button:hover { color: var(--accent); text-decoration: underline; }
 .history-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; min-height: 30px; }
 .history-row:hover { background: var(--bg-2); }
 .history-row .icon { color: var(--text-3); }

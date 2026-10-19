@@ -1475,7 +1475,9 @@ function drawMedia() {
     const data = libraryMedia[m.id], link = m.metadata?.library;
     if (mediaFolder(m) !== folder) {
       folder = mediaFolder(m);
-      list.append(h('div', { class: 'section-title' }, folder));
+      list.append(h('div', { class: 'section-title' }, folder === 'Inbox'
+        ? h('button', { onclick: () => perform(() => api.library(undefined, 'inbox')), 'aria-label': 'Open Inbox in content library', tip: { title: 'Open Inbox in content library' } }, folder)
+        : folder));
     }
     const used = usage.get(m.id) || 0, d = secs(m.duration), selectedRange = link?.end != null;
     const status = libraryOffline && link ? 'Library offline, showing saved metadata' : data?.status;
@@ -2793,7 +2795,7 @@ function buildChrome() {
   $('edit-group').append(actionButton('split'), actionButton('dissolve'), actionButton('addTrack'));
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
   $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('play', 'play', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), actionButton('renderFrame'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
-  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
+  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import'], ['add-library', 'library']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
   $('command-center-keys').replaceWith(kbd('Ctrl+Space'));
   $('command-center').onclick = () => run('palette', 'key');
   $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Space', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });

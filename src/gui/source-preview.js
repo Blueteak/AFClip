@@ -66,7 +66,7 @@
         const kind = data.kind;
         if (kind === 'video' && data.url) {
           const id = data.mediaId || media.id, duration = Math.max(num(data.duration), .001);
-          const project = { cacheLimitBytes: 128 * 1024 ** 2, media: [{ id, kind: 'video', name: data.name }], tracks: [{ id: 'source' }],
+          const project = { cacheLimitBytes: 128 * 1024 ** 2, media: [{ id, kind: 'video', name: data.name, duration }], tracks: [{ id: 'source' }],
             clips: [{ id: 'source', mediaId: id, trackId: 'source', start: 0, duration, sourceIn: 0, speed: 1 }], transitions: [] };
           this.native = new window.NativePreview({ project, width: data.width || 1920, height: data.height || 1080, plan: window.AFClipTimeline.compile(project),
             media: { [id]: { kind: 'video', url: data.url, pts: data.pts || [], seekProxy: data.seekProxy || null } }, graphics: {} },

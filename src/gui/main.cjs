@@ -211,12 +211,15 @@ app.whenReady().then(async () => {
     const seconds = t => t.num / t.den;
     return require('../render/waveform.cjs').waveform(path.resolve(projectDir, media.path), seconds(clip.sourceIn), seconds(clip.duration) * seconds(clip.speed));
   });
-  handle('library', async id => {
+  handle('library', async (id, folder) => {
     await request('/command', {command:'library-sync'});
     const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
     const ep = JSON.parse(result.stdout).result;
+    const url = new URL(ep.gui);
+    if (id) url.searchParams.set('asset', id);
+    if (folder) url.searchParams.set('folder', folder);
     const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
-    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, ep.gui+(id?'&asset='+encodeURIComponent(id):'')], { windowsHide:true, detached:true, stdio:'ignore', env });
+    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, url.toString()], { windowsHide:true, detached:true, stdio:'ignore', env });
     child.unref(); return {opened:true};
   });
   handle('edit-library', async id => {

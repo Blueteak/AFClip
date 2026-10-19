@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   collectProject: revision => ipcRenderer.invoke('afclip:collect', revision),
   relinkMedia: (id, revision) => ipcRenderer.invoke('afclip:relink', id, revision),
   importMedia: kind => ipcRenderer.invoke('afclip:import', kind),
-  library: id => ipcRenderer.invoke('afclip:library', id),
+  library: (id, folder) => ipcRenderer.invoke('afclip:library', id, folder),
   editLibrary: id => ipcRenderer.invoke('afclip:edit-library', id),
   libraryMedia: () => ipcRenderer.invoke('afclip:library-media'),
   mediaThumbnail: id => ipcRenderer.invoke('afclip:media-thumbnail', id),

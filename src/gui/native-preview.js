@@ -310,7 +310,31 @@ window.NativePreview = class NativePreview {
     }
     return items;
   }
-  async seek(time, forPlayback = false) {
+  seek(time, forPlayback = false) {
+    // Finish a visible frame even when pointer events arrive faster than a
+    // video decodes or an asset renders. Keep only the latest waiting position,
+    // including release, instead of cancelling every in-flight video frame.
+    this.pause(true);
+    return new Promise((resolve, reject) => {
+      this.assetSeekNext?.resolve(false);
+      this.assetSeekNext = { time, forPlayback, resolve, reject };
+      if (!this.assetSeekRunning) this.drainAssetSeeks();
+    });
+  }
+  async drainAssetSeeks() {
+    this.assetSeekRunning = true;
+    try {
+      while (this.assetSeekNext) {
+        const request = this.assetSeekNext; this.assetSeekNext = null;
+        if (this.closed) { request.resolve(false); continue; }
+        try {
+          const current = await this.seekFrame(request.time, request.forPlayback);
+          request.resolve(current && !this.assetSeekNext);
+        } catch (error) { request.reject(error); }
+      }
+    } finally { this.assetSeekRunning = false; }
+  }
+  async seekFrame(time, forPlayback = false) {
     const generation = ++this.generation;
     this.proxyAbort?.abort(); this.proxyAbort = new AbortController();
     const signal = this.proxyAbort.signal;
@@ -372,7 +396,7 @@ window.NativePreview = class NativePreview {
     await this.assets?.frame(items,this.entries);
     if(generation!==this.generation||this.closed)return false;
     this.prepare(time, forPlayback);
-    if (!forPlayback) this.refinePaused(time, generation);
+    if (!forPlayback && !this.assetSeekNext) this.refinePaused(time, generation);
     return true;
   }
   prepare(time, warm = true) {
