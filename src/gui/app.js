@@ -91,6 +91,9 @@ function blockReason(trackId) {
 const mediaById = id => byId(project()?.media || [], id);
 const transitionById = id => byId(transitions(), id);
 const markerById = id => byId(markers(), id);
+// Matches MARKER_COLORS in src/shared/project.ts. A marker without a color uses the first.
+const MARKER_COLORS = ['green', 'cyan', 'blue', 'purple', 'pink', 'red', 'orange', 'yellow'];
+const markerColor = m => MARKER_COLORS.includes(m?.color) ? m.color : MARKER_COLORS[0];
 const sortedMarkers = () => [...markers()].sort((a, b) => secs(a.time) - secs(b.time) || a.id.localeCompare(b.id));
 const clipsOn = trackId => clips().filter(c => c.trackId === trackId);
 const strip = ({ revision, ...rest }) => rest;
@@ -352,7 +355,7 @@ action('goIn', { menu: 'Timeline', group: 2, label: 'Go to In', keys: ['Shift+I'
 action('goOut', { menu: 'Timeline', group: 2, label: 'Go to Out', keys: ['Shift+O'], enabled: () => outF != null, run: () => seek(outF, true) });
 action('clearMarks', { menu: 'Timeline', group: 2, label: 'Clear In and Out', keys: ['Ctrl+Shift+X'], enabled: () => inF != null || outF != null, run: () => setMarks(null, null) });
 action('addMarker', { menu: 'Timeline', group: 'markers', label: 'Add marker', icon: 'marker', keys: ['M'], desc: 'Add a marker at the playhead. Markers are shared with the CLI, snap moves and trims, and never change the export length.', enabled: editable, run: () => addMarker(nextMarkerName(), playF) });
-action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename or retime the selected marker. Right-click or double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerPopover(markerById(selMarker)) });
+action('editMarker', { menu: 'Timeline', group: 'markers', label: 'Edit marker…', desc: 'Rename, recolor or retime the selected marker. Right-click or double-click a marker on the ruler to do the same.', enabled: () => editable() && !!markerById(selMarker), run: () => markerPopover(markerById(selMarker)) });
 action('prevMarker', { menu: 'Timeline', group: 'markers', label: 'Previous marker', keys: ['Shift+Down'], desc: 'Jump to and select the previous marker.', enabled: () => markers().length > 0, run: () => seekMarker(-1) });
 action('nextMarker', { menu: 'Timeline', group: 'markers', label: 'Next marker', keys: ['Shift+Up'], desc: 'Jump to and select the next marker.', enabled: () => markers().length > 0, run: () => seekMarker(1) });
 action('addTrack', { menu: 'Timeline', group: 3, label: 'Add track', icon: 'add-track', keys: ['Ctrl+Shift+T'], desc: 'Add an empty track on top, or at the top of the selected folder. Any media can go on any track.', enabled: editable, run: () => addTrack() });
@@ -773,14 +776,16 @@ function addMarker(name, f) {
   return edit(() => ({ ops: [put('markers', { id, name, time: fromF(at) })], pre: { [`marker:${id}`]: 0 }, message: `Added marker “${name}” at ${tc(at)}` })).then(ok => { if (ok) selectMarker(id); return ok; });
 }
 // Only changed fields are sent, so renaming keeps an off-grid time from an earlier frame rate exact.
-function changeMarker(id, { name, f }) {
+function changeMarker(id, { name, f, color }) {
   return edit(() => {
     const m = markerById(id); if (!m) return refuse('The marker no longer exists');
     const value = { id };
     if (name != null && name !== m.name) value.name = name;
     if (f != null && f !== markerF(m)) value.time = fromF(Math.max(0, f));
-    if (!value.name && !value.time) return null;
-    return { ops: [put('markers', value)], message: value.time ? `Moved marker “${value.name || m.name}” to ${tc(Math.max(0, f))}` : `Renamed marker to “${value.name}”` };
+    if (color != null && color !== markerColor(m)) value.color = color;
+    if (!value.name && !value.time && !value.color) return null;
+    return { ops: [put('markers', value)], message: value.time ? `Moved marker “${value.name || m.name}” to ${tc(Math.max(0, f))}`
+      : value.name ? `Renamed marker to “${value.name}”` : `Colored marker “${m.name}” ${value.color}` };
   });
 }
 function deleteMarker(id) {
@@ -791,6 +796,25 @@ function deleteMarker(id) {
 function nextMarkerName() {
   const n = Math.max(0, ...markers().map(m => Number(/^Marker (\d+)$/.exec(m.name)?.[1] || 0)));
   return `Marker ${Math.max(n, markers().length) + 1}`;
+}
+// One flag per color, drawn like the ruler flags. Arrow keys move between them.
+function markerColorPicker(m, disabled) {
+  const current = markerColor(m);
+  const row = h('div', { class: 'marker-colors', role: 'radiogroup', 'aria-label': 'Marker color' },
+    ...MARKER_COLORS.map(c => h('button', { class: `marker-color ${c === current ? 'active' : ''}`, dataset: { color: c }, role: 'radio', disabled,
+      'aria-checked': String(c === current), 'aria-label': c, tabindex: c === current ? '0' : '-1',
+      tip: { title: c[0].toUpperCase() + c.slice(1) }, onclick: () => pick(c) })));
+  function pick(c) {
+    for (const b of row.children) { const on = b.dataset.color === c; b.classList.toggle('active', on); b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
+    changeMarker(m.id, { color: c });
+  }
+  row.onkeydown = e => {
+    const step = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key]; if (!step || disabled) return;
+    e.preventDefault();
+    const i = MARKER_COLORS.indexOf(document.activeElement?.dataset?.color ?? current), c = MARKER_COLORS[(i + step + MARKER_COLORS.length) % MARKER_COLORS.length];
+    pick(c); row.querySelector(`[data-color="${c}"]`).focus();
+  };
+  return row;
 }
 // The marker editor floats above its ruler flag, like the Content Library annotation popover.
 // Closing it in any way keeps what was typed; each committed field is its own undo step.
@@ -814,7 +838,7 @@ function markerPopover(m) {
   const time = timeInput(markerF(m), f => changeMarker(m.id, { f }), { disabled });
   const box = h('div', { class: 'marker-popover', role: 'dialog', 'aria-label': 'Marker' },
     h('div', { class: 'popover-heading' }, name, h('button', { class: 'icon-button small', onclick: () => closeMarkerPopover(), tip: { title: 'Close', keys: 'Escape' } }, icon('x'))),
-    h('div', { class: 'popover-body' }, field('Time', time, { tip: 'Where the marker sits on the timeline. Markers apply to every track.' })),
+    h('div', { class: 'popover-body' }, markerColorPicker(m, disabled), field('Time', time, { tip: 'Where the marker sits on the timeline. Markers apply to every track.' })),
     h('div', { class: 'popover-actions' }, h('button', { class: 'popover-delete', disabled, onclick: () => { closeMarkerPopover(false); deleteMarker(m.id); }, tip: { title: 'Delete marker', keys: 'Delete' } }, 'Delete', kbd('Delete'))));
   document.body.append(box);
   markerPop = { id: m.id, box, name, time };
@@ -2087,12 +2111,12 @@ function rulerMarkers() {
     const m = g.find(o => o.id === selMarker) || g[0], left = secs(m.time) * pps;
     const room = i + 1 < groups.length ? (secs(groups[i + 1][0].time) - secs(m.time)) * pps - 12 : 180;
     const beyond = secs(m.time) * fps() > lastF + 1e-8;
-    const el = h('div', { class: `marker ${g.some(o => o.id === selMarker) ? 'selected' : ''} ${beyond ? 'beyond' : ''}`, dataset: { id: m.id }, style: { left: `${left}px` } },
+    const el = h('div', { class: `marker ${g.some(o => o.id === selMarker) ? 'selected' : ''} ${beyond ? 'beyond' : ''}`, dataset: { id: m.id, color: markerColor(m) }, style: { left: `${left}px` } },
       room >= 28 ? h('span', { class: 'marker-name', style: { maxWidth: `${Math.min(180, room)}px` } }, m.name, g.length > 1 ? h('b', {}, ` +${g.length - 1}`) : null) : null);
     el.group = g;
     el.tip = () => ({ title: g.length > 1 ? plural(g.length, 'marker') : m.name, follow: true,
       meta: [tc(markerF(m)), ...(g.length > 1 ? g.map(o => `· ${o.name}`) : []), beyond ? 'After the last clip. Exports are unaffected.' : null].filter(Boolean).join('\n'),
-      hint: [{ keys: '#Click', text: g.length > 1 ? 'go to / cycle' : 'go to' }, { keys: '#Drag', text: 'move' }, { keys: '#Double-click', text: 'edit' }, { keys: 'Delete', text: 'remove' }, { keys: ['Shift+Up', 'Shift+Down'], text: 'next / prev' }] });
+      hint: [{ keys: '#Click', text: g.length > 1 ? 'go to / cycle' : 'go to' }, { keys: '#Drag', text: 'move' }, { keys: '#Right-click', text: 'edit' }, { keys: 'Delete', text: 'remove' }, { keys: ['Shift+Up', 'Shift+Down'], text: 'next / prev' }] });
     return el;
   });
 }
@@ -2795,9 +2819,8 @@ function markerDrag(e) {
 $('ruler').addEventListener('contextmenu', e => {
   const el = e.target.closest('.marker'), at = Math.max(0, laneFrame(e.clientX));
   if (!el) { timelineContextMenu(e, [{ label: 'Add marker', icon: 'marker', disabled: !editable(), run: () => addMarker(nextMarkerName(), at) }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
-  e.preventDefault();
-  const g = el.group, m = g.find(x => x.id === selMarker) || g[0];
-  timelineContextMenu(e, [{ label: 'Edit marker', icon: 'marker', run: () => markerPopover(m) }]);
+  e.preventDefault(); e.stopPropagation();
+  markerPopover(el.group.find(x => x.id === selMarker) || el.group[0]);
 });
 $('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: 'M', text: 'add marker' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
 $('mini-ruler').tip = { title: 'Sequence overview', hint: [{ keys: '#Click', text: 'jump' }, { keys: '#Drag', text: 'scrub' }] };

@@ -6,7 +6,8 @@ export type VolumePoint = { time: Time; value: number };
 export type AssetInstance = { assetId:string; params?:Record<string,number|boolean|string>; seed:number };
 export type Clip = { id: string; revision: number; trackId: string; mediaId: string; start: Time; duration: Time; sourceIn: Time; speed: Time; stream?: 'audio'|'video'; linkId?: string|null; volume: number; volumePoints?: VolumePoint[]; mute: boolean; fadeIn: Time; fadeOut: Time; text?: Record<string,string>; transform?: {x?:number;y?:number;scale?:number;rotation?:number;opacity?:number;fit?:'fit'|'fill'}; name?:string; params?:Record<string,number|boolean|string>; seed?:number; effects?: (AssetInstance & {id:string})[] };
 export type Transition = AssetInstance & { audio:'crossfade'|'cut'; id: string; revision: number; trackId: string; fromClipId: string; toClipId: string; duration: Time; alignment:'center'|'start'|'end' };
-export type Marker = { id:string; revision:number; name:string; time:Time };
+export const MARKER_COLORS = ['green','cyan','blue','purple','pink','red','orange','yellow'] as const;
+export type Marker = { id:string; revision:number; name:string; time:Time; color?:typeof MARKER_COLORS[number] };
 export type Project = { version:1; id:string; name:string; revision:number; resolution:{width:number;height:number}; fps:Time; media:Media[]; tracks:Track[]; folders?:TrackFolder[]; clips:Clip[]; transitions:Transition[]; markers?:Marker[]; relationshipRevisions:Record<string,number>; [key:string]:any };
 export const ZERO: Time = {num:0,den:1};
 export const ONE: Time = {num:1,den:1};
@@ -43,7 +44,7 @@ export function validateProject(p:any):asserts p is Project {
  if(p.markers===undefined)p.markers=[];
  if(p.folders===undefined)p.folders=[];
  for(const name of ['media','tracks','clips','transitions','markers','folders']){assert(Array.isArray(p[name]),`Missing ${name} array`);const ids=new Set();for(const o of p[name]){assert(o&&typeof o.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(o.id)&&!ids.has(o.id),`Invalid or duplicate ${name} ID`);ids.add(o.id);assert(Number.isSafeInteger(o.revision)&&o.revision>=0,'Invalid object revision');}}
- for(const marker of p.markers){assert(typeof marker.name==='string'&&marker.name.trim().length>0&&marker.name.length<=256,'Marker name must contain 1 to 256 characters');assert(cmp(time(marker.time,'Marker time'),ZERO)>=0,'Marker time must not be negative');}
+ for(const marker of p.markers){assert(typeof marker.name==='string'&&marker.name.trim().length>0&&marker.name.length<=256,'Marker name must contain 1 to 256 characters');assert(cmp(time(marker.time,'Marker time'),ZERO)>=0,'Marker time must not be negative');assert(marker.color===undefined||(MARKER_COLORS as readonly string[]).includes(marker.color),`Marker color must be one of ${MARKER_COLORS.join(', ')}`);}
  const media=new Map<string,Media>(p.media.map((m:Media)=>[m.id,m]));const tracks=new Map<string,Track>(p.tracks.map((t:Track)=>[t.id,t]));const clips=new Map<string,Clip>(p.clips.map((c:Clip)=>[c.id,c]));
  for(const m of p.media){assert(['video','audio','image','graphic'].includes(m.kind)&&typeof m.path==='string'&&m.path.length>0,'Invalid media');assert(cmp(time(m.duration),ZERO)>=0,'Negative media duration');assert(m.metadata&&typeof m.metadata==='object','Media metadata required');}
  for(const t of p.tracks)assert(typeof t.name==='string'&&typeof t.locked==='boolean'&&typeof t.disabled==='boolean','Invalid track');
