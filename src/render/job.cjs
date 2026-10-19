@@ -116,6 +116,7 @@ async function main() {
   fs.mkdirSync(path.dirname(config.output), { recursive: true });
   partial = path.join(path.dirname(config.output), `.${path.basename(config.output)}.${config.jobId}.partial${path.extname(config.output)}`);
   const renderConfig = { ...config, project, width, height, begin, end, plan, media, graphics, ffmpeg, nativeEncoder, work, audio: audio?.output,
+    decodeStrides: config.kind === 'export' ? require('./decode-strides.cjs')(plan, media, begin, end, project.fps.num / project.fps.den) : {},
     decodedBudgetBytes: Math.min(project.cacheLimitBytes || 256 * 1024 * 1024, 512 * 1024 * 1024), partial };
   const renderFile = path.join(work, 'renderer.json');
   if (config.kind === 'preview' && config.nativePreview) {

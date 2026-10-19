@@ -11,7 +11,7 @@ export async function libraryEndpoint(dir=catalogDir()) {
   const existing=async()=>{try{const ep=JSON.parse(fs.readFileSync(file,'utf8'));await request(ep,'/health');return ep;}catch{return null;}};
   const ep=await existing();if(ep)return ep;
   const log=fs.openSync(path.join(dir,'service.log'),'a');
-  const child=spawn(process.env.AFCLIP_NODE_PATH||process.execPath,[fileURLToPath(new URL('./server.ts',import.meta.url)),dir],{detached:true,windowsHide:true,stdio:['ignore',log,log]});child.unref();fs.closeSync(log);let error:any;child.on('error',e=>error=e);
+  const child=spawn(process.env.AFCLIP_NODE_PATH||process.execPath,[fileURLToPath(new URL('./server.ts',import.meta.url)),dir],{detached:true,windowsHide:true,stdio:['ignore',log,log]});child.unref();fs.closeSync(log);let error:any;child.on('error',e=>error=e);child.once('exit',(code,signal)=>{if(code!==0)error=new Error(`Library service exited before becoming ready (${code??signal}). See ${path.join(dir,'service.log')}`);});
   for(let i=0;i<150;i++){if(error)throw error;await new Promise(r=>setTimeout(r,100));const ready=await existing();if(ready)return ready;}
   throw new Error(`Library service did not start. See ${path.join(dir,'service.log')}`);
 }

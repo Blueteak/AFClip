@@ -2,12 +2,14 @@ const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 // One reusable decoded frame per live clip. Stream backpressure bounds everything ahead of it.
 class Decoder {
-  constructor(media, ffmpeg, targetIndex, logFile) {
+  constructor(media, ffmpeg, targetIndex, logFile, stride = 1) {
+    if (!Number.isSafeInteger(stride) || stride < 1) throw new Error('Invalid decode stride');
+    this.stride = stride; this.nextIndex = targetIndex; this.framesRead = 0;
     this.media = media; this.index = targetIndex - 1; this.pending = null; this.offset = 0;
     this.buffer = Buffer.allocUnsafe(media.width * media.height * 4);
     const seek = Math.max(0, media.pts[targetIndex] - .00001);
     const size = media.previewSize ? `w=${media.width}:h=${media.height}:` : '';
-    const filter = media.kind === 'image' ? (size ? `scale=${media.width}:${media.height},format=rgba` : 'format=rgba') : `scale=${size}in_color_matrix=bt709:in_range=tv:out_range=full,format=rgba`;
+    const filter = (stride > 1 ? `select=not(mod(n\\,${stride})),` : '') + (media.kind === 'image' ? (size ? `scale=${media.width}:${media.height},format=rgba` : 'format=rgba') : `scale=${size}in_color_matrix=bt709:in_range=tv:out_range=full,format=rgba`);
     // Full-resolution exports benefit from frame threading on Windows and macOS.
     // Preview keeps its bounded pool to avoid competing with interactive work.
     const threads = media.previewSize ? '4' : ['darwin', 'win32'].includes(process.platform) ? '0' : '2';
@@ -22,6 +24,7 @@ class Decoder {
   async read(index) {
     if (index < this.index) throw new Error('Decoder cannot read backward');
     while (this.index < index) {
+      if (this.nextIndex > index) throw new Error('Requested frame is outside the planned decode stride');
       let filled = 0;
       while (filled < this.buffer.length) {
         if (!this.pending || this.offset === this.pending.length) {
@@ -32,10 +35,10 @@ class Decoder {
         const size = Math.min(this.pending.length - this.offset, this.buffer.length - filled);
         // Consume skipped frames for exact decoder positioning, but only copy
         // the requested picture into the reusable RGBA buffer.
-        if (this.index + 1 === index) this.pending.copy(this.buffer, filled, this.offset, this.offset + size);
+        if (this.nextIndex === index) this.pending.copy(this.buffer, filled, this.offset, this.offset + size);
         filled += size; this.offset += size;
       }
-      this.index++;
+      this.index = this.nextIndex; this.nextIndex += this.stride; this.framesRead++;
     }
     return this.buffer;
   }
