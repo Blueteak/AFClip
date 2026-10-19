@@ -102,9 +102,9 @@ async function main(){
       if(!pending||!wait)break;
       if(Date.now()>=deadline){status='accepted';error={code:'WAIT_TIMEOUT',message:'Wait timed out; jobs remain active. Inspect jobs or cancel explicitly.',details:{ids}};break;}
       // Cached index jobs can finish in 1 ms; don't add half a second to them.
-      // Back off for hashing and encoding jobs that run for minutes.
+      // Keep completion detection within 100 ms, even for longer jobs.
       await new Promise(r=>setTimeout(r,Math.min(pollMs,Math.max(1,deadline-Date.now()))));
-      pollMs=Math.min(500,pollMs*2);
+      pollMs=Math.min(100,pollMs*2);
     }
     const artifactJob=result.jobs.find((j:any)=>j.kind==='artifact'&&j.status==='completed');
     if(result.artifact&&artifactJob?.result)result.artifact={...result.artifact,...artifactJob.result};

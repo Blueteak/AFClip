@@ -1,0 +1,1528 @@
+{
+  "measuredAt": "2026-10-19T06:36:37.852Z",
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "cores": 24,
+    "ramBytes": 68044075008,
+    "node": "v24.12.0"
+  },
+  "fixture": "examples/vellum-first-edit, 1920x1080 at 30 fps; existing plain/dissolve/title ranges",
+  "historical": {
+    "source": "T3 statev2.sqlite, orchestration_v2_projection_turn_items, AFClip project, read-only snapshot",
+    "mentionRows": 543,
+    "note": "Only single-command invocations beginning with the CLI are included; timings include shell/tool overhead. Piped formatting and redirection are retained. Historical code revisions differ.",
+    "samples": [
+      {
+        "cli": "af-clip",
+        "command": "create",
+        "ms": 159,
+        "at": "2026-10-17T05:57:34.994Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "import",
+        "ms": 255,
+        "at": "2026-10-17T05:58:41.396Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "cancel",
+        "ms": 205,
+        "at": "2026-10-17T06:00:36.714Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "status",
+        "ms": 209,
+        "at": "2026-10-17T06:00:40.164Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "frame",
+        "ms": 35000,
+        "at": "2026-10-17T06:05:27.305Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 93426,
+        "at": "2026-10-17T06:06:15.714Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "status",
+        "ms": 223,
+        "at": "2026-10-17T06:15:48.903Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 6341,
+        "at": "2026-10-17T06:16:28.369Z",
+        "exitCode": 1
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 102786,
+        "at": "2026-10-17T06:28:12.726Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "frame",
+        "ms": 2252,
+        "at": "2026-10-17T07:49:08.454Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "frame",
+        "ms": 2233,
+        "at": "2026-10-17T16:21:02.735Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 5315,
+        "at": "2026-10-17T16:24:42.313Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "inspect",
+        "ms": 215,
+        "at": "2026-10-17T16:25:19.574Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-lib",
+        "command": "gui",
+        "ms": 195,
+        "at": "2026-10-17T19:38:32.885Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-lib",
+        "command": "source-folder-save",
+        "ms": 208,
+        "at": "2026-10-17T19:40:29.476Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-lib",
+        "command": "gui",
+        "ms": 187,
+        "at": "2026-10-17T19:41:21.157Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 1772,
+        "at": "2026-10-17T20:39:28.041Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "close",
+        "ms": 223,
+        "at": "2026-10-17T20:56:17.191Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 1793,
+        "at": "2026-10-17T21:21:56.361Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 1402,
+        "at": "2026-10-17T21:22:39.457Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-lib",
+        "command": "endpoint",
+        "ms": 189,
+        "at": "2026-10-18T18:19:04.317Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 12491,
+        "at": "2026-10-18T21:38:22.990Z",
+        "exitCode": 1
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 36523,
+        "at": "2026-10-18T21:39:47.887Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "export",
+        "ms": 34308,
+        "at": "2026-10-18T22:01:21.132Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "frame",
+        "ms": 2287,
+        "at": "2026-10-18T23:40:40.513Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 230,
+        "at": "2026-10-18T23:48:52.789Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 214,
+        "at": "2026-10-18T23:49:00.258Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 207,
+        "at": "2026-10-18T23:49:34.173Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 201,
+        "at": "2026-10-18T23:50:34.564Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 204,
+        "at": "2026-10-18T23:51:15.725Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "folders",
+        "ms": 213,
+        "at": "2026-10-18T23:51:22.491Z",
+        "exitCode": 0
+      },
+      {
+        "cli": "af-clip",
+        "command": "close",
+        "ms": 213,
+        "at": "2026-10-19T05:26:47.528Z",
+        "exitCode": 0
+      }
+    ]
+  },
+  "decodeControl": [
+    {
+      "threads": 2,
+      "ms": 1494.1439
+    },
+    {
+      "threads": 4,
+      "ms": 893.0092999999999
+    },
+    {
+      "threads": 8,
+      "ms": 633.3530999999998
+    },
+    {
+      "threads": 0,
+      "ms": 526.6515000000004
+    },
+    {
+      "threads": 2,
+      "ms": 1494.0160999999998
+    },
+    {
+      "threads": 4,
+      "ms": 880.0145000000002
+    },
+    {
+      "threads": 8,
+      "ms": 633.1617000000006
+    },
+    {
+      "threads": 0,
+      "ms": 534.3176999999996
+    },
+    {
+      "threads": 2,
+      "ms": 1495.9287000000004
+    },
+    {
+      "threads": 4,
+      "ms": 888.9555999999993
+    },
+    {
+      "threads": 8,
+      "ms": 640.9116999999987
+    },
+    {
+      "threads": 0,
+      "ms": 529.0786000000007
+    }
+  ],
+  "before": [
+    {
+      "name": "inspect cold",
+      "ms": 351.89689999999996,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 136.58370000000002,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 123.49090000000001,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 132.447,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 131.4007999999999,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 141.4996,
+      "ok": true
+    },
+    {
+      "name": "marker add",
+      "ms": 127.51700000000005,
+      "ok": true
+    },
+    {
+      "name": "undo",
+      "ms": 131.73120000000017,
+      "ok": true
+    },
+    {
+      "name": "redo",
+      "ms": 145.66219999999998,
+      "ok": true
+    },
+    {
+      "name": "marker remove",
+      "ms": 132.41899999999987,
+      "ok": true
+    },
+    {
+      "name": "plain",
+      "ms": 3733.3048999999996,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 805277696,
+        "fullFrameReadback": true,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2340.4532,
+        "renderFps": 12.818030285758331,
+        "wallMs": 3278.9159,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 327.9689000000003
+        },
+        "indexCacheHits": 0,
+        "indexMs": 166.8211,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": false,
+            "frames": 2629,
+            "ms": 166.8211
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 7319.9664,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1112354816,
+        "fullFrameReadback": true,
+        "rejectedPaints": 27,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 5917.7356,
+        "renderFps": 5.06950665386267,
+        "wallMs": 6947.3114000000005,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 386.0753000000004
+        },
+        "indexCacheHits": 1,
+        "indexMs": 150.58769999999998,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": false,
+            "frames": 2236,
+            "ms": 149.2597
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.3279999999999745
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 3727.4586,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 854540288,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2487.4748999999997,
+        "renderFps": 12.060423202662268,
+        "wallMs": 3240.4164,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 290.02520000000004
+        },
+        "indexCacheHits": 1,
+        "indexMs": 3.214299999999998,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.214299999999998
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "plain",
+      "ms": 3707.813399999999,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 792457216,
+        "fullFrameReadback": true,
+        "rejectedPaints": 1,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2341.9862,
+        "renderFps": 12.809639954325949,
+        "wallMs": 3107.6468,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 325.20830000000024
+        },
+        "indexCacheHits": 1,
+        "indexMs": 3.0939999999999976,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 3.0939999999999976
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 7278.594099999998,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1123848192,
+        "fullFrameReadback": true,
+        "rejectedPaints": 23,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 5960.9789,
+        "renderFps": 5.032730446336591,
+        "wallMs": 6828.1131000000005,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 384.2965000000004
+        },
+        "indexCacheHits": 2,
+        "indexMs": 4.8033,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.5786999999999978
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.2246000000000024
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 3710.129399999998,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 936640512,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2483.55,
+        "renderFps": 12.079482998127679,
+        "wallMs": 3241.73,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 288.55920000000015
+        },
+        "indexCacheHits": 1,
+        "indexMs": 3.3770999999999987,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.3770999999999987
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "plain",
+      "ms": 3726.2675000000017,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 788533248,
+        "fullFrameReadback": true,
+        "rejectedPaints": 1,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2340.4038,
+        "renderFps": 12.818300841931636,
+        "wallMs": 3090.8109999999997,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 326.54089999999997
+        },
+        "indexCacheHits": 1,
+        "indexMs": 3.104800000000001,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 3.104800000000001
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 7292.3778999999995,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1102139392,
+        "fullFrameReadback": true,
+        "rejectedPaints": 24,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 5963.0851999999995,
+        "renderFps": 5.030952769214165,
+        "wallMs": 6839.8529,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 392.03729999999996
+        },
+        "indexCacheHits": 2,
+        "indexMs": 3.7845000000000013,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.687800000000003
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.0966999999999985
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 3724.577900000004,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 939163648,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 2482.7628,
+        "renderFps": 12.083312993089795,
+        "wallMs": 3228.0277,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 289.1675
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.7012,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.7012
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "frame",
+      "ms": 2176.758999999998,
+      "ok": true,
+      "stats": {
+        "frames": 1,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 781324288,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 1,
+        "restarts": 1,
+        "renderMs": 1269.7284,
+        "renderFps": 0.7875700031597309,
+        "wallMs": 1544.8845000000001,
+        "verification": null,
+        "indexCacheHits": 1,
+        "indexMs": 2.9071999999999996,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.9071999999999996
+          }
+        ],
+        "audioClips": 0,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "png",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "library import",
+      "ms": 542.3265000000029,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "verify",
+          "status": "completed",
+          "runningMs": 286
+        }
+      ]
+    },
+    {
+      "name": "library search",
+      "ms": 130.61969999999565,
+      "ok": true
+    },
+    {
+      "name": "source index cold",
+      "ms": 213.79469999999856,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 61
+        }
+      ]
+    },
+    {
+      "name": "source index warm",
+      "ms": 138.0263999999952,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 5
+        }
+      ]
+    },
+    {
+      "name": "waveform cold",
+      "ms": 185.14449999999488,
+      "ok": true
+    },
+    {
+      "name": "waveform warm",
+      "ms": 132.91519999999582,
+      "ok": true
+    },
+    {
+      "name": "source frame",
+      "ms": 525.2205000000031,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 408
+        }
+      ]
+    },
+    {
+      "name": "close project",
+      "ms": 127.03940000000148,
+      "ok": true
+    },
+    {
+      "name": "close library",
+      "ms": 127.09550000000309,
+      "ok": true
+    }
+  ],
+  "after": [
+    {
+      "name": "inspect cold",
+      "ms": 369.8807,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 127.41219999999993,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 134.9583,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 137.32760000000007,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 123.98799999999994,
+      "ok": true
+    },
+    {
+      "name": "inspect warm",
+      "ms": 139.0395000000001,
+      "ok": true
+    },
+    {
+      "name": "marker add",
+      "ms": 126.41610000000014,
+      "ok": true
+    },
+    {
+      "name": "undo",
+      "ms": 142.5091,
+      "ok": true
+    },
+    {
+      "name": "redo",
+      "ms": 138.74829999999997,
+      "ok": true
+    },
+    {
+      "name": "marker remove",
+      "ms": 127.22529999999983,
+      "ok": true
+    },
+    {
+      "name": "plain",
+      "ms": 2850.9529999999995,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 783646720,
+        "fullFrameReadback": true,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1617.2775,
+        "renderFps": 18.54969230697886,
+        "wallMs": 2560.078,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 324.30970000000025
+        },
+        "indexCacheHits": 0,
+        "indexMs": 165.44,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": false,
+            "frames": 2629,
+            "ms": 165.44
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 5699.091999999999,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1037746176,
+        "fullFrameReadback": true,
+        "rejectedPaints": 25,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 4412.3162999999995,
+        "renderFps": 6.799149915884318,
+        "wallMs": 5415.7169,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 387.5671999999995
+        },
+        "indexCacheHits": 1,
+        "indexMs": 146.9092,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": false,
+            "frames": 2236,
+            "ms": 145.656
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.2531999999999925
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 2848.376399999999,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 959082496,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1859.5463999999997,
+        "renderFps": 16.132966620246748,
+        "wallMs": 2628.0948999999996,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 286.0439000000001
+        },
+        "indexCacheHits": 1,
+        "indexMs": 3.0188000000000024,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.0188000000000024
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "plain",
+      "ms": 2621.2135,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 808640512,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1605.2135,
+        "renderFps": 18.689102726833532,
+        "wallMs": 2361.134,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 325.3068000000003
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.957699999999999,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 2.957699999999999
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 5469.272700000001,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1096667136,
+        "fullFrameReadback": true,
+        "rejectedPaints": 22,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 4408.9953,
+        "renderFps": 6.804271258805834,
+        "wallMs": 5271.2308,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 391.78009999999995
+        },
+        "indexCacheHits": 2,
+        "indexMs": 3.6656000000000013,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.604800000000001
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.0608000000000004
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 2848.1212000000014,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 910385152,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1844.5428000000002,
+        "renderFps": 16.26419294797605,
+        "wallMs": 2612.4457,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 301.68700000000035
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.8496999999999986,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.8496999999999986
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "plain",
+      "ms": 2629.7740000000013,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 793157632,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1621.5477,
+        "renderFps": 18.500843360944607,
+        "wallMs": 2382.0951999999997,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 326.93380000000025
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.602599999999999,
+        "indexing": [
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 2.602599999999999
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "dissolve",
+      "ms": 5585.144600000003,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 29491200,
+        "peakDecoders": 2,
+        "peakChromiumWorkingSetBytes": 1114054656,
+        "fullFrameReadback": true,
+        "rejectedPaints": 23,
+        "decodedSourceFrames": 118,
+        "restarts": 2,
+        "renderMs": 4443.8267000000005,
+        "renderFps": 6.750938329795804,
+        "wallMs": 5323.7692,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 385.4859999999999
+        },
+        "indexCacheHits": 2,
+        "indexMs": 4.163899999999998,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.0810999999999993
+          },
+          {
+            "mediaId": "media_7078adb2c0c440b0aa35a0fb35f30be4",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2629,
+            "ms": 1.0827999999999989
+          }
+        ],
+        "audioClips": 3,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "title",
+      "ms": 2852.944300000003,
+      "ok": true,
+      "stats": {
+        "frames": 30,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 916910080,
+        "fullFrameReadback": true,
+        "rejectedPaints": 32,
+        "decodedSourceFrames": 59,
+        "restarts": 1,
+        "renderMs": 1840.7486,
+        "renderFps": 16.29771713530028,
+        "wallMs": 2596.1829,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 30,
+          "audioPackets": 48,
+          "decodedFrames": 30,
+          "ms": 293.33320000000003
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.6769,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 2.6769
+          }
+        ],
+        "audioClips": 2,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "frame",
+      "ms": 1101.173600000002,
+      "ok": true,
+      "stats": {
+        "frames": 1,
+        "peakDecodedBytes": 14745600,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 787369984,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 1,
+        "restarts": 1,
+        "renderMs": 616.6549,
+        "renderFps": 1.6216525645056903,
+        "wallMs": 895.2266,
+        "verification": null,
+        "indexCacheHits": 1,
+        "indexMs": 3.215299999999999,
+        "indexing": [
+          {
+            "mediaId": "media_d0e2c6c4012348b7b8965045d387a843",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 2236,
+            "ms": 3.215299999999999
+          }
+        ],
+        "audioClips": 0,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "png",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "name": "library import",
+      "ms": 518.2036000000007,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "verify",
+          "status": "completed",
+          "runningMs": 274
+        }
+      ]
+    },
+    {
+      "name": "library search",
+      "ms": 128.07120000000577,
+      "ok": true
+    },
+    {
+      "name": "source index cold",
+      "ms": 196.751400000001,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 62
+        }
+      ]
+    },
+    {
+      "name": "source index warm",
+      "ms": 138.58660000000236,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 4
+        }
+      ]
+    },
+    {
+      "name": "waveform cold",
+      "ms": 175.22140000000218,
+      "ok": true
+    },
+    {
+      "name": "waveform warm",
+      "ms": 125.88669999999547,
+      "ok": true
+    },
+    {
+      "name": "source frame",
+      "ms": 916.5118999999977,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 407
+        }
+      ]
+    },
+    {
+      "name": "close project",
+      "ms": 126.61259999999311,
+      "ok": true
+    },
+    {
+      "name": "close library",
+      "ms": 122.47219999999652,
+      "ok": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "dissolve-0.mp4",
+      "identical": true
+    },
+    {
+      "name": "dissolve-1.mp4",
+      "identical": true
+    },
+    {
+      "name": "dissolve-2.mp4",
+      "identical": true
+    },
+    {
+      "name": "frame.png",
+      "identical": true
+    },
+    {
+      "name": "plain-0.mp4",
+      "identical": true
+    },
+    {
+      "name": "plain-1.mp4",
+      "identical": true
+    },
+    {
+      "name": "plain-2.mp4",
+      "identical": true
+    },
+    {
+      "name": "title-0.mp4",
+      "identical": true
+    },
+    {
+      "name": "title-1.mp4",
+      "identical": true
+    },
+    {
+      "name": "title-2.mp4",
+      "identical": true
+    }
+  ],
+  "finalLibrary": [
+    {
+      "name": "library import",
+      "ms": 673.5820000000001,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "verify",
+          "status": "completed",
+          "runningMs": 258
+        }
+      ]
+    },
+    {
+      "name": "library search",
+      "ms": 141.1867000000001,
+      "ok": true
+    },
+    {
+      "name": "source index cold",
+      "ms": 210.82729999999992,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 80
+        }
+      ]
+    },
+    {
+      "name": "source index warm",
+      "ms": 141.16330000000016,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 5
+        }
+      ]
+    },
+    {
+      "name": "waveform cold",
+      "ms": 184.3252,
+      "ok": true
+    },
+    {
+      "name": "waveform warm",
+      "ms": 132.38620000000014,
+      "ok": true
+    },
+    {
+      "name": "source frame",
+      "ms": 534.9684,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 402
+        }
+      ]
+    },
+    {
+      "name": "source frame",
+      "ms": 638.2675000000002,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 526
+        }
+      ]
+    },
+    {
+      "name": "source frame",
+      "ms": 423.2808,
+      "ok": true,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 234
+        }
+      ]
+    },
+    {
+      "name": "close library",
+      "ms": 129.8416000000002,
+      "ok": true
+    }
+  ],
+  "afterNote": "Export/decoder changes and 100 ms render polling; library still used the old 500 ms cap in this pass. finalLibrary records the final 100 ms library cap."
+}
