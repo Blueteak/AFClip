@@ -47,6 +47,18 @@ window.NativePreview = class NativePreview {
       }
     }
   }
+  canUpdate(project) {
+    const previous = this.setup.project;
+    if (project.id !== previous.id || JSON.stringify(project.resolution) !== JSON.stringify(previous.resolution) ||
+        JSON.stringify(project.media) !== JSON.stringify(previous.media) || project.cacheLimitBytes !== previous.cacheLimitBytes) return false;
+    // Reuse only sources and asset instances already prepared in this session.
+    // Keep hidden entries so toggling a track back on reuses its decoder too.
+    const assets = clips => JSON.stringify(clips.map(c => [c.id, (c.effects || []).map(e => [e.id, e.assetId])]));
+    const transitions = p => JSON.stringify(p.transitions.map(t => [t.id, t.assetId]));
+    if (assets(project.clips) !== assets(previous.clips) || transitions(project) !== transitions(previous)) return false;
+    return window.AFClipTimeline.compile(project).clips.every(c => c.media.kind === 'audio' || c.stream === 'audio' ||
+      (this.entries.get(c.id)?.clip.mediaId === c.mediaId));
+  }
   textMessage(entry, data) {
     if (data.type === 'afclip-text-fields' && Array.isArray(data.fields)) {
       entry.hits.replaceChildren();
