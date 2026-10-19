@@ -115,8 +115,8 @@ window.AssetRuntime = class AssetRuntime {
     }
     const ms=performance.now()-started;this.stats.frames++;this.stats.totalMs+=ms;this.stats.maxMs=Math.max(ms,this.stats.maxMs);
   }
-  reset(entries,items){
-    const signature=items.filter(i=>i.kind!=='audio').map(i=>i.clipId+':'+(i.transition?.id||'')).join('|');if(signature!==this.signature){this.epoch++;this.signature=signature;}
+  reset(entries,items,seeking=false){
+    const signature=items.filter(i=>i.kind!=='audio').map(i=>i.clipId+':'+(i.transition?.id||'')).join('|');if(seeking||signature!==this.signature){this.epoch++;this.signature=signature;}
     const active=new Map(items.map(i=>[i.clipId,i])),transitions=new Set(items.filter(i=>i.transition).map(i=>'transition:'+i.transition.id));
     this.transitionFallbacks??=new Map();
     for(const id of this.transitionFallbacks.keys())if(!transitions.has(id))this.transitionFallbacks.delete(id);
@@ -140,8 +140,12 @@ window.AssetRuntime = class AssetRuntime {
         entry.layer.style.visibility=fallback&&!keepEffect?'':'hidden';
         if(entry.effectOutput)entry.effectOutput.hidden=!keepEffect;
       }else{
-        if(!item?.effects?.length)entry.layer.style.visibility='';
-        if(entry.effectOutput)entry.effectOutput.hidden=!item||!item.effects?.length;
+        // An effect can make an opaque source fully transparent. Never expose
+        // that source while its first processed frame is still in flight.
+        entry.layer.style.visibility=item?.effects?.length?'hidden':'';
+        // Only compose may reveal an effect output. Re-entering a clip or
+        // seeking within it must not resurrect pixels from an earlier time.
+        if(entry.effectOutput&&(!item?.effects?.length||seeking||!this.previousItems?.has(id)))entry.effectOutput.hidden=true;
       }
     }
     this.previousItems=active;
