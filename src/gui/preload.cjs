@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   command: payload => ipcRenderer.invoke('afclip:command', payload),
   collectProject: revision => ipcRenderer.invoke('afclip:collect', revision),
   newProject: () => ipcRenderer.invoke('afclip:new-project'),
+  openProject: () => ipcRenderer.invoke('afclip:open-project'),
   relinkMedia: (id, revision) => ipcRenderer.invoke('afclip:relink', id, revision),
   importMedia: kind => ipcRenderer.invoke('afclip:import', kind),
   library: (id, folder) => ipcRenderer.invoke('afclip:library', id, folder),
