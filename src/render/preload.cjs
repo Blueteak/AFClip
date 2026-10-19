@@ -6,7 +6,7 @@ const { Decoder, frameIndex } = require('./decoder.cjs');
 const file = process.argv.find(x => x.startsWith('--afclip-render='))?.slice(16);
 const config = JSON.parse(fs.readFileSync(file, 'utf8'));
 const decoders = new Map();
-const stats = { peakDecodedBytes: 0, peakDecoders: 0, decodedSourceFrames: 0, restarts: 0 };
+const stats = { peakDecodedBytes: 0, peakDecoders: 0, decodedSourceFrames: 0, sourceFrameUploads: 0, sourceFrameReuses: 0, restarts: 0 };
 async function draw(items) {
   const wanted = new Set(items.filter(i => i.kind === 'video' || i.kind === 'image').map(i => i.clipId));
   for (const [id, decoder] of decoders) if (!wanted.has(id)) {
@@ -26,6 +26,12 @@ async function draw(items) {
       if (total > config.decodedBudgetBytes) throw new Error(`Active decoded frames exceed ${config.decodedBudgetBytes} byte budget`);
       decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log')); decoders.set(item.clipId, decoder); stats.restarts++;
     }
+    // Slow motion, low-frame-rate video and stills keep the same source pixels.
+    // CSS transforms, fades and HTML effects still run for every output frame.
+    if (decoder.presentedIndex === index && canvas.width === media.width && canvas.height === media.height) {
+      stats.sourceFrameReuses++;
+      continue;
+    }
     const previous = decoder.index;
     let buffer;
     try { buffer = await decoder.read(index); }
@@ -38,13 +44,15 @@ async function draw(items) {
     stats.decodedSourceFrames += index - previous;
     if (canvas.width !== media.width || canvas.height !== media.height) { canvas.width = media.width; canvas.height = media.height; }
     canvas.getContext('2d', { colorSpace: 'srgb' }).putImageData(new ImageData(new Uint8ClampedArray(buffer.buffer, buffer.byteOffset, buffer.byteLength), media.width, media.height, { colorSpace: 'srgb' }), 0, 0);
+    decoder.presentedIndex = index;
+    stats.sourceFrameUploads++;
   }
   stats.peakDecodedBytes = Math.max(stats.peakDecodedBytes, [...decoders.values()].reduce((n, d) => n + d.buffer.length, 0));
   stats.peakDecoders = Math.max(stats.peakDecoders, decoders.size);
   return { ...stats };
 }
 contextBridge.exposeInMainWorld('afclipFrames', {
-  getSetup: () => ({ width: config.width, height: config.height, compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : config.media[c.mediaId].kind })) }),
+  getSetup: () => ({ width: config.width, height: config.height, exactFrames: config.kind === 'export' || config.kind === 'frame', compositionWidth: config.project.resolution.width, compositionHeight: config.project.resolution.height, graphics: config.graphics, clips: config.project.clips.filter(c => config.media[c.mediaId]?.file).map(c => ({ id: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : config.media[c.mediaId].kind })) }),
   draw,
   rasterAsset: data => ipcRenderer.invoke('afclip:asset-raster',data),
   close: () => { for (const d of decoders.values()) d.close(); decoders.clear(); return { ...stats }; }

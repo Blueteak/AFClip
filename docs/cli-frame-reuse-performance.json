@@ -1,0 +1,355 @@
+{
+  "hardware": {
+    "cpu": "Apple M4",
+    "cores": 10,
+    "ramGiB": 24,
+    "node": "24.19.0",
+    "electron": "44.8.0"
+  },
+  "durationSeconds": 2,
+  "outputFrames": 120,
+  "sourceResolution": "3840x2160",
+  "outputResolution": "1920x1080",
+  "samples": {
+    "before": {
+      "slow": [
+        {
+          "cliMs": 4226.259709,
+          "renderFps": 42.034108747781524,
+          "workerMs": 3763.155667,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 3634.9812090000005,
+          "renderFps": 41.935110226881044,
+          "workerMs": 3398.469084,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 3619.608,
+          "renderFps": 40.9492700490101,
+          "workerMs": 3470.244292,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        }
+      ],
+      "still": [
+        {
+          "cliMs": 3223.555624999999,
+          "renderFps": 53.49836091610371,
+          "workerMs": 2680.5367499999998,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 3141.272417000002,
+          "renderFps": 53.116324629656674,
+          "workerMs": 2691.016375,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 3138.2242499999993,
+          "renderFps": 52.266925446021986,
+          "workerMs": 2737.17675,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        }
+      ],
+      "fast": [
+        {
+          "cliMs": 9261.879874999999,
+          "renderFps": 16.106310778044534,
+          "workerMs": 8788.076917,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 8674.648125,
+          "renderFps": 16.28338444429664,
+          "workerMs": 8367.820458,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        },
+        {
+          "cliMs": 9173.638667,
+          "renderFps": 15.97267084962325,
+          "workerMs": 8529.868208,
+          "sourceFrameUploads": null,
+          "sourceFrameReuses": null
+        }
+      ]
+    },
+    "after": {
+      "slow": [
+        {
+          "cliMs": 2715.4583749999997,
+          "renderFps": 63.12380094071601,
+          "workerMs": 2448.201667,
+          "sourceFrameUploads": 30,
+          "sourceFrameReuses": 90
+        },
+        {
+          "cliMs": 2606.322,
+          "renderFps": 62.48191984766941,
+          "workerMs": 2456.521333,
+          "sourceFrameUploads": 30,
+          "sourceFrameReuses": 90
+        },
+        {
+          "cliMs": 2606.9145420000004,
+          "renderFps": 63.09754110854099,
+          "workerMs": 2455.689542,
+          "sourceFrameUploads": 30,
+          "sourceFrameReuses": 90
+        }
+      ],
+      "still": [
+        {
+          "cliMs": 1706.7661249999992,
+          "renderFps": 126.52394907199333,
+          "workerMs": 1401.6055000000001,
+          "sourceFrameUploads": 1,
+          "sourceFrameReuses": 119
+        },
+        {
+          "cliMs": 1601.8221250000006,
+          "renderFps": 130.41079127562674,
+          "workerMs": 1358.16325,
+          "sourceFrameUploads": 1,
+          "sourceFrameReuses": 119
+        },
+        {
+          "cliMs": 1622.3518750000003,
+          "renderFps": 130.89261624084037,
+          "workerMs": 1354.9461669999998,
+          "sourceFrameUploads": 1,
+          "sourceFrameReuses": 119
+        }
+      ],
+      "fast": [
+        {
+          "cliMs": 8749.299584,
+          "renderFps": 16.20055112176945,
+          "workerMs": 8424.950708,
+          "sourceFrameUploads": 120,
+          "sourceFrameReuses": 0
+        },
+        {
+          "cliMs": 8652.803082999999,
+          "renderFps": 16.033387033702663,
+          "workerMs": 8495.138417,
+          "sourceFrameUploads": 120,
+          "sourceFrameReuses": 0
+        },
+        {
+          "cliMs": 8644.086583,
+          "renderFps": 16.201962139353974,
+          "workerMs": 8424.406542,
+          "sourceFrameUploads": 120,
+          "sourceFrameReuses": 0
+        }
+      ]
+    }
+  },
+  "correctness": [
+    {
+      "case": "slow",
+      "repeat": 0,
+      "byteIdentical": true,
+      "sha256": "883744522ac5ec85cec6f81b836c57d133f326b0a0e4c67f975d0c24e5de74f9",
+      "fullVerification": true
+    },
+    {
+      "case": "slow",
+      "repeat": 1,
+      "byteIdentical": true,
+      "sha256": "883744522ac5ec85cec6f81b836c57d133f326b0a0e4c67f975d0c24e5de74f9",
+      "fullVerification": true
+    },
+    {
+      "case": "slow",
+      "repeat": 2,
+      "byteIdentical": true,
+      "sha256": "883744522ac5ec85cec6f81b836c57d133f326b0a0e4c67f975d0c24e5de74f9",
+      "fullVerification": true
+    },
+    {
+      "case": "still",
+      "repeat": 0,
+      "byteIdentical": true,
+      "sha256": "fda400d89732105ff4694f1795530529026a45adb4dc6829f6176236375fb185",
+      "fullVerification": true
+    },
+    {
+      "case": "still",
+      "repeat": 1,
+      "byteIdentical": true,
+      "sha256": "fda400d89732105ff4694f1795530529026a45adb4dc6829f6176236375fb185",
+      "fullVerification": true
+    },
+    {
+      "case": "still",
+      "repeat": 2,
+      "byteIdentical": true,
+      "sha256": "fda400d89732105ff4694f1795530529026a45adb4dc6829f6176236375fb185",
+      "fullVerification": true
+    },
+    {
+      "case": "fast",
+      "repeat": 0,
+      "byteIdentical": true,
+      "sha256": "a98e56083b177139591558def99adf50f010ff009881249e2644d3da3850fc15",
+      "fullVerification": true
+    },
+    {
+      "case": "fast",
+      "repeat": 1,
+      "byteIdentical": true,
+      "sha256": "a98e56083b177139591558def99adf50f010ff009881249e2644d3da3850fc15",
+      "fullVerification": true
+    },
+    {
+      "case": "fast",
+      "repeat": 2,
+      "byteIdentical": true,
+      "sha256": "a98e56083b177139591558def99adf50f010ff009881249e2644d3da3850fc15",
+      "fullVerification": true
+    }
+  ],
+  "effectsControl": {
+    "byteIdentical": true,
+    "rows": [
+      {
+        "label": "control",
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 66355200,
+          "peakDecoders": 2,
+          "peakChromiumWorkingSetBytes": 1442594816,
+          "fullFrameReadback": true,
+          "rejectedPaints": 34,
+          "decodedSourceFrames": 32,
+          "sourceFrameUploads": 120,
+          "sourceFrameReuses": 0,
+          "restarts": 2,
+          "renderMs": 4445.032375,
+          "renderFps": 13.498214397144858,
+          "wallMs": 6011.582708999999,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 315.2793750000001
+          },
+          "indexCacheHits": 0,
+          "indexMs": 538.124292,
+          "indexing": [
+            {
+              "mediaId": "media_b0ff7aec822f4dcaa32aa0bbd87cffca",
+              "method": "packet-fragment",
+              "cacheHit": false,
+              "frames": 13212,
+              "ms": 353.4345
+            },
+            {
+              "mediaId": "media_d742bc37a710430fa56d1d35e31afd53",
+              "method": "packet-fragment",
+              "cacheHit": false,
+              "frames": 2816,
+              "ms": 184.689792
+            }
+          ],
+          "audioClips": 2,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "label": "reuse",
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 66355200,
+          "peakDecoders": 2,
+          "peakChromiumWorkingSetBytes": 1432256512,
+          "fullFrameReadback": true,
+          "rejectedPaints": 34,
+          "decodedSourceFrames": 32,
+          "sourceFrameUploads": 32,
+          "sourceFrameReuses": 88,
+          "restarts": 2,
+          "renderMs": 4328.80425,
+          "renderFps": 13.860640614553082,
+          "wallMs": 5347.786667,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 309.19016699999975
+          },
+          "indexCacheHits": 2,
+          "indexMs": 2.135375,
+          "indexing": [
+            {
+              "mediaId": "media_b0ff7aec822f4dcaa32aa0bbd87cffca",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.7811249999999994
+            },
+            {
+              "mediaId": "media_d742bc37a710430fa56d1d35e31afd53",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 0.3542500000000004
+            }
+          ],
+          "audioClips": 2,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      }
+    ]
+  },
+  "htmlTransition": {
+    "baselineRepeatIdentical": false,
+    "fixedRepeatIdentical": true,
+    "samples": [
+      {
+        "output": "repeat-1.mp4",
+        "renderFps": 14.763086145652547,
+        "sha256": "eb333ed1568893f09bbf9cd24fbafe882ce468c9ad5b011a6a6e74bb66c71138",
+        "fullVerification": true
+      },
+      {
+        "output": "fixed-1.mp4",
+        "renderFps": 13.880215492446059,
+        "sha256": "4b87fcc6f3eb09d140a8862fb8c0f5aa1807664f98f4cce1ddfcc110de801062",
+        "fullVerification": true
+      },
+      {
+        "output": "fixed-0.mp4",
+        "renderFps": 13.95288158398693,
+        "sha256": "4b87fcc6f3eb09d140a8862fb8c0f5aa1807664f98f4cce1ddfcc110de801062",
+        "fullVerification": true
+      },
+      {
+        "output": "repeat-0.mp4",
+        "renderFps": 14.550768514335653,
+        "sha256": "efa8bfc2dfc08e8c2f26459e904bd12922f1c560dbcd4e3c7458d29b10042d4a",
+        "fullVerification": true
+      }
+    ],
+    "pngRepeatIdentical": true,
+    "pngSha256": "e3d2647bd374fce0154e332d49e7aef4fd75ea5bd20a50025e4f632710083756"
+  }
+}

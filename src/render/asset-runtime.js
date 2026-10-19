@@ -95,9 +95,20 @@ window.AssetRuntime = class AssetRuntime {
       const a=pair.find(i=>i.clipId===tr.fromClipId),b=pair.find(i=>i.clipId===tr.toClipId);
       if(!a||!b)throw new Error(`Transition ${tr.id} needs two visual inputs`);
       const images=await Promise.all([a,b].map(i=>this.input(i,entries.get(i.clipId))));
-      await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration});
-      if(this.closed||epoch!==this.epoch)return;
-      const output=this.entries.get('transition:'+tr.id).iframe;
+      const image=await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration},!!this.setup.exactFrames);
+      if(this.closed||epoch!==this.epoch){image?.close();return;}
+      const entry=this.entries.get('transition:'+tr.id);
+      let output=entry.iframe;
+      if(this.setup.exactFrames){
+        // An iframe acknowledgement does not fence its compositor paint. Exact
+        // export uses the acknowledged bitmap in the same document as its token.
+        if(!entry.output){entry.output=document.createElement('canvas');this.stage.append(entry.output);Object.assign(entry.output.style,{position:'absolute',inset:'0',width:'100%',height:'100%'});}
+        output=entry.output;
+        if(output.width!==this.width)output.width=this.width;if(output.height!==this.height)output.height=this.height;
+        const ctx=output.getContext('2d');ctx.clearRect(0,0,this.width,this.height);
+        try{ctx.drawImage(image,0,0);}finally{image?.close();}
+        output.hidden=false;entry.iframe.style.visibility='hidden';
+      }
       output.style.zIndex=entries.get(b.clipId).layer.style.zIndex;output.style.visibility='visible';
       entries.get(a.clipId).layer.style.visibility=entries.get(b.clipId).layer.style.visibility='hidden';
       for(const item of pair){const entry=entries.get(item.clipId);if(entry.effectOutput)entry.effectOutput.hidden=true;}
@@ -117,13 +128,13 @@ window.AssetRuntime = class AssetRuntime {
         this.transitionFallbacks.set(key,fromIncoming?tr.toClipId:tr.fromClipId);
       }
     }
-    for(const [id,e] of this.entries)if(!transitions.has(id)&&!id.startsWith('content:'))e.iframe.style.visibility='hidden';
+    for(const [id,e] of this.entries)if(!transitions.has(id)&&!id.startsWith('content:')){e.iframe.style.visibility='hidden';if(e.output)e.output.hidden=true;}
     for(const [id,entry] of entries){
       const item=active.get(id);
       if(item?.transition){
         // Layout runs before asynchronous input preparation/rendering. Never
         // expose the other source while waiting for the first asset frame.
-        const key='transition:'+item.transition.id,ready=this.entries.get(key)?.iframe.style.visibility==='visible';
+        const key='transition:'+item.transition.id,transitionEntry=this.entries.get(key),ready=transitionEntry?.output?!transitionEntry.output.hidden:transitionEntry?.iframe.style.visibility==='visible';
         const fallback=id===this.transitionFallbacks.get(key)&&!ready;
         const keepEffect=fallback&&item.effects?.length&&entry.effectOutput&&!entry.effectOutput.hidden;
         entry.layer.style.visibility=fallback&&!keepEffect?'':'hidden';
@@ -137,5 +148,5 @@ window.AssetRuntime = class AssetRuntime {
   }
   async frame(items,entries){const epoch=++this.epoch;await this.work?.catch(()=>{});if(this.closed||epoch!==this.epoch)return;const work=this.compose(items,entries,epoch);this.work=work;try{await work;}finally{if(this.work===work)this.work=null;}}
   update(items,entries,onError){if(this.work){this.stats.skipped++;return;}this.work=this.compose(items,entries).catch(onError).finally(()=>{this.work=null;});}
-  close(){this.closed=true;this.epoch++;window.removeEventListener('message',this.receive);for(const p of this.pending.values()){clearTimeout(p.timer);p.resolve(null);}this.pending.clear();for(const e of this.entries.values())e.iframe.remove();this.entries.clear();}
+  close(){this.closed=true;this.epoch++;window.removeEventListener('message',this.receive);for(const p of this.pending.values()){clearTimeout(p.timer);p.resolve(null);}this.pending.clear();for(const e of this.entries.values()){e.iframe.remove();e.output?.remove();}this.entries.clear();}
 };
