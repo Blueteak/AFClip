@@ -30,7 +30,10 @@ class Decoder {
           this.pending = r.value; this.offset = 0;
         }
         const size = Math.min(this.pending.length - this.offset, this.buffer.length - filled);
-        this.pending.copy(this.buffer, filled, this.offset, this.offset + size); filled += size; this.offset += size;
+        // Consume skipped frames for exact decoder positioning, but only copy
+        // the requested picture into the reusable RGBA buffer.
+        if (this.index + 1 === index) this.pending.copy(this.buffer, filled, this.offset, this.offset + size);
+        filled += size; this.offset += size;
       }
       this.index++;
     }
