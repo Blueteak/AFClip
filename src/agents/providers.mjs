@@ -55,10 +55,10 @@ export class Codex {
   async start(conversation,instructions,cwd) {
     await this.open(cwd);
     const access={readOnly:{sandbox:'read-only',approvalPolicy:'on-request'},workspace:{sandbox:'workspace-write',approvalPolicy:'on-request'},full:{sandbox:'danger-full-access',approvalPolicy:'never'}}[this.config.access];
-    const params={cwd,...(this.config.model?{model:this.config.model}:{}),...(access||{}),developerInstructions:instructions,...(this.config.effort?{config:{model_reasoning_effort:this.config.effort}}:{})};
+    const params={cwd,...(this.config.model?{model:this.config.model}:{}),...(this.config.serviceTier?{serviceTier:this.config.serviceTier}:{}),...(access||{}),developerInstructions:instructions,...(this.config.effort?{config:{model_reasoning_effort:this.config.effort}}:{})};
     const r=await this.rpc(conversation.sessionId?'thread/resume':'thread/start',{...params,...(conversation.sessionId?{threadId:conversation.sessionId,excludeTurns:true}:{})});
     this.threadId=r.thread.id; this.hooks.session?.(this.threadId);
-    this.hooks.config?.({model:r.model,effort:r.reasoningEffort, sandbox:r.sandbox,approvalPolicy:r.approvalPolicy});
+    this.hooks.config?.({model:r.model,effort:r.reasoningEffort,serviceTier:r.serviceTier, sandbox:r.sandbox,approvalPolicy:r.approvalPolicy});
   }
   input(text,images) { return [{type:'text',text},...images.map(i=>({type:'image',url:`data:${i.mime};base64,${fs.readFileSync(i.path).toString('base64')}`}))]; }
   async send(text,images=[],steer=false) {
@@ -166,7 +166,11 @@ export async function discover(provider,config,cwd) {
     if(provider==='codex') {
       adapter=new Codex(config);await adapter.open(cwd);
       const account=await adapter.rpc('account/read',{refreshToken:false}); result.authenticated=!!account.account;
-      const models=await adapter.rpc('model/list',{limit:100});result.models=models.data.map(m=>({id:m.id,label:m.displayName||m.model,efforts:m.supportedReasoningEfforts?.map(e=>e.reasoningEffort)}));
+      const models=await adapter.rpc('model/list',{limit:100});
+      result.models=models.data.map(m=>({id:m.id,label:m.displayName||m.model,efforts:m.supportedReasoningEfforts?.map(e=>e.reasoningEffort),
+        serviceTiers:m.serviceTiers || (m.additionalSpeedTiers || []).map(id=>({id:id==='fast'?'priority':id,name:id==='fast'?'Fast':id,description:''}))}));
+      const resolved=await adapter.rpc('config/read',{cwd,includeLayers:false});
+      result.defaultModel=resolved.config?.model || models.data.find(m=>m.isDefault)?.id;
     }else{
       adapter=new Claude(config);await adapter.open(cwd);
       const [models,account]=await Promise.all([adapter.query.supportedModels(),adapter.query.accountInfo()]);

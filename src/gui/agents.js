@@ -112,7 +112,7 @@ window.AFClipAgents = host => {
     }
     el.classList.remove('docked');
     let { x, y } = loc;
-    while (placed.some(p => Math.abs(p.x - x) < 17 && Math.abs(p.y - y) < 17)) x += 20;
+    while (placed.some(p => Math.abs(p.x - x) < 21 && Math.abs(p.y - y) < 21)) x += 25;
     placed.push({ x, y });
     if (el.parentNode !== layer) layer.append(el);
     el.style.left = `${x}px`; el.style.top = `${y}px`;
@@ -192,7 +192,7 @@ window.AFClipAgents = host => {
     pop = { ...state, el, head, error, transcript, pending, composer, textarea, thumbs, send, images: [], expanded: new Set(), sig: '', headSig: '', stick: true };
     const saved = drafts.get(state.id || draftKey(state.draft.anchor));
     if (saved) { textarea.value = saved.text; pop.images = [...saved.images]; }
-    textarea.oninput = () => grow(textarea);
+    textarea.oninput = () => { grow(textarea); canSend(); };
     textarea.onkeydown = e => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
     };
@@ -216,8 +216,10 @@ window.AFClipAgents = host => {
     });
     el.style.left = `${Math.max(10, innerWidth / 2 - 190)}px`; el.style.top = `${Math.max(10, innerHeight / 2 - 220)}px`;
     document.body.append(el);
-    renderThumbs(); grow(textarea);
+    renderThumbs(); grow(textarea); canSend();
   }
+  // Send needs text; images alone don't count.
+  function canSend() { if (pop) pop.send.disabled = sending || !pop.textarea.value.trim(); }
   function grow(textarea) {
     textarea.style.height = 'auto';
     const full = textarea.scrollHeight + 2;
@@ -392,7 +394,7 @@ window.AFClipAgents = host => {
   async function submit() {
     if (!pop || sending) return;
     const text = pop.textarea.value.trim(), images = pop.images.map(({ dataUrl, name }) => ({ dataUrl, name }));
-    if (!text && !images.length) return;
+    if (!text) return;
     const target = pop;
     sending = true; target.send.disabled = true;
     try {
@@ -409,15 +411,15 @@ window.AFClipAgents = host => {
         id = created.id;
       }
       const c = conv(id);
-      if (pop === target) { target.textarea.value = ''; target.images = []; renderThumbs(); grow(target.textarea); target.stick = true; }
+      if (pop === target) { target.textarea.value = ''; target.images = []; renderThumbs(); grow(target.textarea); canSend(); target.stick = true; }
       drafts.delete(id);
       try { upsert(await call('send', { id, text, images, context: host.context(c?.anchor) })); }
       catch (error) {
-        if (pop === target && !target.textarea.value) { target.textarea.value = text; target.images = images; renderThumbs(); grow(target.textarea); }
+        if (pop === target && !target.textarea.value) { target.textarea.value = text; target.images = images; renderThumbs(); grow(target.textarea); canSend(); }
         throw error;
       }
     } catch (error) { host.report(occupied(error), 'Message not sent'); }
-    finally { sending = false; target.send.disabled = false; if (pop === target) { refresh(); target.textarea.focus(); } }
+    finally { sending = false; canSend(); if (pop === target) { refresh(); target.textarea.focus(); } }
   }
   // Busy-item errors name IDs; show the chats that hold them.
   function occupied(error) {
@@ -514,7 +516,7 @@ window.AFClipAgents = host => {
       return settings;
     };
     const select = (options, value, onPick) => {
-      const s = h('select', { onchange: () => onPick(s.value) }, options.map(([v, label]) => h('option', { value: v }, label)));
+      const s = h('select', { onchange: () => onPick(s.value) }, options.map(([v, label, disabled]) => h('option', { value: v, disabled: !!disabled }, label)));
       s.value = options.some(([v]) => v === value) ? value : '';
       return s;
     };
@@ -534,10 +536,17 @@ window.AFClipAgents = host => {
         const prevFlush = flush; flush = () => { prevFlush(); if (exeTimer) commitExe(); };
         const model = (p.models || []).find(m => m.id === mine.model);
         const efforts = model ? model.efforts || [] : [...new Set((p.models || []).flatMap(m => m.efforts || []))];
+        const speedModel = model || (!mine.model ? p.models?.find(m => m.id === p.defaultModel) : null);
+        const tiers = p.authenticated && !p.error ? speedModel?.serviceTiers || [] : [];
+        const speeds = select([['', 'Default'], ['default', 'Standard'],
+          ['priority', 'Fast', !tiers.some(t => t.id === 'priority')],
+          ['ultrafast', 'Ultrafast', !tiers.some(t => t.id === 'ultrafast')]], mine.serviceTier || '', v => patch({ serviceTier: v }));
+        speeds.disabled = !tiers.length && !mine.serviceTier;
         rows.push(h('div', { class: 'agent-provider-head', dataset: { provider: p.id } }, mark(p.id), h('span', { class: 'grow' }, p.name || providerName(p.id)), status),
           host.field('Executable', exe, { tip: 'Optional path to the CLI. Blank uses the installed one.' }),
-          host.field('Model', select([['', 'Default'], ...(p.models || []).map(m => [m.id, m.label || m.id])], mine.model || '', v => patch({ model: v, effort: '' })), { tip: 'Default uses the provider’s own default. Applies to new chats.' }),
+          host.field('Model', select([['', 'Default'], ...(p.models || []).map(m => [m.id, m.label || m.id])], mine.model || '', v => patch({ model: v, effort: '', ...(p.id === 'codex' ? { serviceTier: '' } : {}) })), { tip: 'Default uses the provider’s own default. Applies to new chats.' }),
           efforts.length ? host.field('Thinking', select([['', 'Default'], ...efforts.map(e => [e, e[0].toUpperCase() + e.slice(1)])], mine.effort || '', v => patch({ effort: v })), { tip: 'Reasoning effort for new chats.' }) : null,
+          p.id === 'codex' ? host.field('Fast Mode', speeds, { tip: 'Applies to new chats. Default uses Codex settings. Faster modes use more allowance. Ultrafast requires Pro $500 or eligible Enterprise/Edu access and a supported model. Options are enabled only when Codex reports availability.' }) : null,
           (p.accessModes || []).length ? host.field('Access', select([['', 'Full access (default)'], ...p.accessModes.map(a => [a.id, a.label || a.id])], mine.access || '', v => patch({ access: v })), { tip: 'What the agent may do without asking. Applies to new chats.' }) : null,
           host.field('While busy', host.segmented([['steer', 'Steer', 'A new message redirects the running turn.'], ['queue', 'Queue', 'A new message waits for the running turn to finish.']], mine.delivery || 'steer', v => patch({ delivery: v })), { tip: 'Applies to the next message in every chat.' }));
       }
