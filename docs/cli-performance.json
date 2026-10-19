@@ -1,0 +1,940 @@
+{
+  "hardware": {
+    "cpu": "Apple M4",
+    "cores": 10,
+    "memoryGiB": 24
+  },
+  "renderRuntime": {
+    "node": "22.22.1",
+    "electron": "44.8.0",
+    "note": "Identical Node runtime for before/after. Separate complete validation uses required Node 24.19.0."
+  },
+  "libraryRuntime": {
+    "node": "24.19.0"
+  },
+  "render": {
+    "before": {
+      "cold inspect": {
+        "samples": 1,
+        "medianCliMs": 201.910833
+      },
+      "warm inspect": {
+        "samples": 5,
+        "medianCliMs": 90.18599999999998
+      },
+      "marker add": {
+        "samples": 1,
+        "medianCliMs": 91.96912499999996
+      },
+      "undo": {
+        "samples": 1,
+        "medianCliMs": 96.21937500000001
+      },
+      "redo": {
+        "samples": 1,
+        "medianCliMs": 94.59308299999998
+      },
+      "marker remove": {
+        "samples": 1,
+        "medianCliMs": 90.5513749999999
+      },
+      "import": {
+        "samples": 1,
+        "medianCliMs": 263.227083
+      },
+      "plain": {
+        "samples": 3,
+        "medianCliMs": 3603.6065419999977,
+        "medianRenderFps": 25.456591817392233,
+        "medianWorkerMs": 3017.1617499999998
+      },
+      "dissolve": {
+        "samples": 3,
+        "medianCliMs": 6132.560209000003,
+        "medianRenderFps": 12.98801437978922,
+        "medianWorkerMs": 5742.443667
+      },
+      "title": {
+        "samples": 3,
+        "medianCliMs": 3112.302125,
+        "medianRenderFps": 28.368341639938368,
+        "medianWorkerMs": 2922.70575
+      },
+      "frame": {
+        "samples": 1,
+        "medianCliMs": 1099.9764159999977,
+        "medianRenderFps": 1.6636950051495438,
+        "medianWorkerMs": 901.292292
+      },
+      "close": {
+        "samples": 1,
+        "medianCliMs": 100.66804199999751
+      }
+    },
+    "after": {
+      "cold inspect": {
+        "samples": 1,
+        "medianCliMs": 203.176
+      },
+      "warm inspect": {
+        "samples": 5,
+        "medianCliMs": 90.60904099999999
+      },
+      "marker add": {
+        "samples": 1,
+        "medianCliMs": 91.78549999999996
+      },
+      "undo": {
+        "samples": 1,
+        "medianCliMs": 96.85374999999999
+      },
+      "redo": {
+        "samples": 1,
+        "medianCliMs": 95.69729200000006
+      },
+      "marker remove": {
+        "samples": 1,
+        "medianCliMs": 89.83829199999991
+      },
+      "import": {
+        "samples": 1,
+        "medianCliMs": 257.2503330000002
+      },
+      "plain": {
+        "samples": 3,
+        "medianCliMs": 3102.185374999999,
+        "medianRenderFps": 32.25801609441885,
+        "medianWorkerMs": 2527.813042
+      },
+      "dissolve": {
+        "samples": 3,
+        "medianCliMs": 5643.009541000003,
+        "medianRenderFps": 15.072304198286712,
+        "medianWorkerMs": 5134.315584
+      },
+      "title": {
+        "samples": 3,
+        "medianCliMs": 3111.464709,
+        "medianRenderFps": 28.0413518805845,
+        "medianWorkerMs": 2982.7131249999998
+      },
+      "frame": {
+        "samples": 1,
+        "medianCliMs": 1105.202833999996,
+        "medianRenderFps": 1.7668738105350295,
+        "medianWorkerMs": 880.0243750000001
+      },
+      "close": {
+        "samples": 1,
+        "medianCliMs": 103.44295799999963
+      }
+    }
+  },
+  "library": {
+    "before": [
+      {
+        "name": "import",
+        "cliMs": 810.844667,
+        "jobs": [
+          {
+            "kind": "verify",
+            "runningMs": 498,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "search",
+        "cliMs": 87.13233300000002,
+        "jobs": []
+      },
+      {
+        "name": "index cold",
+        "cliMs": 29235.448125000003,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "runningMs": 28729,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "index warm",
+        "cliMs": 616.8995829999985,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "runningMs": 1,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "waveform cold",
+        "cliMs": 308.46941700000025,
+        "jobs": []
+      },
+      {
+        "name": "waveform warm",
+        "cliMs": 90.60466599999927,
+        "jobs": []
+      },
+      {
+        "name": "frame artifact",
+        "cliMs": 1096.752916999998,
+        "jobs": [
+          {
+            "kind": "artifact",
+            "runningMs": 534,
+            "status": "completed"
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "name": "import",
+        "cliMs": 690.4533339999999,
+        "jobs": [
+          {
+            "kind": "verify",
+            "runningMs": 486,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "search",
+        "cliMs": 89.09758299999999,
+        "jobs": []
+      },
+      {
+        "name": "index cold",
+        "cliMs": 584.04475,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "runningMs": 199,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "index warm",
+        "cliMs": 614.152875,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "runningMs": 1,
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "name": "waveform cold",
+        "cliMs": 309.133292,
+        "jobs": []
+      },
+      {
+        "name": "waveform warm",
+        "cliMs": 88.46050000000014,
+        "jobs": []
+      },
+      {
+        "name": "frame artifact",
+        "cliMs": 1092.901833,
+        "jobs": [
+          {
+            "kind": "artifact",
+            "runningMs": 541,
+            "status": "completed"
+          }
+        ]
+      }
+    ]
+  },
+  "correctness": {
+    "exports": [
+      {
+        "name": "plain",
+        "repeat": 0,
+        "byteIdentical": true,
+        "sha256": "01f3c58c8ab4a6b436fe67003c4f6a74f4685f05d56917137068060311e307a9",
+        "fullVerification": true
+      },
+      {
+        "name": "plain",
+        "repeat": 1,
+        "byteIdentical": true,
+        "sha256": "01f3c58c8ab4a6b436fe67003c4f6a74f4685f05d56917137068060311e307a9",
+        "fullVerification": true
+      },
+      {
+        "name": "plain",
+        "repeat": 2,
+        "byteIdentical": true,
+        "sha256": "01f3c58c8ab4a6b436fe67003c4f6a74f4685f05d56917137068060311e307a9",
+        "fullVerification": true
+      },
+      {
+        "name": "dissolve",
+        "repeat": 0,
+        "byteIdentical": true,
+        "sha256": "e8ba4bd4974547f4d69923760e282dc8fc096748f6a0fa1aafbf29ff2b06b62d",
+        "fullVerification": true
+      },
+      {
+        "name": "dissolve",
+        "repeat": 1,
+        "byteIdentical": true,
+        "sha256": "e8ba4bd4974547f4d69923760e282dc8fc096748f6a0fa1aafbf29ff2b06b62d",
+        "fullVerification": true
+      },
+      {
+        "name": "dissolve",
+        "repeat": 2,
+        "byteIdentical": true,
+        "sha256": "e8ba4bd4974547f4d69923760e282dc8fc096748f6a0fa1aafbf29ff2b06b62d",
+        "fullVerification": true
+      },
+      {
+        "name": "title",
+        "repeat": 0,
+        "byteIdentical": true,
+        "sha256": "1668ef61e93d918ed3ef8e536390c77583cf2f1bf59ba9c19ebacb6627ee0d98",
+        "fullVerification": true
+      },
+      {
+        "name": "title",
+        "repeat": 1,
+        "byteIdentical": true,
+        "sha256": "1668ef61e93d918ed3ef8e536390c77583cf2f1bf59ba9c19ebacb6627ee0d98",
+        "fullVerification": true
+      },
+      {
+        "name": "title",
+        "repeat": 2,
+        "byteIdentical": true,
+        "sha256": "1668ef61e93d918ed3ef8e536390c77583cf2f1bf59ba9c19ebacb6627ee0d98",
+        "fullVerification": true
+      }
+    ],
+    "exactTimestampTicks": 2816,
+    "pngByteIdentical": true
+  },
+  "decoderControl": [
+    {
+      "threads": 2,
+      "filter": 1,
+      "ms": 1741.925792,
+      "status": 0
+    },
+    {
+      "threads": 4,
+      "filter": 1,
+      "ms": 1173.3953340000003,
+      "status": 0
+    },
+    {
+      "threads": 8,
+      "filter": 1,
+      "ms": 994.2218750000002,
+      "status": 0
+    },
+    {
+      "threads": 0,
+      "filter": 1,
+      "ms": 940.6537090000002,
+      "status": 0
+    },
+    {
+      "threads": 4,
+      "filter": 4,
+      "ms": 1165.0083329999998,
+      "status": 0
+    },
+    {
+      "threads": 8,
+      "filter": 4,
+      "ms": 1003.5040419999996,
+      "status": 0
+    }
+  ],
+  "node24Validation": {
+    "hardware": {
+      "cpu": "Apple M4",
+      "cores": 10,
+      "ramBytes": 25769803776,
+      "node": "v24.19.0"
+    },
+    "samples": [
+      {
+        "name": "inspect cold",
+        "ms": 203.026917,
+        "ok": true
+      },
+      {
+        "name": "inspect warm",
+        "ms": 96.99183400000001,
+        "ok": true
+      },
+      {
+        "name": "inspect warm",
+        "ms": 99.169083,
+        "ok": true
+      },
+      {
+        "name": "inspect warm",
+        "ms": 92.25429200000002,
+        "ok": true
+      },
+      {
+        "name": "inspect warm",
+        "ms": 92.06504199999995,
+        "ok": true
+      },
+      {
+        "name": "inspect warm",
+        "ms": 92.82458299999996,
+        "ok": true
+      },
+      {
+        "name": "marker add",
+        "ms": 94.37987499999997,
+        "ok": true
+      },
+      {
+        "name": "undo",
+        "ms": 99.27533300000005,
+        "ok": true
+      },
+      {
+        "name": "redo",
+        "ms": 99.69966700000009,
+        "ok": true
+      },
+      {
+        "name": "marker remove",
+        "ms": 92.42587500000002,
+        "ok": true
+      },
+      {
+        "name": "plain",
+        "ms": 3119.9789579999997,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 851935232,
+          "fullFrameReadback": true,
+          "rejectedPaints": 2,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 1835.7622079999999,
+          "renderFps": 32.683971670474655,
+          "wallMs": 2694.2155829999997,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 178.57433300000002
+          },
+          "indexCacheHits": 0,
+          "indexMs": 190.10304200000002,
+          "indexing": [
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": false,
+              "frames": 2816,
+              "ms": 190.10304200000002
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "dissolve",
+        "ms": 5650.100875000001,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 66355200,
+          "peakDecoders": 2,
+          "peakChromiumWorkingSetBytes": 1255669760,
+          "fullFrameReadback": true,
+          "rejectedPaints": 149,
+          "decodedSourceFrames": 120,
+          "restarts": 2,
+          "renderMs": 3846.004709,
+          "renderFps": 15.600604923752318,
+          "wallMs": 5350.8369170000005,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 423.2398750000002
+          },
+          "indexCacheHits": 1,
+          "indexMs": 352.414292,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": false,
+              "frames": 13212,
+              "ms": 351.921625
+            },
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 0.4926669999999831
+            }
+          ],
+          "audioClips": 2,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "title",
+        "ms": 3123.995834000001,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 984973312,
+          "fullFrameReadback": true,
+          "rejectedPaints": 62,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 2102.7542080000003,
+          "renderFps": 28.534005435218223,
+          "wallMs": 2930.761125,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 266.8771670000001
+          },
+          "indexCacheHits": 1,
+          "indexMs": 1.835958999999999,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.835958999999999
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "plain",
+        "ms": 3118.6795839999995,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 837992448,
+          "fullFrameReadback": true,
+          "rejectedPaints": 2,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 1819.105791,
+          "renderFps": 32.983238411338775,
+          "wallMs": 2494.661958,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 183.06833400000005
+          },
+          "indexCacheHits": 1,
+          "indexMs": 1.4377499999999994,
+          "indexing": [
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 1.4377499999999994
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "dissolve",
+        "ms": 5657.993833999999,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 66355200,
+          "peakDecoders": 2,
+          "peakChromiumWorkingSetBytes": 1272414208,
+          "fullFrameReadback": true,
+          "rejectedPaints": 149,
+          "decodedSourceFrames": 120,
+          "restarts": 2,
+          "renderMs": 3876.1045000000004,
+          "renderFps": 15.4794588226401,
+          "wallMs": 5020.361292,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 424.4930839999997
+          },
+          "indexCacheHits": 2,
+          "indexMs": 2.1690010000000015,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.7207089999999994
+            },
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 0.44829200000000213
+            }
+          ],
+          "audioClips": 2,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "title",
+        "ms": 3131.554250000001,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 928612352,
+          "fullFrameReadback": true,
+          "rejectedPaints": 62,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 2105.812625,
+          "renderFps": 28.49256352995794,
+          "wallMs": 2952.1835419999998,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 269.2111249999998
+          },
+          "indexCacheHits": 1,
+          "indexMs": 1.8010420000000025,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.8010420000000025
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "plain",
+        "ms": 3117.3775000000023,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 831537152,
+          "fullFrameReadback": true,
+          "rejectedPaints": 2,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 1812.6306249999998,
+          "renderFps": 33.10106271651457,
+          "wallMs": 2489.3454580000002,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 179.71587499999987
+          },
+          "indexCacheHits": 1,
+          "indexMs": 1.3763749999999995,
+          "indexing": [
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 1.3763749999999995
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "dissolve",
+        "ms": 5658.788749999996,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 66355200,
+          "peakDecoders": 2,
+          "peakChromiumWorkingSetBytes": 1294581760,
+          "fullFrameReadback": true,
+          "rejectedPaints": 149,
+          "decodedSourceFrames": 120,
+          "restarts": 2,
+          "renderMs": 3883.7972499999996,
+          "renderFps": 15.448798209020826,
+          "wallMs": 5036.871875,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 423.8200420000003
+          },
+          "indexCacheHits": 2,
+          "indexMs": 2.2918330000000005,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.8326659999999997
+            },
+            {
+              "mediaId": "media_6321a98cd32f4135b2cfd623c8542c54",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 2816,
+              "ms": 0.45916700000000077
+            }
+          ],
+          "audioClips": 2,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "title",
+        "ms": 3128.2989589999997,
+        "ok": true,
+        "stats": {
+          "frames": 60,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 973357056,
+          "fullFrameReadback": true,
+          "rejectedPaints": 62,
+          "decodedSourceFrames": 60,
+          "restarts": 1,
+          "renderMs": 2068.019833,
+          "renderFps": 29.01326140231461,
+          "wallMs": 2901.8239160000003,
+          "verification": {
+            "mode": "full",
+            "videoPackets": 60,
+            "audioPackets": 48,
+            "decodedFrames": 60,
+            "ms": 267.8447080000001
+          },
+          "indexCacheHits": 1,
+          "indexMs": 1.8351669999999984,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.8351669999999984
+            }
+          ],
+          "audioClips": 1,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "libx264",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "frame",
+        "ms": 1102.2241670000003,
+        "ok": true,
+        "stats": {
+          "frames": 1,
+          "peakDecodedBytes": 33177600,
+          "peakDecoders": 1,
+          "peakChromiumWorkingSetBytes": 817135616,
+          "fullFrameReadback": true,
+          "rejectedPaints": 3,
+          "decodedSourceFrames": 1,
+          "restarts": 1,
+          "renderMs": 549.755666,
+          "renderFps": 1.8189898928663337,
+          "wallMs": 853.8840829999999,
+          "verification": null,
+          "indexCacheHits": 1,
+          "indexMs": 1.7867500000000014,
+          "indexing": [
+            {
+              "mediaId": "media_dfc953dc5c9f42e29e32fb28265ccbdd",
+              "method": "packet-fragment",
+              "cacheHit": true,
+              "frames": 13212,
+              "ms": 1.7867500000000014
+            }
+          ],
+          "audioClips": 0,
+          "sourceDecode": "software",
+          "composition": "software",
+          "encoder": "png",
+          "rawFrameCacheBytes": 0
+        }
+      },
+      {
+        "name": "library import",
+        "ms": 898.6343330000018,
+        "ok": true,
+        "jobs": [
+          {
+            "kind": "verify",
+            "status": "completed",
+            "runningMs": 509
+          }
+        ]
+      },
+      {
+        "name": "library search",
+        "ms": 118.34837499999412,
+        "ok": true
+      },
+      {
+        "name": "source index cold",
+        "ms": 479.80229099999997,
+        "ok": true,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "status": "completed",
+            "runningMs": 213,
+            "result": {
+              "level": "index",
+              "frames": 2816
+            }
+          }
+        ]
+      },
+      {
+        "name": "source index warm",
+        "ms": 125.71545800000604,
+        "ok": true,
+        "jobs": [
+          {
+            "kind": "prepare",
+            "status": "completed",
+            "runningMs": 1,
+            "result": {
+              "level": "index",
+              "frames": 2816
+            }
+          }
+        ]
+      },
+      {
+        "name": "waveform cold",
+        "ms": 293.67262499999924,
+        "ok": true
+      },
+      {
+        "name": "waveform warm",
+        "ms": 92.91766600000119,
+        "ok": true
+      },
+      {
+        "name": "source frame",
+        "ms": 885.7209169999987,
+        "ok": true,
+        "jobs": [
+          {
+            "kind": "artifact",
+            "status": "completed",
+            "runningMs": 543,
+            "result": {
+              "key": "5a567fbc4bcb52ca4b43cc277c190ee810791ced39e9113cde7e5da4cdbd1146",
+              "type": "frame",
+              "sourceId": "source_bc89c9f93952447ba12c7f46c33035bb",
+              "sourceName": "2026-09-11 17-49-25",
+              "start": 0,
+              "end": 10,
+              "path": "/Users/user/Documents/GitHub/AFClip/.cache/cli-perf/validated/library/cache/artifacts/source_bc89c9f93952447ba12c7f46c33035bb.5a567fbc4bcb52ca4b43cc277c190ee810791ced39e9113cde7e5da4cdbd1146.png",
+              "url": "/v1/artifacts/source_bc89c9f93952447ba12c7f46c33035bb/5a567fbc4bcb52ca4b43cc277c190ee810791ced39e9113cde7e5da4cdbd1146.png"
+            }
+          }
+        ]
+      },
+      {
+        "name": "close project",
+        "ms": 118.29608299999381,
+        "ok": true
+      },
+      {
+        "name": "close library",
+        "ms": 89.84395799999766,
+        "ok": true
+      }
+    ]
+  }
+}

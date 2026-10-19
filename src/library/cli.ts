@@ -89,7 +89,7 @@ async function main(){
   }else result=await request(ep,'/command',payload);
   let status='complete',error:any;
   if(result.jobs?.length){
-    const ids=result.jobs.map((j:any)=>j.id),deadline=Date.now()+timeout*1000;let last='',lastProgress=0;
+    const ids=result.jobs.map((j:any)=>j.id),deadline=Date.now()+timeout*1000;let last='',lastProgress=0,pollMs=25;
     for(;;){
       const selected=await request(ep,'/command',{command:'jobs',ids});result={...result,jobs:selected};
       const failed=selected.filter((j:any)=>['failed','cancelled'].includes(j.status));
@@ -101,7 +101,10 @@ async function main(){
       if(failed.length){status='failed';error={code:'JOB_FAILED',message:'Background work failed or was cancelled',details:{jobs:failed}};break;}
       if(!pending||!wait)break;
       if(Date.now()>=deadline){status='accepted';error={code:'WAIT_TIMEOUT',message:'Wait timed out; jobs remain active. Inspect jobs or cancel explicitly.',details:{ids}};break;}
-      await new Promise(r=>setTimeout(r,Math.min(500,Math.max(1,deadline-Date.now()))));
+      // Cached index jobs can finish in 1 ms; don't add half a second to them.
+      // Back off for hashing and encoding jobs that run for minutes.
+      await new Promise(r=>setTimeout(r,Math.min(pollMs,Math.max(1,deadline-Date.now()))));
+      pollMs=Math.min(500,pollMs*2);
     }
     const artifactJob=result.jobs.find((j:any)=>j.kind==='artifact'&&j.status==='completed');
     if(result.artifact&&artifactJob?.result)result.artifact={...result.artifact,...artifactJob.result};

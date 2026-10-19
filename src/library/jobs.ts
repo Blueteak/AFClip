@@ -98,8 +98,10 @@ export class Jobs {
     if(a.kind==='video') {
       this.update(j,'Indexing source presentation timestamps',.1);
       let exact:any;
-      const index=await getFrameIndex({file,cacheDir:path.join(cache,'indexes'),maxBytes:64*1024**2,probe:async()=>{
-        const raw=JSON.parse((await this.run(j,ffprobe,['-v','error','-select_streams','v:0','-show_frames','-show_streams','-show_entries','frame=best_effort_timestamp:stream=time_base','-of','json',file])).toString());
+      const index=await getFrameIndex({file,cacheDir:path.join(cache,'indexes'),maxBytes:64*1024**2,
+        packetProbe:async()=>JSON.parse((await this.run(j,ffprobe,['-v','error','-select_streams','v:0','-show_packets','-show_entries','packet=pts,dts,flags:stream=id,codec_name,codec_tag_string,time_base,nb_frames,field_order,start_pts:format=format_name','-of','json',file])).toString()),
+        probe:async()=>{
+        const raw=JSON.parse((await this.run(j,ffprobe,['-v','error',...(process.platform==='darwin'?['-threads','0']:[]),'-select_streams','v:0','-show_frames','-show_streams','-show_entries','frame=best_effort_timestamp:stream=time_base','-of','json',file])).toString());
         const [num,den]=raw.streams[0].time_base.split('/').map(Number);exact={timeBase:{num,den},ticks:raw.frames.map((f:any)=>Number(f.best_effort_timestamp))};return decodeFrameTimestamps(raw);
       }});
       const frameFile=path.join(cache,`${s.id}.frames.json`);
