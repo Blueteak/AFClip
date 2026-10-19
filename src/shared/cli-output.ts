@@ -39,6 +39,30 @@ export function compactResult(value:any):any {
  const out={...value};
  const omit=(key:string,expected:any)=>{if(JSON.stringify(out[key])===JSON.stringify(expected))delete out[key];};
  const empty=(...keys:string[])=>{for(const key of keys){omit(key,[]);omit(key,{});}};
+ if(value.metadata&&(value.kind||value.recordType==='source')){
+  const {streams,format,...metadata}=value.metadata;
+  if(Array.isArray(streams))metadata.streams=streams.map((s:any)=>Object.fromEntries(
+   ['index','codec_type','codec_name','profile','field_order','width','height','pix_fmt','sample_fmt','sample_rate','channels','channel_layout','time_base','avg_frame_rate','r_frame_rate','duration','start_time','nb_frames','color_space','color_transfer','color_primaries','color_range','disposition','tags','side_data_list']
+    .filter(key=>s[key]!==undefined).map(key=>[key,s[key]])));
+  if(format)metadata.format=Object.fromEntries(['format_name','duration','start_time','size','bit_rate','tags'].filter(key=>format[key]!==undefined).map(key=>[key,format[key]]));
+  out.metadata=metadata;
+ }
+ if(value.id&&value.kind&&['queued','running','completed','failed','cancelled','cancelling'].includes(value.status)){
+  omit('queuePosition',null);
+  if(value.status==='completed'){omit('progress',1);if(['Ready','completed'].includes(value.phase))delete out.phase;}
+ }
+ if(value.artifact&&Array.isArray(value.jobs)){
+  out.jobs=value.jobs.map((job:any)=>{
+   if(job.kind!=='artifact'||!job.result)return job;
+   const extra=Object.fromEntries(Object.entries(job.result).filter(([key,v])=>JSON.stringify(value.artifact[key])!==JSON.stringify(v)));
+   const {result,...rest}=job;return Object.keys(extra).length?{...rest,result:extra}:rest;
+  });
+ }
+ if(Array.isArray(value.pts)&&value.startFrame===undefined){
+  delete out.pts;
+  out.frameCount=value.pts.length;
+  if(value.pts.length)out.timing={first:value.pts[0],last:value.pts.at(-1)};
+ }
  if(value.revisions&&(value.project||value.baseRevision!==undefined)){omit('renderLock',null);}
  if(value.trackId&&value.mediaId){
   omit('volume',1);omit('mute',false);omit('speed',{num:1,den:1});

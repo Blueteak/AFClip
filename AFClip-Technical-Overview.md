@@ -14,6 +14,12 @@ The process stays alive while a GUI, CLI operation or render needs it, then exit
 
 The TypeScript choice is provisional until the prototype demonstrates responsive command handling alongside media work. Runtime validation is required for incoming commands and project data; TypeScript types alone do not validate external input.
 
+### CLI token budget
+
+Treat agent-visible output size as a design constraint. Return the information needed for the next action with the fewest tokens: compact JSON, changed objects after edits, targeted reads, bounded numeric arrays, and progress only when requested. Do not narrate successful default behavior. Preserve IDs, revision checks, exact time boundaries, pagination, warnings and failures. Keep diagnostic details behind `--full` rather than deleting them from stored data or GUI/service contracts.
+
+Measure representative output with a named tokenizer when changing CLI response shapes. Do not trade extra command round trips or ambiguous omissions for smaller individual responses. Document omitted defaults and recovery paths in the [CLI output contract](benchmarks/cli/README.md#output-tokens). Missing incremental history must request a fresh inspection, never masquerade as an empty change set.
+
 ### Rendering workers
 
 Put decoding, graphic rendering, frame composition, audio mixing and encoding behind a separate rendering interface. A worker failure must not take down the project engine or lose committed edits. Report the failed operation and restart the worker for subsequent requests.

@@ -2,6 +2,12 @@
 
 ## Output tokens
 
+The goal is the fewest tokens per completed task, with enough information for the
+next action. Omit expected defaults and unchanged state; preserve IDs, revisions,
+exact boundaries, pagination, warnings and errors. Keep diagnostics accessible,
+avoid cryptic abbreviations, and measure output with a named tokenizer. Smaller
+responses that force repeated discovery calls are not an improvement.
+
 Both CLIs emit single-line JSON by default. `--pretty` restores indentation;
 `--full` includes default-valued fields and complete edit snapshots. Use both for
 the previous response format. The `ok` / `result` envelope remains. Stored data,
@@ -19,12 +25,35 @@ Default output omits these known values:
 - Library assets and ranges: deleted/purged false, empty notes/tags/takes/
   annotationTracks/references/ranges, availability `available`, sourceStatus `verified`.
 - Text fields: overridden false, value equal to default, and an empty missing list.
+- Jobs: null queuePosition; completed progress 1 and phase Ready/completed.
+  Completed artifact job results omit fields already present in `artifact`.
 
 Omitted fields have the values above. IDs, revisions, pagination, non-default
 values, errors and user-authored metadata remain. Use `--full` when passing output
 to a consumer that requires explicit defaults or complete project objects.
 `af-lib --fields` retains explicitly selected fields, even defaults.
 `af-lib call` retains the complete API response.
+
+Default media metadata summarizes FFprobe streams and format: codecs, dimensions,
+pixel/audio format, time base, frame rates, duration/start time, frame count,
+color, disposition, tags and side data remain. Ancillary diagnostics are available
+with `--full`; this summary is not a complete probe record.
+
+`source-inspect` and library `preview` replace full PTS arrays with `frameCount`
+and `timing.first`/`timing.last`. Explicit `--start-frame N --frame-count N` returns
+stored timestamps. `af-clip source-frames` and `af-lib frames` return exact ticks
+and their time base, with 120 entries by default and a 10000-entry limit per page.
+Continue at `nextFrame`; null means the final page. `--full` without a window
+returns the whole index. Empty/unprepared indexes reject window requests.
+
+`af-clip inspect --id ID` or `--collection NAME` returns selected items, project
+settings and relevant revision keys. `--since REVISION` instead returns changes
+from retained undo/redo history; it cannot be combined with filters. Expired
+history returns `HISTORY_UNAVAILABLE`, requiring a fresh inspection. Full output
+does not cancel explicitly requested filters or windows.
+
+Top-level help is a command index. `help COMMAND` includes its usage and contract;
+`help all` retains the full reference. Library `schema` remains machine-readable.
 
 Project edits return `baseRevision`, `revision`, changed `revisions`, and history.
 `changes` contains new or changed objects grouped by collection, plus changed
@@ -55,12 +84,13 @@ node benchmarks/cli/tokens.mjs /path/to/output.json
 
 The capture includes thirteen samples from disposable CLI calls and the repository
 example edit. The example marker insertion is simulated; the small-project edits
-run through the actual CLI. It stores original, first-pass and current strings for
+run through the actual CLI. It stores original, compact snapshot and current strings for
 counting with any model tokenizer. Recorded `o200k_base` measurements are in
 `docs/cli-tokens.json`. The example marker edit falls from 26,264 original tokens
 to 18,139 after whitespace/default culling, then 124 with changed-state output.
-Small-project undo falls from 2,270 to 245 tokens. Progress savings are additional
-and depend on job duration.
+Current example inspection is 15,327 tokens versus 26,205 originally. Top-level
+help is 180 tokens for af-clip and 178 for af-lib, down from 1,489 and 707.
+Progress savings are additional and depend on job duration.
 
 Full inspections and waveform sample arrays remain substantial. They carry useful
 state, so this change preserves them. Library search/overview already use compact

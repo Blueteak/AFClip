@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import {frameWindow} from '../shared/cli-frames.ts';
 import {formatResponse} from '../shared/cli-output.ts';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -50,12 +51,14 @@ Use help COMMAND or COMMAND --help for fields; schema [COMMAND] returns JSON dis
 --full includes default-valued fields; --pretty indents JSON.
 --wait returns the final result; --progress emits changes on stderr. --timeout SECONDS defaults to 300.
 `;
+const shortHelp=`af-lib <command> [options]\n\n${Object.keys(commandSchema).join(' | ')}\n\nhelp COMMAND: fields and contract. help all: full reference.\nJSON output; --full includes raw data, --pretty indents. --catalog PATH selects a catalog.\n`;
 async function main(){
   const args=process.argv.slice(2),command=args.shift();
-  if(!command||['--help','-h'].includes(command)){console.log(help);return;}
+  if(!command||['--help','-h'].includes(command)){console.log(shortHelp);return;}
   if(command==='schema'||command==='help'||args.includes('--help')||args.includes('-h')){
     const target=['schema','help'].includes(command)?args[0]:command;
-    console.log(command==='help'&&!target?help:formatResponse({ok:true,result:schema(target)}));return;
+    if(command==='help'&&target==='all'){console.log(help);return;}
+    console.log(command==='help'&&!target?shortHelp:formatResponse({ok:true,result:schema(target)}));return;
   }
   const definition=commandSchema[command];if(!definition)throw new Error(`Unknown command: ${command}. Use schema to list commands.`);
   const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false,timeout=300,full=false,pretty=false,progress=false;
@@ -112,6 +115,8 @@ async function main(){
     if(result.artifact&&artifactJob?.result)result.artifact={...result.artifact,...artifactJob.result};
   }
   if(fields){const project=(o:any)=>Object.fromEntries(fields.map((key:string)=>{if(!(key in o))throw new Error(`Unknown result field: ${key}`);return [key,o[key]];}));result=command==='search'?{...result,items:result.items.map(project)}:project(result);}
+  if(command==='frames'&&(!full||c['start-frame']!==undefined||c['frame-count']!==undefined))result=frameWindow(result,c['start-frame'],c['frame-count']);
+  if(command==='preview'&&(c['start-frame']!==undefined||c['frame-count']!==undefined))result=frameWindow(result,c['start-frame'],c['frame-count']);
   if(error)process.exitCode=1;
   console.log(formatResponse({ok:!error,status,result,...(error?{error}:{})},{full:full||!!fields||command==='call',pretty}));
 }

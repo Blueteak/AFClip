@@ -2,7 +2,7 @@
 const specs:Record<string,string>={
   gui:'id dev:boolean',endpoint:'',
   search:'q folder kind:audio|video tag collection minDuration:number maxDuration:number limit:number offset:number assetsOnly:boolean deleted:boolean include-inbox:boolean full:boolean fields:list',
-  overview:'full:boolean fields:list',inspect:'id rangeOffset:number sourceId',original:'id',preview:'id',frames:'id',selection:'id revision:number sourceId startFrame:number endFrame:number startSample:number endSample:number',
+  overview:'full:boolean fields:list',inspect:'id rangeOffset:number sourceId',original:'id',preview:'id start-frame:number frame-count:number',frames:'id start-frame:number frame-count:number',selection:'id revision:number sourceId startFrame:number endFrame:number startSample:number endSample:number',
   waveform:'id start duration bins:number summary:boolean',
   import:'path paths:json folder limit:number hierarchy:boolean',register:'path paths:json projectId projectPath',
   annotate:'id revision:number name notes tags:list takes:json annotationTracks:json trackId',
@@ -19,6 +19,8 @@ const specs:Record<string,string>={
   checkpoint:'name',checkpoints:'','checkpoint-restore':'id confirm',cache:'','cache-clear':'','cache-budget':'bytes:number',close:'',apply:'operations:json',call:''
 };
 const notes:Record<string,string>={
+  frames:'Exact stored ticks and timeBase. --start-frame N --frame-count N pages the index (default 120, max 10000); nextFrame continues. --full returns the entire index.',
+  preview:'Frame count and timing by default; --start-frame N --frame-count N returns stored timestamps. --full includes all timestamps and raw source metadata.',
   search:'Compact by default. --full includes source metadata. --folder inbox means Inbox only; --include-inbox includes it alongside the library. Follow nextOffset until complete.',
   overview:'Compact vocabulary, folders, counts and job totals by default; --full includes history and jobs.',
   prepare:'index prepares exact video frame boundaries only; audio index is already available after verification. preview also builds seek proxies and audio. Default: preview. Review artifacts and index jobs run before queued previews; running work is not preempted.',

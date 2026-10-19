@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {formatResponse,projectChanges} from '../../src/shared/cli-output.ts';
+import {frameWindow} from '../../src/shared/cli-frames.ts';
 import {revisions} from '../../src/shared/project.ts';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const output=process.argv[2];
@@ -21,8 +22,8 @@ function run(cli,args,input){
  return JSON.parse(child.stdout);
 }
 function sample(command,response,optimized=response){
- const before=JSON.stringify(response,null,2),firstPass=formatResponse(response),after=formatResponse(optimized);
- samples.push({command,before,firstPass,after,beforeChars:before.length,afterChars:after.length});
+ const before=JSON.stringify(response,null,2),compactSnapshot=formatResponse(response),after=formatResponse(optimized);
+ samples.push({command,before,compactSnapshot,after,beforeChars:before.length,afterChars:after.length});
 }
 function edit(command,args){
  const before=run('clip',['inspect',project,'--full']).result;
@@ -37,6 +38,8 @@ try{
  sample('af-clip inspect empty',run('clip',['inspect',project,'--full']));
  const added=edit('af-clip marker-add',['marker-add',project,'--time','1','--name','Cut']);
  assert.equal(added.changes.markers[0].name,'Cut');assert.equal(added.project,undefined);
+ assert.deepEqual(run('clip',['inspect',project,'--id',added.changes.markers[0].id]).result.items,added.changes.markers);
+ assert.deepEqual(run('clip',['inspect',project,'--since',String(added.baseRevision)]).result.changes,added.changes);
  const undone=edit('af-clip undo',['undo',project]);
  assert.deepEqual(undone.removed.markers,[added.changes.markers[0].id]);
  edit('af-clip redo',['redo',project]);
@@ -68,6 +71,14 @@ try{
  const projected=run('lib',['search','--include-inbox','--fields','id,notes,availability']);
  assert.equal(projected.result.items[0].availability,'available');
  const inspected=run('clip',['inspect',project]);assert.deepEqual(inspected.result.revisions,run('clip',['inspect',project,'--full']).result.revisions);
+ const vfr={timeBase:{num:1,den:1000},ticks:[0,33,71,102,150]};
+ assert.deepEqual(frameWindow(vfr,1,2),{...vfr,ticks:[33,71],frameCount:5,startFrame:1,nextFrame:3});
+ assert.throws(()=>frameWindow(vfr,-1,2));assert.throws(()=>frameWindow(vfr,0,0));
+ const artifact={path:'frame.png',frames:[{tile:0,timeSeconds:1}]};
+ const jobs={artifact,jobs:[{id:'job_1',kind:'artifact',status:'completed',phase:'Ready',progress:1,queuePosition:null,result:{...artifact,extra:'kept'}}]};
+ const summarized=JSON.parse(formatResponse({ok:true,result:jobs})).result;
+ assert.deepEqual(summarized.jobs[0].result,{extra:'kept'});assert.equal(summarized.jobs[0].progress,undefined);
+ assert.deepEqual(JSON.parse(formatResponse({ok:true,result:jobs},{full:true})).result,jobs);
  fs.writeFileSync(output,JSON.stringify({samples},null,2));
  console.log(`Captured ${samples.length} samples to ${output}`);
 }finally{

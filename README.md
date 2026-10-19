@@ -12,6 +12,10 @@ The planned MVP covers supplied footage, music, sound effects, images and HTML/C
 - [Technical Overview](AFClip-Technical-Overview.md): architecture and Windows prototype criteria.
 - [Content Library Overview](content-library-overview.md): standalone library scope, ownership, Inbox lifetime and AFClip integration.
 
+## CLI output goal
+
+Minimize the tokens needed to complete an editing task. Default output reports useful results and exceptions, omits predictable defaults, and avoids repeating unchanged state. Raw diagnostics and complete snapshots remain available with `--full`; use `help COMMAND` for focused usage. See the [output contract and measurements](benchmarks/cli/README.md#output-tokens).
+
 ## Implementation status
 
 The [editing prototype](docs/editing-prototype.md) loads a project folder, imports source media, commits atomic edits through a background Node engine, updates an Electron GUI over a local change stream, and coordinates headless frame renders and MP4 exports. The same commands handle GUI and CLI edits. Source decoding now streams through bounded live-frame buffers instead of writing a whole-clip RGBA cache.
