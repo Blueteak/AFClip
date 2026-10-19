@@ -566,7 +566,7 @@ function perform(task, success) {
       if (result === SKIP) return null;
       if (success) say(typeof success === 'function' ? success(result) : success);
       await refresh();
-      if (prefs.autoRender) requestFrame(900);
+      if (prefs.autoRender) requestFrame(0);
       return result ?? true;
     } catch (error) { report(error); try { await refresh(); } catch {} return null; }
     finally { editsInFlight--; }
@@ -2994,7 +2994,7 @@ api.onEvent(async event => {
       const next = event.value.inspect || event.value;
       const external = snapshot && next.project && next.project.revision !== snapshot.project.revision;
       if (next.project && next.revisions) { snapshot = next; draw(); } else await refresh();
-      if (external && prefs.autoRender) requestFrame(600);
+      if (external && prefs.autoRender) requestFrame(0);
     }
   } catch (error) { say(explain(error), 'error'); }
 });
