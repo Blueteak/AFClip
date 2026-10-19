@@ -772,8 +772,8 @@ function gapAt(trackId, frame) {
 }
 // Markers are global: no track lock applies, and every edit asserts the snapshot it was built from.
 function addMarker(name, f) {
-  const id = uid('marker'), at = Math.max(0, f);
-  return edit(() => ({ ops: [put('markers', { id, name, time: fromF(at) })], pre: { [`marker:${id}`]: 0 }, message: `Added marker “${name}” at ${tc(at)}` })).then(ok => { if (ok) selectMarker(id); return ok; });
+  const id = uid('marker'), at = Math.max(0, f), color = markerColor({ color: prefs.markerColor });
+  return edit(() => ({ ops: [put('markers', { id, name, time: fromF(at), color })], pre: { [`marker:${id}`]: 0 }, message: `Added marker “${name}” at ${tc(at)}` })).then(ok => { if (ok) selectMarker(id); return ok; });
 }
 // Only changed fields are sent, so renaming keeps an off-grid time from an earlier frame rate exact.
 function changeMarker(id, { name, f, color }) {
@@ -805,6 +805,7 @@ function markerColorPicker(m, disabled) {
       'aria-checked': String(c === current), 'aria-label': c, tabindex: c === current ? '0' : '-1',
       tip: { title: c[0].toUpperCase() + c.slice(1) }, onclick: () => pick(c) })));
   function pick(c) {
+    prefs.markerColor = c; savePrefs();
     for (const b of row.children) { const on = b.dataset.color === c; b.classList.toggle('active', on); b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; }
     changeMarker(m.id, { color: c });
   }
