@@ -216,3 +216,17 @@ These measurements do not include a flushed Windows disk cache, first-paint timi
 Drag asset/range cards into AFClip for structured identity and range context. **Drag original** uses Electron's native file handoff for generic Windows destinations; dragging a selected range this way hands over its whole original. **Add to AFClip** provides the explicit insertion route. The native drag and reveal controls were restored on 2026-10-18 after the UI no longer exposed their existing bridges. Inbox promotion plus collection membership was verified through the GUI, including atomic undo/redo. Native cross-application drop acceptance remains unverified: the earlier desktop tool rejected a destination outside the source window bounds, and the current Windows capture returned blank client-area screenshots. The structured card-drop handler still needs a physical desktop drag check.
 
 The library is an MVP, not a claim that every acceptance condition in the full overview has been measured. Full disk-cold search, search under large concurrent ingestion, long-source preparation cost and cross-application desktop drag acceptance remain follow-up validation. Images, cloud sync, managed copies, semantic search and permanent modified-media exports remain outside this release.
+
+### Block annotations
+
+The Blocks track sits below Takes and above Full clip. Drag empty space to mark
+unusable footage, drag a block to move it, or drag its edges to trim. Click a
+block to add an optional reason. Delete and undo work as they do for Takes.
+Both Takes and Blocks tracks are 25% shorter than regular annotation tracks.
+
+Blocks are saved on assets as `blocks: [{start,end,text?}]`, using source seconds
+and exclusive ends. `af-lib annotate --blocks` replaces the list with the current
+asset revision. Search summaries expose parent-source blocks for both assets and
+named ranges, and inspect returns the saved list. AI selecting usable footage
+should subtract the union of these intervals, even where they overlap a Take.
+Blocks describe exclusions; they do not cut the source or prevent manual playback.

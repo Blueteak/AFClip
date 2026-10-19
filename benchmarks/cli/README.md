@@ -34,7 +34,7 @@ Default output omits these known values:
   null linkId, empty effects/volumePoints/text, and default transform components
   x/y/rotation 0, scale/opacity 1, fit `fit`.
 - Tracks and folders: disabled/locked/collapsed false and null folderId.
-- Library assets and ranges: deleted/purged false, empty notes/tags/takes/
+- Library assets and ranges: deleted/purged false, empty notes/tags/takes/blocks/
   annotationTracks/references/ranges, availability `available`, sourceStatus `verified`.
 - Text fields: overridden false, value equal to default, and an empty missing list.
 - Jobs: null queuePosition; completed progress 1 and phase Ready/completed.
@@ -132,3 +132,13 @@ node benchmarks/cli/speeds.cjs /path/to/project .cache/cli-speeds
 
 The first video must contain at least 11 seconds. This creates separate two-second edits at quarter speed, four-times speed, and a still extracted from the same video. Each uses translation, scaling and rotation. Three exports per case receive full verification. `speeds.json` includes source upload/reuse counts; generated media remains available for exact before/after comparison.
 
+
+Library search summaries include nonempty `blocks` on assets and ranges. These
+are parent-source intervals `{start,end,text?}` in seconds, end exclusive, marking
+unusable footage. Consumers should subtract their union when choosing usable
+portions, including portions within Takes or named ranges. Inspect and `--full`
+search preserve the saved blocks; an absent or empty list means no exclusions.
+
+Measured with `o200k_base`: a representative compact asset response is 61 tokens
+without exclusions and 91 with two blocks including reasons, a 30-token increase.
+Assets without blocks retain their existing response size.
