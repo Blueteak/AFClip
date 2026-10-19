@@ -1,66 +1,97 @@
 {
   "encoding": "o200k_base",
-  "method": "Same response serialized with previous pretty JSON and new default formatter. Real disposable CLI fixtures plus the repository example project. Search/overview baseline uses previous compact payload. Progress savings excluded. Counts vary with IDs and paths.",
+  "method": "Previous pretty JSON vs first-pass compact JSON vs current default output. Disposable live CLI fixtures plus repository example project snapshots. Example marker edit is simulated. Search/overview baseline uses previous compact payload. Progress savings excluded. Counts vary with IDs and paths.",
   "samples": [
     {
       "command": "af-clip create",
-      "beforeTokens": 1812,
-      "afterTokens": 1277,
-      "savedPercent": 29.5
+      "beforeTokens": 1828,
+      "firstPassTokens": 1293,
+      "afterTokens": 1293,
+      "savedPercent": 29.3
     },
     {
       "command": "af-clip inspect empty",
-      "beforeTokens": 2022,
-      "afterTokens": 1437,
-      "savedPercent": 28.9
+      "beforeTokens": 2045,
+      "firstPassTokens": 1460,
+      "afterTokens": 1460,
+      "savedPercent": 28.6
     },
     {
       "command": "af-clip marker-add",
-      "beforeTokens": 2163,
-      "afterTokens": 1541,
-      "savedPercent": 28.8
+      "beforeTokens": 2189,
+      "firstPassTokens": 1567,
+      "afterTokens": 142,
+      "savedPercent": 93.5
     },
     {
       "command": "af-clip undo",
-      "beforeTokens": 2238,
-      "afterTokens": 1626,
-      "savedPercent": 27.3
+      "beforeTokens": 2270,
+      "firstPassTokens": 1658,
+      "afterTokens": 245,
+      "savedPercent": 89.2
+    },
+    {
+      "command": "af-clip redo",
+      "beforeTokens": 2338,
+      "firstPassTokens": 1701,
+      "afterTokens": 288,
+      "savedPercent": 87.7
+    },
+    {
+      "command": "af-clip marker-remove",
+      "beforeTokens": 2270,
+      "firstPassTokens": 1658,
+      "afterTokens": 99,
+      "savedPercent": 95.6
     },
     {
       "command": "af-clip inspect example edit",
       "beforeTokens": 26205,
+      "firstPassTokens": 18107,
       "afterTokens": 18107,
       "savedPercent": 30.9
     },
     {
+      "command": "af-clip marker-add example edit",
+      "beforeTokens": 26264,
+      "firstPassTokens": 18139,
+      "afterTokens": 124,
+      "savedPercent": 99.5
+    },
+    {
       "command": "af-lib import --wait",
-      "beforeTokens": 692,
-      "afterTokens": 496,
-      "savedPercent": 28.3
+      "beforeTokens": 680,
+      "firstPassTokens": 484,
+      "afterTokens": 484,
+      "savedPercent": 28.8
     },
     {
       "command": "af-lib search",
-      "beforeTokens": 252,
-      "afterTokens": 156,
-      "savedPercent": 38.1
+      "beforeTokens": 249,
+      "firstPassTokens": 153,
+      "afterTokens": 153,
+      "savedPercent": 38.6
     },
     {
       "command": "af-lib inspect",
-      "beforeTokens": 920,
-      "afterTokens": 643,
-      "savedPercent": 30.1
+      "beforeTokens": 913,
+      "firstPassTokens": 636,
+      "afterTokens": 636,
+      "savedPercent": 30.3
     },
     {
       "command": "af-lib overview",
       "beforeTokens": 802,
+      "firstPassTokens": 568,
       "afterTokens": 568,
       "savedPercent": 29.2
     },
     {
       "command": "af-lib jobs",
-      "beforeTokens": 230,
-      "afterTokens": 175,
-      "savedPercent": 23.9
+      "beforeTokens": 225,
+      "firstPassTokens": 170,
+      "afterTokens": 170,
+      "savedPercent": 24.4
     }
   ]
 }
