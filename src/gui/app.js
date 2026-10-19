@@ -2837,8 +2837,16 @@ $('tl-scroll').addEventListener('wheel', e => {
 document.addEventListener('dragover', e => {if(e.dataTransfer.types.includes('application/x-afclip-library')&&editable()){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
 document.addEventListener('drop', async e => {
   const raw=e.dataTransfer.getData('application/x-afclip-library');if(!raw)return;e.preventDefault();
-  try{const data=JSON.parse(raw);await window.afclip.command({command:'library-import',id:data.rangeId||data.assetId,libraryId:data.libraryId,sourceId:data.sourceId});}
-  catch(error){console.error(error);alert(error.message);}
+  if(!editable())return;
+  await perform(async()=>{
+    const data=JSON.parse(raw),items=Array.isArray(data.items)?data.items:[data];
+    if(!items.length||items.some(item=>!item||typeof (item.rangeId||item.assetId)!=='string'))throw new Error('Invalid library selection');
+    let imported=0;
+    try{
+      for(const item of items){await api.command({command:'library-import',id:item.rangeId||item.assetId,libraryId:item.libraryId,sourceId:item.sourceId});imported++;}
+    }catch(error){throw new Error(`Imported ${imported} of ${items.length} clips. ${error.message}`);}
+    return imported;
+  },count=>`Added ${plural(count,'clip')} to media`);
 });
 
 // Dropping media from the bin
