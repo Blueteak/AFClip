@@ -48,10 +48,10 @@ export class Operations {
     const matches=`FROM ${textSearch?'search_text JOIN search_items i ON i.rowid=search_text.rowid':'search_items i'} WHERE ${clauses.join(' AND ')}`;
     // Group before pagination so matching annotations neither duplicate clips nor consume page slots.
     const query=c.groupByAsset
-      ? `SELECT a.id FROM search_items a WHERE a.type='asset' AND a.id IN (SELECT i.assetId ${matches}) ORDER BY a.name,a.id LIMIT ? OFFSET ?`
+      ? `SELECT a.id,(SELECT COUNT(*) FROM search_items r WHERE r.assetId=a.id AND r.type='range') annotationCount FROM search_items a WHERE a.type='asset' AND a.id IN (SELECT i.assetId ${matches}) ORDER BY a.name,a.id LIMIT ? OFFSET ?`
       : `SELECT i.id ${matches} ORDER BY ${textSearch?'search_text.rowid':'i.name,i.id'} LIMIT ? OFFSET ?`;
     const rows=this.db.db.prepare(query).all(...params,limit+1,offset) as any[];
-    const more=rows.length>limit;return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),items:rows.slice(0,limit).map(r=>c.compact?this.summary(r.id):this.inspect(r.id,{relationships:false})),offset,nextOffset:more?offset+limit:null,complete:!more,elapsedMs:performance.now()-start};
+    const more=rows.length>limit;return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),items:rows.slice(0,limit).map(r=>({...(c.compact?this.summary(r.id):this.inspect(r.id,{relationships:false})),...(c.groupByAsset?{annotationCount:r.annotationCount}:{})})),offset,nextOffset:more?offset+limit:null,complete:!more,elapsedMs:performance.now()-start};
   }
   relationships(id:string,options:any={}) {
     const offset=Math.max(0,Number(options.rangeOffset)||0),rows=this.db.db.prepare("SELECT id FROM records WHERE kind='range' AND json_extract(data,'$.assetId')=? ORDER BY id LIMIT 201 OFFSET ?").all(id,offset) as any[];

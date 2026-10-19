@@ -130,11 +130,12 @@ body{grid-template-rows:auto minmax(0,1fr) 28px}
 .clip-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;background:#0a0b0cce;color:#c0d4f2}
 .clip-icon svg{width:14px;height:14px}
 .clip-icon.audio,.clip-icon.notes{color:#86d5ad}
+.clip-icon.counted{width:auto;min-width:20px;padding:0 4px 0 2px;gap:1px}.clip-icon.counted b{font-size:11px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
 .clip-icon.unavailable{color:var(--danger)}.clip-icon.pending{color:var(--warn)}
 .asset-name{padding:7px 9px}
 .asset-list .clip-kind,.asset-list .clip-flags{top:3px}
 .asset-list .clip-kind{left:3px}.asset-list .clip-flags{right:3px;gap:2px}
-.asset-list .clip-icon{width:17px;height:17px}.asset-list .clip-icon svg{width:12px;height:12px}
+.asset-list .clip-icon{width:17px;height:17px}.asset-list .clip-icon svg{width:12px;height:12px}.asset-list .clip-icon.counted{width:auto;min-width:17px;padding:0 3px 0 1px}.asset-list .clip-icon.counted b{font-size:10px}
 
 .clip-info{position:fixed;z-index:100;width:300px;max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow:auto;padding:14px;background:var(--bg-2);border:1px solid var(--line-2);border-radius:9px;box-shadow:0 8px 28px #0008;user-select:text}
 .clip-info-name{display:block;font-size:13px;line-height:1.4;overflow-wrap:anywhere}

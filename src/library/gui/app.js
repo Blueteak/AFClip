@@ -43,9 +43,9 @@ function selectedActions(){
   $('insert').disabled=!available;$('edit-library').disabled=!a;
   $('new-range').disabled=readonly||!a||a.deleted||a.folder==='inbox'||a.source.status!=='verified';
 }
-function clipIcon(kind,label){
-  const shapes={video:'<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',audio:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',range:'<path d="M8 4H4v16h4M16 4h4v16h-4M8 12h8"/>',notes:'<path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/>',unavailable:'<path d="m12 3 10 18H2zM12 9v5M12 17v1"/>',pending:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
-  return `<span class="clip-icon ${kind}" title="${esc(label)}" role="img" aria-label="${esc(label)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[kind]}</svg></span>`;
+function clipIcon(kind,label,count){
+  const shapes={video:'<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/>',audio:'<path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',range:'<path d="M8 4H4v16h4M16 4h4v16h-4M8 12h8"/>',notes:'<path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h6"/>',unavailable:'<path d="m12 3 10 18H2zM12 9v5M12 17v1"/>',pending:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',annotations:'<path d="M9 4C7 4 6 5 6 7v2c0 1.5-1 3-2 3 1 0 2 1.5 2 3v2c0 2 1 3 3 3M15 4c2 0 3 1 3 3v2c0 1.5 1 3 2 3-1 0-2 1.5-2 3v2c0 2-1 3-3 3"/>'};
+  return `<span class="clip-icon ${kind}${count?' counted':''}" title="${esc(label)}" role="img" aria-label="${esc(label)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[kind]}</svg>${count?`<b aria-hidden="true">${count}</b>`:''}</span>`;
 }
 const clipInfo=document.createElement('div');
 clipInfo.id='clip-info';clipInfo.className='clip-info';clipInfo.hidden=true;clipInfo.setAttribute('role','tooltip');document.body.append(clipInfo);
@@ -77,7 +77,8 @@ async function search(){const generation=++state.generation;const query={groupBy
   hideClipInfo();
   $('assets').replaceChildren(...r.items.map(item=>{const a=item.parent||item,b=document.createElement('button');b.className=`asset-card ${a.kind}${state.selected?.id===a.id?' selected':''}`;b.dataset.id=item.id;b.setAttribute('role','listitem');b.setAttribute('aria-label',item.name);b.draggable=true;b.onpointerenter=e=>{if(e.pointerType!=='touch')showClipInfo(b,item);};b.onpointerleave=deferHideClipInfo;b.onfocus=()=>showClipInfo(b,item);b.onblur=hideClipInfo;
     const kind=item.recordType==='range'?'range':a.kind;
-    const flags=(item.tags.length||item.notes?clipIcon('notes','Has tags or notes'):'')+(a.availability==='unavailable'?clipIcon('unavailable','Original unavailable'):a.source.status==='pending'?clipIcon('pending','Verifying source'):'');
+    const annotations=a.annotationCount??item.annotationCount??0;
+    const flags=(annotations>0?clipIcon('annotations',`${annotations} annotation${annotations===1?'':'s'}`,annotations):'')+(item.tags.length||item.notes?clipIcon('notes','Has tags or notes'):'')+(a.availability==='unavailable'?clipIcon('unavailable','Original unavailable'):a.source.status==='pending'?clipIcon('pending','Verifying source'):'');
     b.innerHTML=`<div class="asset-image"><img src="/v1/media/${a.sourceId}/image" alt="" loading="lazy"><span class="clip-kind">${clipIcon(kind,kind==='range'?'Annotation':kind==='audio'?'Audio':'Video')}</span><span class="clip-flags">${flags}</span><span class="duration">${duration(item.end?secs(item.end)-secs(item.start):a.duration)}</span></div><div class="asset-name">${esc(item.name)}</div>`;
     b.querySelector('img').onerror=e=>{e.target.style.visibility='hidden';};b.onclick=()=>select(a.id,item.recordType==='range'?item:null).catch(e=>say(e.message,true));b.ondragstart=e=>{hideClipInfo();drag(e,a,item.recordType==='range'?item:null);};return b;}));
   if(!r.items.length)$('assets').innerHTML='<div class="empty-note">No matches in this view.<br>Import media or adjust the filters.</div>';
