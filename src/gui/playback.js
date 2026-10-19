@@ -66,7 +66,22 @@ class TimelinePlayback {
       return value && typeof value === 'object' && !Array.isArray(value)
         ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value;
     });
-    const keepVideo = this.prepared && this.sessionId && this.videoKey === videoKey && this.mode === mode;
+    const plan = window.AFClipTimeline.compile(project);
+    // Mirror the mixer inputs, including transition handles and total silence
+    // padding. Picture transforms, titles and video-only clips cannot dirty it.
+    const audioKey = JSON.stringify({ duration: plan.duration, clips: plan.clips
+      .filter(c => c.stream !== 'video' && c.media.metadata.hasAudio && !c.mute && c.volume !== 0)
+      .map(c => ({ id: c.id, media: c.media, start: c.start, duration: c.duration,
+        sourceIn: c.sourceIn, speed: c.speed, visibleStart: c.visibleStart, visibleEnd: c.visibleEnd,
+        volume: c.volume ?? 1, volumePoints: c.volumePoints || [], fadeIn: c.fadeIn, fadeOut: c.fadeOut,
+        transitions: c.transitions.map(t => ({ audio: t.audio, side: t.side, start: t.start, end: t.end, duration: t.duration, cut: t.cut })),
+      })).sort((a, b) => a.id.localeCompare(b.id)) }, (key, value) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value);
+    const keepNative = this.prepared && this.sessionId && this.mode === mode && this.native?.canUpdate(project);
+    const keepVideo = this.prepared && this.sessionId && this.mode === mode && (this.videoKey === videoKey || keepNative);
+    const keepAudio = keepVideo && this.ready && this.audioKey === audioKey;
+    this.audioKey = audioKey;
     this.videoKey = videoKey;
     if (keepTextSession) {
       this.pause(false);
@@ -84,7 +99,7 @@ class TimelinePlayback {
     if (!keepVideo) { this.native?.close(); this.native = null; }
     this.rejectReady?.(new Error('Preview replaced')); this.rejectReady = null;
     if (!keepVideo) { this.prepared = false; this.api.previewClose(); this.sessionId = null; this.audio.removeAttribute('src'); this.audio.load(); }
-    this.audioDirty = !!keepVideo;
+    this.audioDirty = !!keepVideo && !keepAudio;
     if (keepVideo && this.native) {
       this.native.setup.project = project;
       this.native.setup.plan = window.AFClipTimeline.compile(project);
@@ -93,7 +108,7 @@ class TimelinePlayback {
         if (entry) entry.clip = clip;
       }
     }
-    this.ready = false; this.opening = null; this.inFlight = false; this.busy = false;
+    this.ready = !!keepAudio; this.opening = null; this.inFlight = false; this.busy = false;
     this.revision = project.revision; this.projectId = project.id; this.mode = mode;
     this.fps = project.fps.num / project.fps.den;
     this.duration = Math.max(0, ...project.clips.map(c => c.start.num / c.start.den + c.duration.num / c.duration.den));
@@ -145,11 +160,25 @@ class TimelinePlayback {
     this.time = Math.max(0, Math.min(time, Math.max(0, Math.ceil(this.duration * this.fps - 1e-8) - 1) / this.fps));
     this.busy = true; this.notify();
     try {
+      // Picture does not depend on the mixed audio. Keep scrubbing responsive
+      // while edits rebuild it, but wait for the new mix before playback starts.
+      if (this.native && !this.ready) this.previewPicture();
       await this.ensure();
       if (epoch !== this.epoch || generation !== this.generation) return;
       this.audio.currentTime = this.time;
       this.request(this.time, true);
     } catch (error) { if (generation === this.generation && epoch === this.epoch) this.fail(error); }
+  }
+  previewPicture() {
+    const native = this.native, epoch = this.epoch, generation = this.generation, time = this.time;
+    if (this.picture?.key === this.videoKey && this.picture.event.time === time && this.picture.sessionId === this.sessionId) return;
+    this.picture = null;
+    native.seek(time).then(current => {
+      if (!current || native !== this.native || epoch !== this.epoch || generation !== this.generation) return;
+      const event = { native: true, time, revision: this.revision };
+      this.picture = { key: this.videoKey, sessionId: this.sessionId, event };
+      this.callbacks.frame?.(event);
+    }).catch(error => { if (native === this.native && epoch === this.epoch && generation === this.generation) this.fail(error); });
   }
   play(time) {
     if (!this.duration) return;
@@ -168,6 +197,13 @@ class TimelinePlayback {
   request(time, force = false) {
     if (!this.ready || (!force && this.inFlight)) return;
     this.inFlight = true;
+    // Reusing a paused picture avoids seeking/repainting for audio-only edits.
+    // Playback still needs native.seek(..., true) to prepare original decoders.
+    if (!this.wantsPlay && this.picture?.key === this.videoKey && this.picture.sessionId === this.sessionId && this.picture.event.time === time) {
+      this.receive({ ...this.picture.event, type: 'frame', epoch: this.epoch, sessionId: this.sessionId, revision: this.revision });
+      return;
+    }
+    this.picture = null;
     if (this.native) {
       const epoch = this.epoch, sessionId = this.sessionId;
       this.native.seek(time, this.wantsPlay).then(current => { if (current) this.receive({ type: 'frame', native: true, time, epoch, sessionId, revision: this.revision }); }).catch(error => { if (sessionId === this.sessionId && epoch === this.epoch) this.fail(error); });
@@ -180,6 +216,7 @@ class TimelinePlayback {
     this.time = this.audio.currentTime;
     this.callbacks.time?.(this.time);
     if (this.native) {
+      this.picture = null;
       this.native.update(this.time);
       this.callbacks.frame?.({ native: true, time: this.time, revision: this.revision });
       this.tickId = requestAnimationFrame(() => this.tick()); return;
@@ -199,6 +236,12 @@ class TimelinePlayback {
       return;
     }
     if (event.type === 'error') { this.rejectReady?.(new Error(event.error.message)); this.fail(new Error(event.error.message)); return; }
+    if (event.type === 'picture-ready') {
+      this.native = new window.NativePreview(event.nativeSetup, document.getElementById('native-preview'), error => this.fail(error));
+      this.previewPicture();
+      this.refreshPreparationTimeout?.();
+      return;
+    }
     if (event.type === 'ready') {
       this.prepared = true;
       if (event.nativeSetup) this.native = new window.NativePreview(event.nativeSetup, document.getElementById('native-preview'), error => this.fail(error));
@@ -212,6 +255,7 @@ class TimelinePlayback {
       return;
     }
     if (event.type !== 'frame' || event.epoch !== this.epoch) return;
+    this.picture = { key: this.videoKey, sessionId: this.sessionId, event };
     this.inFlight = false; this.busy = false;
     if (!this.playing || this.audio.currentTime - event.time < .25) this.callbacks.frame?.(event);
     if (this.wantsPlay && !this.playing) {

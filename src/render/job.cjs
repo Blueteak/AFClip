@@ -110,7 +110,8 @@ async function main() {
     }
     emit({ type: 'progress', phase: 'prepare', progress: ++prepared / used.size * .1, message: `Prepared ${prepared}/${used.size} sources` });
   }
-  const audio = config.kind === 'frame' || end <= begin ? null : await audioMix(plan, begin, end);
+  const nativePreview = config.kind === 'preview' && config.nativePreview;
+  const audio = config.kind === 'frame' || end <= begin || nativePreview ? null : await audioMix(plan, begin, end);
   const nativeEncoder = config.mode === 'gpu' && !['frame', 'preview'].includes(config.kind) ? await require('./native/build.cjs')() : null;
   cancelCheck();
   fs.mkdirSync(path.dirname(config.output), { recursive: true });
@@ -125,7 +126,7 @@ async function main() {
       budget:Math.min(project.cacheLimitBytes || 256*1024*1024,512*1024*1024), ffmpeg, ffprobe, run };
     const seekCache = await prepareSeekCache({ ...seekOptions, reuseOnly:true });
     seekCache.complete = seekCache.hits === seekCache.sources;
-    emit({ type: 'ready', audio: audio?.output, nativeSetup: {
+    emit({ type: 'picture-ready', nativeSetup: {
       project, plan, media, graphics, width, height, seekCache,
     } });
     // Preview is usable immediately with originals. Publish each completed range
@@ -135,6 +136,9 @@ async function main() {
     }).then(stats => emit({type:'seek-cache',seekCache:{...stats,complete:true}})).catch(error => {
       if (error.code !== 'CANCELLED') emit({type:'seek-cache',seekCache:{complete:true,error:error.message}});
     });
+    const previewAudio = end > begin ? await audioMix(plan, begin, end) : null;
+    cancelCheck();
+    emit({ type: 'ready', audio: previewAudio?.output });
     // Keep accepted graphics and mixed audio alive until the editor closes this snapshot.
     await new Promise(resolve => {
       const reader = require('node:readline').createInterface({ input: process.stdin });
