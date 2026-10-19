@@ -46,6 +46,8 @@ The playback target is sustained **1080p60**; seeking targets 25 ms at p95 with 
 
 Mac measurements and setup are in [macOS performance](docs/macos-performance.md). Prepared seeking passes on the M4; playback still has intermittent startup/title misses, and GPU export remains Windows-only.
 
+[CLI performance measurements](docs/cli-performance.md) cover editing, library preparation, waveforms and software exports, with a [repeatable benchmark](benchmarks/cli/README.md).
+
 ## Content Library
 
 Run `af-lib gui` for the standalone library, or `af-lib --help` for its CLI. Both use the same local service and persistent catalog. Imports reference originals in place; folders, tags, notes, named source ranges, shared undo, preparation jobs and cache controls work through either interface. Preview shares AFClip's native media presentation and fast-seek implementation.

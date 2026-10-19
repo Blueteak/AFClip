@@ -8,7 +8,10 @@ class Decoder {
     const seek = Math.max(0, media.pts[targetIndex] - .00001);
     const size = media.previewSize ? `w=${media.width}:h=${media.height}:` : '';
     const filter = media.kind === 'image' ? (size ? `scale=${media.width}:${media.height},format=rgba` : 'format=rgba') : `scale=${size}in_color_matrix=bt709:in_range=tv:out_range=full,format=rgba`;
-    const args = ['-hide_banner', '-v', 'error', ...(media.hwaccel ? ['-hwaccel', 'd3d11va'] : []), '-threads', media.previewSize ? '4' : '2', '-ss', String(seek), '-i', media.file,
+    // Full-resolution 4K decoding otherwise leaves most Apple Silicon cores idle.
+    // Keep the bounded preview and Windows settings unchanged.
+    const threads = media.previewSize ? '4' : process.platform === 'darwin' ? '0' : '2';
+    const args = ['-hide_banner', '-v', 'error', ...(media.hwaccel ? ['-hwaccel', 'd3d11va'] : []), '-threads', threads, '-ss', String(seek), '-i', media.file,
       '-map', '0:v:0', '-an', '-sn', '-dn', '-vsync', '0', '-filter_threads', '1', '-vf', filter, '-pix_fmt', 'rgba', '-f', 'rawvideo', 'pipe:1'];
     this.child = spawn(ffmpeg, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     this.log = fs.createWriteStream(logFile, { flags: 'a' }); this.child.stderr.pipe(this.log);
