@@ -32,6 +32,12 @@ af-clip inspect .cache/my-edit
 
 Commands return JSON with `ok` and either `result` or a structured `error`. Inspection includes the manifest, object and relationship revisions, undo/redo counts, and any rendering lock. Media imports return the stable imported media ID. Normal imports reference originals; graphic imports copy editable assets into the project.
 
+CLI output aims to minimize tokens per editing task. `--full` retains raw probe metadata and complete edit snapshots; `--pretty` indents JSON. Default media metadata keeps codec, dimensions, timing, sample format, color, tags and side data while excluding ancillary FFprobe diagnostics. Edits return changed objects and revisions. The [output contract](../benchmarks/cli/README.md#output-tokens) defines omitted defaults and change semantics.
+
+Use `inspect <project-dir> --id ID` or `--collection clips` to read selected objects. `inspect <project-dir> --since REVISION` returns changes from retained undo/redo session history, including removed IDs and changed ordering. It cannot be combined with filters. If the revision has expired or the engine restarted, `HISTORY_UNAVAILABLE` requires a fresh inspection. `--full` on an incremental read preserves raw fields within the changes, not a whole-project snapshot.
+
+`source-inspect` returns frame count and first/last timestamp instead of a full PTS array. `--start-frame N --frame-count N` requests a window of prepared preview timestamps. `source-frames <project-dir> <media-id>` reads exact library frame ticks and their time base after index preparation; it defaults to 120 entries. Follow `nextFrame` for another page, or use `--full` for all timestamps. Windows retain the stored boundaries, including variable frame rates. Use `help COMMAND` for detailed syntax and `help all` for the full reference.
+
 Edits are atomic batches. Save a JSON file and pass it to `af-clip apply <project-dir> <batch.json>`. This example adds one track and a four-second clip. Replace `IMPORTED_MEDIA_ID`, and use current revision values from inspection:
 
 ```json
