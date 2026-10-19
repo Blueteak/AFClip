@@ -151,6 +151,7 @@ async function newAnnotationPopover(trackId=window.activeAnnotationTrack,x){
   if(state.selected?.id!==a.id)return;
   state.insertRange=record;state.temporarySelection=false;showMarks();
   openAnnotationPopover(record,x);say('Annotation created');
+  $('popover-name').focus({preventScroll:true});$('popover-name').select();
 }
 click('timeline-create',()=>newAnnotationPopover());
 click('new-range',()=>newAnnotationPopover());
