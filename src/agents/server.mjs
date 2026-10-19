@@ -109,7 +109,8 @@ function validateSettings(p){
   for(const id of Object.keys(p.providers||{})){
     if(!['codex','claude'].includes(id))throw new Error('Unknown provider');
     const cfg=p.providers[id];
-    for(const k of Object.keys(cfg))if(!['executable','model','effort','access','delivery'].includes(k)||typeof cfg[k]!=='string')throw new Error('Invalid provider setting');
+    for(const k of Object.keys(cfg))if(!['executable','model','effort','access','delivery','serviceTier'].includes(k)||typeof cfg[k]!=='string')throw new Error('Invalid provider setting');
+    if(cfg.serviceTier!==undefined&&(id!=='codex'||!['','default','priority','ultrafast'].includes(cfg.serviceTier)))throw new Error('Invalid service tier');
     if(cfg.delivery&&!['steer','queue'].includes(cfg.delivery))throw new Error('Invalid delivery mode');
     const modes=id==='codex'?['','readOnly','workspace','full']:['','default','acceptEdits','plan','dontAsk','auto','bypassPermissions'];
     if(cfg.access!==undefined&&!modes.includes(cfg.access))throw new Error('Invalid access mode');
@@ -121,7 +122,17 @@ async function act(action,p={}){
   if(action==='health')return {pid:process.pid};
   if(action==='state')return {conversations:conversations.map(publicConversation),settings:settings()};
   if(action==='settings'){
-    validateSettings(p);const s=settings();for(const id of Object.keys(p.providers||{}))s.providers[id]={...s.providers[id],...p.providers[id]};if(p.lastProvider)s.lastProvider=p.lastProvider;writeJSON(path.join(root,'settings.json'),s);providerCache=null;return s;
+    validateSettings(p);const s=settings();
+    const codex=p.providers?.codex;
+    if(codex && (codex.serviceTier!==undefined || codex.model!==undefined || codex.executable!==undefined)){
+      const next={...s.providers.codex,...codex};
+      if(next.serviceTier && next.serviceTier!=='default'){
+        const info=await discover('codex',next,loc.project);
+        const model=info.models.find(m=>m.id===(next.model||info.defaultModel));
+        if(info.error||!info.authenticated||!model?.serviceTiers?.some(t=>t.id===next.serviceTier))throw new Error('This Codex speed is not available for your account and selected model.');
+      }
+    }
+    for(const id of Object.keys(p.providers||{}))s.providers[id]={...s.providers[id],...p.providers[id]};if(p.lastProvider)s.lastProvider=p.lastProvider;writeJSON(path.join(root,'settings.json'),s);providerCache=null;return s;
   }
   if(action==='providers'){
     if(p.refresh||Date.now()-providerCacheAt>30000){providerCache=null;providerCacheAt=Date.now();}

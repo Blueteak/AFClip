@@ -14,6 +14,13 @@ project state, and command output contracts are unchanged.
 
 ## Output tokens
 
+`agent providers` includes Codex's resolved `defaultModel` and per-model
+`serviceTiers` with provider-reported IDs, labels and descriptions. These let
+clients enable Fast/Ultrafast only when the signed-in account's catalog offers
+them, without another capability query. `settings` accepts Codex `serviceTier`;
+new conversations retain it. A seven-model Codex discovery response measured
+335 → 516 tokens with `tiktoken` / `o200k_base` after adding this metadata.
+
 The goal is the fewest tokens per completed task, with enough information for the
 next action. Omit expected defaults and unchanged state; preserve IDs, revisions,
 exact boundaries, pagination, warnings and errors. Keep diagnostics accessible,
