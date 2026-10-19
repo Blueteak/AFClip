@@ -134,7 +134,13 @@ click('import',()=>dialog('Import media',`<p>Reference video and audio where the
 $('dialog-content').addEventListener('click',async e=>{if(e.target.id==='pick-files'){const files=await window.libraryNative.pick();if(files.length)$('import-paths').value=files.join('\n');}});
 async function dropFiles(e,folder){if(readonly)return;const paths=[...e.dataTransfer.files].map(f=>window.libraryNative?.filePath(f)).filter(Boolean);if(!paths.length){say('Use Import media to reference local file paths in the browser. Desktop supports native file drops.');return;}await act(()=>api('import',{paths,folder}),'Imported dropped files');}
 $('assets').ondragover=e=>e.preventDefault();$('assets').ondrop=e=>{e.preventDefault();dropFiles(e,state.folder&&state.folder!=='inbox'?state.folder:'root').catch(e=>say(e.message,true));};
-function drag(e,a,range){const data={libraryId:a.libraryId,assetId:a.id,sourceId:a.sourceId,rangeId:range?.id,start:range?.start,end:range?.end,path:a.path};e.dataTransfer.setData('application/x-afclip-library',JSON.stringify(data));e.dataTransfer.setData('text/plain',a.path);e.dataTransfer.effectAllowed='copy';}
+function drag(e,a,range){
+  const entry=(asset,r)=>({libraryId:asset.libraryId,assetId:asset.id,sourceId:asset.sourceId,rangeId:r?.id,start:r?.start,end:r?.end,path:asset.path});
+  const data=entry(a,range),id=range?.id||a.id;
+  const items=state.selectedIds.has(id)?state.items.filter(item=>state.selectedIds.has(item.id)).map(item=>entry(item.parent||item,item.recordType==='range'?item:null)):[data];
+  e.dataTransfer.setData('application/x-afclip-library',JSON.stringify({...data,items}));
+  e.dataTransfer.setData('text/plain',items.map(item=>item.path).join('\n'));e.dataTransfer.effectAllowed='copy';
+}
 click('reveal-original',()=>window.libraryNative?.reveal(state.selected.id));
 $('drag-original').ondragstart=e=>{
   e.preventDefault();if(!state.selected||$('drag-original').disabled)return;
