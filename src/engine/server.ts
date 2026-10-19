@@ -9,6 +9,7 @@ import {inspectMedia,importGraphic,graphicSignature,snapshotGraphic,reloadAssetM
 import {checkpoint,listCheckpoints,restoreCheckpoint} from './checkpoints.ts';
 import {inspectGraphicText,setGraphicText} from './graphic-text.ts';
 import {LibraryLink} from './library.ts';
+import {relinkMedia} from './relink.ts';
 import {libraryCommand,libraryEndpoint} from '../library/client.ts';
 import sourceMedia from '../shared/source-media.cjs';
 import {insertSource,sourceJobs} from './source.ts';
@@ -52,6 +53,7 @@ async function command(c:any){assert(c&&typeof c.command==='string','Missing com
   const m=c.command==='asset-builtin'?importBuiltin(dir,c.name):importGraphic(dir,path.resolve(dir,(old||fail('NOT_FOUND','Asset not found')).path));
   const pre=revisions(state.p);pre[`media:${m.id}`]=0;
   const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}
+ case 'relink':{const r=await relinkMedia(state,library,c);publish('change',r);return r;}
  case 'import':{state.requireUnlocked();assert(typeof c.path==='string','Import requires path');let m=c.kind==='graphic'?importGraphic(dir,c.path):await inspectMedia(c.path,c.kind);try{m=await library.register(m);const pre=revisions(state.p);pre[`media:${m.id}`]=0;const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});await library.sync();publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}catch(e){await library.sync();throw e;}}
  case 'library-import':{state.requireUnlocked();const item=await libraryCommand(c.selection?{command:'selection',id:c.id,revision:c.selection.revision,sourceId:c.selection.sourceId,startFrame:c.selection.startFrame,endFrame:c.selection.endFrame,startSample:c.selection.startSample,endSample:c.selection.endSample}:{command:'inspect',id:c.id}),a=item.parent||item;assert(!c.libraryId||c.libraryId===a.libraryId,'Drop belongs to another library');assert(!c.sourceId||c.sourceId===item.sourceId,'Dropped source version changed; select it again');assert(a.availability==='available'&&!a.deleted,'Library source is unavailable');let m=await inspectMedia(a.path);m={...m,metadata:{...m.metadata,library:{libraryId:a.libraryId,assetId:a.id,sourceId:item.parent?item.sourceId:a.sourceId,sourceLocations:a.source.locations,rangeId:item.parent?item.id:undefined,rangeRevision:item.parent?item.revision:undefined,start:item.start,end:item.end,boundaries:item.boundaries,temporary:!!item.temporary,name:item.name}}};const pre=revisions(state.p);pre[`media:${m.id}`]=0;const r=state.batch({preconditions:pre,operations:[{op:'put',collection:'media',value:m}]});await library.sync();publish('change',r);return {media:r.project.media.find(x=>x.id===m.id),...r};}
  case 'render':return startRender(c);
