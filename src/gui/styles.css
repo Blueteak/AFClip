@@ -418,8 +418,8 @@ kbd, .kbd {
 .audio-locked .env-hit, .audio-locked .audio-fade { cursor: not-allowed; }
 .audio-locked .audio-fade { display: none; }
 .audio-locked .audio-point { pointer-events: none; opacity: .55; }
-.clip-body { position: absolute; inset: 3px 7px 0; display: flex; align-items: flex-start; gap: 5px; pointer-events: none; padding-top: 3px; min-width: 0; }
-.clip-body .icon { width: 12px; height: 12px; opacity: .75; margin-top: 1px; }
+.clip-body { position: absolute; inset: 0 7px; max-height: 28px; display: flex; align-items: center; gap: 5px; pointer-events: none; min-width: 0; }
+.clip-body .icon { width: 12px; height: 12px; opacity: .75; }
 .clip-name { font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .clip-badges { margin-left: auto; display: flex; gap: 3px; flex: none; }
 .clip-badge { font: 9.5px var(--mono); padding: 0 3px; border-radius: 2px; background: rgba(0, 0, 0, .3); color: #e8edf5; display: inline-flex; align-items: center; gap: 2px; height: 14px; }
