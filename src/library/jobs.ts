@@ -137,7 +137,7 @@ export class Jobs {
     assert(c['image-size']===undefined||c.type!=='excerpt','Image size applies only to frames and contact sheets');
     assert(c['image-size']===undefined||c.width===undefined,'Use image-size or width, not both');
     const imageSize=c.type==='excerpt'||c.width!==undefined?undefined:reviewImage.reviewSize(c['image-size']);
-    const options={imageSize,assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:3};
+    const options={imageSize,assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:4};
     if(options.frame!==null)assert(Number.isSafeInteger(options.frame)&&options.frame>=0,'Frame index must be a nonnegative integer');
     const key=createHash('sha256').update(JSON.stringify(options)).digest('hex'),extension=c.type==='excerpt'?(a.kind==='audio'?'wav':'mp4'):'png';
     const output=path.join(this.db.dir,'cache','artifacts',`${s.id}.${key}.${extension}`),url=`/v1/artifacts/${s.id}/${key}.${extension}`;

@@ -37,7 +37,7 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip detach-audio|unlink <project-dir> <clip-id> [--revision N]
   af-clip undo|redo <project-dir>
   af-clip export <project-dir> <output.mp4> [--mode gpu|software] [--start SEC --end SEC] [--verify quick|full] [--wait]
-  af-clip frame <project-dir> <output.png> --time SEC [--image-size low|review|full] [--mode gpu|software] [--wait]
+  af-clip frame <project-dir> <output.png> --time SEC [--image-size low|review|high|full] [--mode gpu|software] [--wait]
   af-clip status <project-dir> [job-id]
   af-clip cancel <project-dir> [job-id]
   af-clip close <project-dir>
@@ -77,7 +77,7 @@ Apply supports put/remove on folders, track.folderId, and {op:"reorder-tracks",t
 Reorder requires project and order:tracks revisions; child edits also require their folder revision.
 Project changes use {op:"project",value:{name?,fps?,resolution?}} and project revision.
 The engine keeps session undo for five idle minutes; close ends that session.
-Frame PNGs default to a 1024px longest edge; --image-size low caps at 512px, full keeps project resolution. No upscaling.
+Frame PNGs default to a 768px longest edge; --image-size low caps at 512px, high caps at 1024px, full keeps project resolution. No upscaling.
 Export verification defaults to quick container/timestamp checks. --verify full also decodes every output frame.
 Render progress is available through status and /v1/events. --wait exits nonzero on failure.
 `;
@@ -101,7 +101,7 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  if(topic.startsWith('folder'))notes=section('Folders contain','Project changes');
  if(topic.startsWith('library-'))notes=section('Find reusable clips','source-inspect returns');
  if(['export','frame','status'].includes(topic))notes=section('Export verification','Render progress')+'--wait exits nonzero on failure.\n';
- if(topic==='frame')notes+='Images default to review: 1024px longest edge. --image-size low caps at 512px; full keeps project resolution for small text and fine detail. Aspect ratio is preserved, with no upscaling. --full only expands JSON.\n';
+ if(topic==='frame')notes+='Images default to review: 768px longest edge. --image-size low caps at 512px; high caps at 1024px; full keeps project resolution for small text and fine detail. Aspect ratio is preserved, with no upscaling. --full only expands JSON.\n';
  if(topic==='inspect')notes='--id ID or --collection media|tracks|clips|transitions|markers|folders selects objects. --since REVISION returns changes from retained session history; unavailable history returns HISTORY_UNAVAILABLE. Use --since separately from filters.\n';
  if(['source-inspect','source-frames'].includes(topic))notes+='Frame windows use --start-frame N --frame-count N (default 120, max 10000). nextFrame continues the exact stored index. --full includes all timestamps.\n';
  return lines.join('\n')+'\n'+notes+'Times accept decimal seconds or fractions. --full includes raw data; --pretty indents.\n';
