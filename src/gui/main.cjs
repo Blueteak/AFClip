@@ -246,10 +246,8 @@ app.whenReady().then(async () => {
     const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'create', destination], {windowsHide:true, timeout:30000});
     const reply = JSON.parse(result.stdout.trim());
     if (!reply.ok) throw new Error(reply.error?.message || 'Could not create project');
-    const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
-    const child = require('node:child_process').spawn(process.execPath, [__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])], {env, detached:true, windowsHide:false, stdio:'ignore'});
-    await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
-    child.unref();
+    app.relaunch({args:[__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])]});
+    setImmediate(() => app.quit());
     return {path:destination};
   });
   handle('collect', async revision => {
