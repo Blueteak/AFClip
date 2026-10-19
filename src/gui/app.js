@@ -40,7 +40,14 @@ const tc = f => {
   const n = nominal(), a = Math.abs(Math.round(f)), s = Math.floor(a / n);
   return (f < 0 ? '-' : '') + [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60, a % n].map(x => String(x).padStart(2, '0')).join(':');
 };
-const shortTc = f => tc(f).replace(/^(-?)(00:){1,2}/, '$1');
+const shortTc = f => {
+  const seconds = Math.abs(f) / fps(), hundredths = Math.round(seconds * 100);
+  const whole = seconds < 3600 ? Math.floor(hundredths / 100) : Math.floor(seconds);
+  const parts = [Math.floor(whole / 60) % 60, whole % 60];
+  if (whole >= 3600) parts.unshift(Math.floor(whole / 3600));
+  return (f < 0 ? '-' : '') + parts.map(x => String(x).padStart(2, '0')).join(':')
+    + (seconds < 3600 ? `.${String(hundredths % 100).padStart(2, '0')}` : '');
+};
 const fpsLabel = () => fps().toFixed(3).replace(/\.?0+$/, '');
 // Accepts timecode (00:00:02:15), seconds (2.5), frames (75f) or relative frames (+12 / -12).
 function parseTime(text, base) {
