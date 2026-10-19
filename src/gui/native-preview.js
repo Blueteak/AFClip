@@ -34,6 +34,7 @@ window.NativePreview = class NativePreview {
       if (media.kind === 'graphic') {
         const graphic = setup.graphics[clip.mediaId], iframe = document.createElement('iframe');
         iframe.sandbox = 'allow-scripts'; iframe.style.width = graphic.width + 'px'; iframe.style.height = graphic.height + 'px';
+        iframe.style.opacity = '0';
         iframe.style.transform = `translate(-50%,-50%) scale(${Math.min(setup.width / graphic.width, setup.height / graphic.height)})`;
         entry.loaded = new Promise((resolve, reject) => { iframe.onload = resolve; iframe.onerror = () => reject(new Error('Graphic could not load')); });
         entry.loaded.catch(this.onError); iframe.src = graphic.url; entry.content = iframe; iframe.style.pointerEvents = 'none'; layer.append(iframe);
@@ -260,23 +261,43 @@ window.NativePreview = class NativePreview {
     });
   }
   graphic(entry, time) {
-    if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
     if (entry.graphicBusy) { entry.graphicNext = time; return entry.graphicBusy; }
-    entry.graphicBusy = entry.loaded.then(() => new Promise((resolve, reject) => {
+    const version = entry.graphicVersion;
+    entry.graphicBusy = entry.loaded.then(() => {
+      if (this.closed) return;
+      if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
+      return new Promise((resolve, reject) => {
       if (this.closed) return resolve();
       const id = ++this.requestId;
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Graphic did not acknowledge playback time')); }, 10000);
       this.pending.set(id, { source: entry.content.contentWindow, resolve, reject, timer });
       entry.content.contentWindow.postMessage({ type: 'afclip-render', requestId: id, time, text: entry.clip.text || {}, editable: !entry.clip.track.locked }, '*');
-    })).finally(() => {
+      });
+    }).then(async () => {
+      if (this.closed || version !== entry.graphicVersion || entry.layer.hidden) return;
+      if (entry.content.style.opacity !== '0') return;
+      // The acknowledgement precedes the iframe's compositor paint. Keep its
+      // initial HTML or previous seek frame hidden until that paint can land.
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      if (this.closed || version !== entry.graphicVersion || entry.layer.hidden) return;
+      entry.content.style.opacity = '';
+      entry.hits.style.visibility = '';
+    }).finally(() => {
       entry.graphicBusy = null;
       if (entry.graphicNext != null && !this.closed) { const next = entry.graphicNext; entry.graphicNext = null; this.graphic(entry, next).catch(this.onError); }
     });
     return entry.graphicBusy;
   }
-  layout(time) {
-    const items = window.AFClipTimeline.at(this.setup.plan, time);this.assets?.reset(this.entries,items);const active = new Set(items.map(i => i.clipId));
+  layout(time, seeking = false) {
+    const items = window.AFClipTimeline.at(this.setup.plan, time);this.assets?.reset(this.entries,items,seeking);const active = new Set(items.map(i => i.clipId));
     for (const [id, entry] of this.entries) {
+      if (entry.media.kind === 'graphic' && (seeking || entry.layer.hidden || !active.has(id))) {
+        entry.graphicVersion = (entry.graphicVersion || 0) + 1;
+        entry.graphicNext = null;
+        entry.content.style.opacity = '0';
+        entry.hits.style.visibility = 'hidden';
+      }
       entry.layer.hidden = !active.has(id);
       if (entry.layer.hidden) this.hideStill(entry);
     }
@@ -301,7 +322,7 @@ window.NativePreview = class NativePreview {
     // A cached request need not wait behind an obsolete long-GOP decode.
     if (!cached) await this.seekWork?.catch(() => {});
     if (generation !== this.generation || this.closed) return false;
-    const items = this.layout(time);
+    const items = this.layout(time, true);
     const priorWork = this.seekWork;
     const work = Promise.all(items.map(async item => {
       const entry = this.entries.get(item.clipId); if (!entry) return;
@@ -332,7 +353,12 @@ window.NativePreview = class NativePreview {
         entry.presentedTime = entry.videoTime;
         return;
       }
-      if (item.kind === 'graphic') { await entry.graphicBusy; entry.graphicNext = null; return this.graphic(entry, item.sourceTime); }
+      if (item.kind === 'graphic') {
+        await entry.graphicBusy;
+        if (generation !== this.generation || this.closed) return;
+        entry.graphicNext = null;
+        return this.graphic(entry, item.sourceTime);
+      }
       return entry.loaded;
     }));
     if (!cached) this.seekWork = work;
