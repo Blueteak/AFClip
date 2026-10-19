@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import reviewImage from '../shared/review-image.cjs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -128,16 +129,19 @@ export class Jobs {
     assert(a.kind==='video'||c.type==='excerpt','Frames and contact sheets require video');
     const toSeconds=(v:any,fallback:number)=>v===undefined?fallback:typeof v==='object'?seconds(v):seconds(parseTime(String(v)));
     const start=toSeconds(c.start,item.start?seconds(item.start):0),end=toSeconds(c.end,item.end?seconds(item.end):Math.min(a.duration,start+10));
-    const time=toSeconds(c.time,start),width=Number(c.width)||640,count=Number(c.count)||12,columns=Number(c.columns)||4;
+    const time=toSeconds(c.time,start),width=c.width===undefined?640:Number(c.width),count=Number(c.count)||12,columns=Number(c.columns)||4;
     assert(start>=0&&end>start&&end<=a.duration,'Artifact range must be inside the source');
     assert(c.type!=='excerpt'||end-start<=60,'Analysis excerpts are limited to 60 seconds');
     assert(time>=0&&time<a.duration,'Frame time must lie inside the source');
     assert(Number.isInteger(width)&&width>=64&&width<=1920&&Number.isInteger(count)&&count>=1&&count<=48&&Number.isInteger(columns)&&columns>=1&&columns<=8,'Invalid artifact dimensions');
-    const options={assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:2};
+    assert(c['image-size']===undefined||c.type!=='excerpt','Image size applies only to frames and contact sheets');
+    assert(c['image-size']===undefined||c.width===undefined,'Use image-size or width, not both');
+    const imageSize=c.type==='excerpt'||c.width!==undefined?undefined:reviewImage.reviewSize(c['image-size']);
+    const options={imageSize,assetId:a.id,sourceId:s.id,sourceHash:s.hash,type:c.type,start,end,time,width,count,columns,frame:c.frame===undefined?null:Number(c.frame),generation:3};
     if(options.frame!==null)assert(Number.isSafeInteger(options.frame)&&options.frame>=0,'Frame index must be a nonnegative integer');
     const key=createHash('sha256').update(JSON.stringify(options)).digest('hex'),extension=c.type==='excerpt'?(a.kind==='audio'?'wav':'mp4'):'png';
     const output=path.join(this.db.dir,'cache','artifacts',`${s.id}.${key}.${extension}`),url=`/v1/artifacts/${s.id}/${key}.${extension}`;
-    const artifact={key,type:c.type,path:output,url,sourceId:s.id,sourceName:a.name,start,end};
+    const artifact={key,type:c.type,path:output,url,sourceId:s.id,sourceName:a.name,start,end,...(imageSize?{imageSize}:{})};
     if(fs.existsSync(output)&&(c.type!=='contact-sheet'||fs.existsSync(output+'.json'))){this.readers.set(s.id,Date.now());return {artifact:{...artifact,...(c.type==='contact-sheet'?JSON.parse(fs.readFileSync(output+'.json','utf8')):{})},cacheHit:true,jobs:[]};}
     const pending=this.db.db.prepare("SELECT data FROM jobs WHERE json_extract(data,'$.kind')='artifact' AND json_extract(data,'$.options.key')=? AND json_extract(data,'$.status') IN ('queued','running')").get(key) as any;
     const job=pending?JSON.parse(pending.data):this.enqueueTask('artifact',{...options,key,output,url});
@@ -148,13 +152,14 @@ export class Jobs {
     fs.mkdirSync(path.dirname(o.output),{recursive:true});const temporary=o.output+'.partial'+path.extname(o.output);
     this.update(j,`Generating ${o.type}`,0.1);
     try{
+      const scale=o.imageSize?reviewImage.reviewFilter(o.imageSize,o.type==='contact-sheet'?o.columns:1,o.type==='contact-sheet'?Math.ceil(o.count/o.columns):1,o.type==='contact-sheet'):`scale=${o.width}:-2`;
       const args=['-v',o.type==='contact-sheet'?'info':'error','-y'];
       const frames:any[]=[];let stderr='';
       if(o.type==='frame'){
         if(o.frame===null)args.push('-ss',String(o.time));
-        args.push('-i',file,'-an','-vf',`${o.frame===null?'':`select=eq(n\\,${o.frame}),`}scale=${o.width}:-2`,'-frames:v','1',temporary);
+        args.push('-i',file,'-an','-vf',`${o.frame===null?'':`select=eq(n\\,${o.frame}),`}${scale}`,'-frames:v','1',temporary);
       }else if(o.type==='contact-sheet'){
-        args.push('-ss',String(o.start),'-t',String(o.end-o.start),'-i',file,'-an','-vf',`select='gte(t,selected_n*${(o.end-o.start)/o.count})',scale=${o.width}:-2,showinfo,tile=${o.columns}x${Math.ceil(o.count/o.columns)}:nb_frames=${o.count}:padding=4:margin=4:color=0x16171a`,'-frames:v','1',temporary);
+        args.push('-ss',String(o.start),'-t',String(o.end-o.start),'-i',file,'-an','-vf',`select='gte(t,selected_n*${(o.end-o.start)/o.count})',${scale},showinfo,tile=${o.columns}x${Math.ceil(o.count/o.columns)}:nb_frames=${o.count}:padding=4:margin=4:color=0x16171a`,'-frames:v','1',temporary);
       }else{
         args.push('-ss',String(o.start),'-i',file,'-t',String(o.end-o.start));
         if(path.extname(o.output)==='.wav')args.push('-vn','-c:a','pcm_s16le');
@@ -170,7 +175,7 @@ export class Jobs {
         fs.writeFileSync(o.output+'.json',JSON.stringify({columns:o.columns,frames}));
       }
       assert(fs.existsSync(temporary)&&fs.statSync(temporary).size>0,'Requested source frame was not found');fs.renameSync(temporary,o.output);
-      j.result={key:o.key,type:o.type,sourceId:o.sourceId,sourceName:this.ops.asset(o.assetId).name,start:o.start,end:o.end,path:o.output,url:o.url,...(o.type==='contact-sheet'?{columns:o.columns,frames}:{})};
+      j.result={key:o.key,type:o.type,sourceId:o.sourceId,sourceName:this.ops.asset(o.assetId).name,start:o.start,end:o.end,path:o.output,url:o.url,...(o.imageSize?{imageSize:o.imageSize}:{}),...(o.type==='contact-sheet'?{columns:o.columns,frames}:{})};
     }finally{fs.rmSync(temporary,{force:true});}
   }
   files():any[] {
