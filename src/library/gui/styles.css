@@ -160,3 +160,12 @@ body{grid-template-rows:auto minmax(0,1fr) 28px}
 .annotation-popover .tag-chip{background:transparent;border-color:var(--line-2)}
 .annotation-popover .tag-chip.active{background:var(--accent-soft);border-color:#487bba;color:#9bc5ff}
 .source-view>.browser-heading{flex-wrap:wrap;gap:6px}
+
+/* Takes and Blocks use 75% of the standard annotation track height. */
+.compact-span-row .annotation-block{height:23.25px;padding-top:2px!important;padding-bottom:2px!important}
+.compact-span-row .annotation-drag-preview{top:3.75px;height:24px;padding:3px}
+.blocked-span{background-color:#88472f;background-image:repeating-linear-gradient(135deg,transparent 0 7px,#ffc49a22 9px 16px,transparent 18px);border-color:#cf8057!important;color:#ffeadb}
+.blocked-span:hover{background-color:#9b5339;background-image:repeating-linear-gradient(135deg,transparent 0 7px,#ffc49a22 9px 16px,transparent 18px)}
+
+.compact-span-row{min-height:36px}
+.compact-span-row .annotation-track-head{padding-top:3px;padding-bottom:3px}

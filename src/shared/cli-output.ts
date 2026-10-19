@@ -94,7 +94,7 @@ export function compactResult(value:any):any {
   omit('disabled',false);omit('locked',false);omit('collapsed',false);omit('folderId',null);
  }
  if(['asset','range'].includes(value.recordType)){
-  omit('deleted',false);omit('purged',false);omit('notes','');empty('tags','takes','annotationTracks','references','ranges');
+  omit('deleted',false);omit('purged',false);omit('notes','');empty('tags','takes','blocks','annotationTracks','references','ranges');
   omit('availability','available');omit('sourceStatus','verified');
  }
  if(value.clipId&&Array.isArray(value.fields)&&value.mediaRevision!==undefined){

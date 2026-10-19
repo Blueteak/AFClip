@@ -28,6 +28,7 @@ export class Operations {
     return {id:o.id,revision:o.revision,recordType:o.recordType,kind:a.kind,name:o.name,
       ...(o.recordType==='range'?{assetId:a.id,assetName:a.name,start:o.start,end:o.end,boundaries:o.boundaries}:{}),
       sourceId:a.sourceId,folder:a.folder,tags:o.tags,notes:o.notes,
+      ...(a.blocks?.length?{blocks:a.blocks}:{}),
       duration:o.recordType==='range'?seconds(o.end)-seconds(o.start):a.duration,
       availability:this.location(s)?'available':'unavailable',sourceStatus:s.status,
       preparation:{index:a.kind==='audio'?s.status==='verified':fs.existsSync(path.join(cache,`${s.id}.frames.json`)),
@@ -60,13 +61,14 @@ export class Operations {
     if(c.name!==undefined){assert(typeof c.name==='string'&&c.name.trim().length>0,'Name is required');next.name=c.name.trim();}
     if(c.notes!==undefined){assert(typeof c.notes==='string'&&c.notes.length<=100000,'Notes must be text under 100 KB');next.notes=c.notes;}
     if(c.tags!==undefined){assert(Array.isArray(c.tags),'Tags must be an array of vocabulary IDs');next.tags=[...new Set(c.tags.map((id:string)=>this.db.get(id,'tag').id))];}
-    if(c.takes!==undefined){
-      assert(o.recordType==='asset'&&Array.isArray(c.takes),'Takes must be an array on an asset');
+    for(const field of ['takes','blocks'])if(c[field]!==undefined){
+      const label=field==='takes'?'Take':'Block';
+      assert(o.recordType==='asset'&&Array.isArray(c[field]),`${label}s must be an array on an asset`);
       const spans=new Set<string>();
-      next.takes=c.takes.map((t:any)=>{
-        assert(t&&Number.isFinite(t.start)&&Number.isFinite(t.end)&&t.start>=0&&t.end>t.start&&t.end<=a.duration,'Take timestamps must be seconds within the source');
-        assert(t.text===undefined||typeof t.text==='string'&&t.text.length<=100000,'Take text must be under 100 KB');
-        const key=t.start+':'+t.end;assert(!spans.has(key),'A take already exists at these timestamps');spans.add(key);
+      next[field]=c[field].map((t:any)=>{
+        assert(t&&Number.isFinite(t.start)&&Number.isFinite(t.end)&&t.start>=0&&t.end>t.start&&t.end<=a.duration,`${label} timestamps must be seconds within the source`);
+        assert(t.text===undefined||typeof t.text==='string'&&t.text.length<=100000,`${label} text must be under 100 KB`);
+        const key=t.start+':'+t.end;assert(!spans.has(key),`A ${label.toLowerCase()} already exists at these timestamps`);spans.add(key);
         return {start:t.start,end:t.end,...(t.text?{text:t.text}:{})};
       }).sort((x:any,y:any)=>x.start-y.start||x.end-y.end);
     }
@@ -74,7 +76,7 @@ export class Operations {
       assert(o.recordType==='asset'&&Array.isArray(c.annotationTracks)&&c.annotationTracks.length>0&&c.annotationTracks.length<=64,'Provide 1-64 annotation tracks');
       const ids=new Set<string>();
       next.annotationTracks=c.annotationTracks.map((t:any)=>{
-        assert(typeof t.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(t.id)&&!ids.has(t.id),'Track IDs must be unique');
+        assert(typeof t.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(t.id)&&!['__takes','__blocks'].includes(t.id)&&!ids.has(t.id),'Track IDs must be unique');
         assert(typeof t.name==='string'&&t.name.trim().length>0&&t.name.length<=100,'Track name is required, up to 100 characters');
         ids.add(t.id);return {id:t.id,name:t.name.trim()};
       });
