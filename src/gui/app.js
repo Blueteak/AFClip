@@ -454,7 +454,7 @@ function buildMenubar() {
 function contextMenu(e, items) { e.preventDefault(); hideTip(); openMenu(items, e.clientX, e.clientY); }
 function timelineContextMenu(e, items) {
   const anchor = agentTarget(e.target, e.clientX, true);
-  contextMenu(e, [...items, '-', { label: 'New Chat', icon: 'chat', keys: ['A'],
+  contextMenu(e, [...items, ...(inF != null || outF != null ? ['-', { action: 'clearMarks' }] : []), '-', { label: 'New Chat', icon: 'chat', keys: ['A'],
     disabled: !anchor || !agents?.available(), run: () => agents.openAnchor(anchor) }]);
 }
 
