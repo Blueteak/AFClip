@@ -534,20 +534,23 @@ window.AFClipAgents = host => {
         exe.oninput = () => { clearTimeout(exeTimer); exeTimer = setTimeout(commitExe, 600); };
         exe.onchange = commitExe;
         const prevFlush = flush; flush = () => { prevFlush(); if (exeTimer) commitExe(); };
-        const model = (p.models || []).find(m => m.id === mine.model);
+        const models = p.models || [];
+        const providerModel = models.find(m => m.id === 'default' || m.id === '');
+        const modelValue = mine.model || providerModel?.id || '';
+        const model = models.find(m => m.id === modelValue);
         const efforts = model ? model.efforts || [] : [...new Set((p.models || []).flatMap(m => m.efforts || []))];
         const speedModel = model || (!mine.model ? p.models?.find(m => m.id === p.defaultModel) : null);
         const tiers = p.authenticated && !p.error ? speedModel?.serviceTiers || [] : [];
-        const speeds = select([['', 'Default'], ['default', 'Standard'],
+        const speeds = select([['', 'Provider default'], ['default', 'Standard'],
           ['priority', 'Fast', !tiers.some(t => t.id === 'priority')],
           ['ultrafast', 'Ultrafast', !tiers.some(t => t.id === 'ultrafast')]], mine.serviceTier || '', v => patch({ serviceTier: v }));
         speeds.disabled = !tiers.length && !mine.serviceTier;
         rows.push(h('div', { class: 'agent-provider-head', dataset: { provider: p.id } }, mark(p.id), h('span', { class: 'grow' }, p.name || providerName(p.id)), status),
           host.field('Executable', exe, { tip: 'Optional path to the CLI. Blank uses the installed one.' }),
-          host.field('Model', select([['', 'Default'], ...(p.models || []).map(m => [m.id, m.label || m.id])], mine.model || '', v => patch({ model: v, effort: '', ...(p.id === 'codex' ? { serviceTier: '' } : {}) })), { tip: 'Default uses the provider’s own default. Applies to new chats.' }),
-          efforts.length ? host.field('Thinking', select([['', 'Default'], ...efforts.map(e => [e, e[0].toUpperCase() + e.slice(1)])], mine.effort || '', v => patch({ effort: v })), { tip: 'Reasoning effort for new chats.' }) : null,
-          p.id === 'codex' ? host.field('Fast Mode', speeds, { tip: 'Applies to new chats. Default uses Codex settings. Faster modes use more allowance. Ultrafast requires Pro $500 or eligible Enterprise/Edu access and a supported model. Options are enabled only when Codex reports availability.' }) : null,
-          (p.accessModes || []).length ? host.field('Access', select([['', 'Full access (default)'], ...p.accessModes.map(a => [a.id, a.label || a.id])], mine.access || '', v => patch({ access: v })), { tip: 'What the agent may do without asking. Applies to new chats.' }) : null,
+          host.field('Model', select([...(providerModel ? [] : [['', 'Provider default']]), ...models.map(m => [m.id, m === providerModel ? 'Provider default' : m.label || m.id])], modelValue, v => patch({ model: v, effort: '', ...(p.id === 'codex' ? { serviceTier: '' } : {}) })), { tip: 'Provider default lets the provider choose the model. Applies to new chats.' }),
+          efforts.length ? host.field('Thinking', select([['', 'Provider default'], ...efforts.map(e => [e, e[0].toUpperCase() + e.slice(1)])], mine.effort || '', v => patch({ effort: v })), { tip: 'Reasoning effort for new chats. Provider default uses the provider’s settings and model defaults.' }) : null,
+          p.id === 'codex' ? host.field('Fast Mode', speeds, { tip: 'Applies to new chats. Provider default inherits Codex settings, which may select a faster mode. Standard explicitly requests standard speed. Faster modes use more allowance. Ultrafast requires Pro $500 or eligible Enterprise/Edu access and a supported model. Options are enabled only when Codex reports availability.' }) : null,
+          (p.accessModes || []).length ? host.field('Access', select(p.accessModes.map(a => [a.id, a.label || a.id]), mine.access || (p.id === 'codex' ? 'full' : 'bypassPermissions'), v => patch({ access: v })), { tip: 'What the agent may do without asking. Applies to new chats.' }) : null,
           host.field('While busy', host.segmented([['steer', 'Steer', 'A new message redirects the running turn.'], ['queue', 'Queue', 'A new message waits for the running turn to finish.']], mine.delivery || 'steer', v => patch({ delivery: v })), { tip: 'Applies to the next message in every chat.' }));
       }
       body.replaceChildren(...rows.filter(Boolean));
