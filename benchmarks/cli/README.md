@@ -3,8 +3,10 @@
 ## Output tokens
 
 Both CLIs emit single-line JSON by default. `--pretty` restores indentation;
-`--full` includes default-valued fields. Use both for the previous response format.
-The `ok` / `result` envelope remains. HTTP responses and stored data are unchanged.
+`--full` includes default-valued fields and complete edit snapshots. Use both for
+the previous response format. The `ok` / `result` envelope remains. Stored data,
+GUI events and HTTP responses without an explicit `response:"changes"` request
+are unchanged.
 
 Default output omits these known values:
 
@@ -16,12 +18,31 @@ Default output omits these known values:
 - Tracks and folders: disabled/locked/collapsed false and null folderId.
 - Library assets and ranges: deleted/purged false, empty notes/tags/takes/
   annotationTracks/references/ranges, availability `available`, sourceStatus `verified`.
+- Text fields: overridden false, value equal to default, and an empty missing list.
 
 Omitted fields have the values above. IDs, revisions, pagination, non-default
 values, errors and user-authored metadata remain. Use `--full` when passing output
 to a consumer that requires explicit defaults or complete project objects.
 `af-lib --fields` retains explicitly selected fields, even defaults.
 `af-lib call` retains the complete API response.
+
+Project edits return `baseRevision`, `revision`, changed `revisions`, and history.
+`changes` contains new or changed objects grouped by collection, plus changed
+project settings under `changes.project`. `removed` contains removed IDs grouped
+by collection. `order` contains the final ID sequence for collections whose order
+or membership changed. `removedRevisions` lists revision keys that disappeared.
+Empty change sections are omitted. Command-specific results such as `media` and
+`clip` remain available.
+
+Changed objects replace their previous versions, with omitted defaults restored
+as described above. Revision-only changes appear only in `revisions`; this avoids
+repeating every media record on undo/redo. Apply those revisions to cached objects
+as well. `inspect` still returns the whole project. Use it if your cached revision
+does not match `baseRevision`, or use `--full` on the edit itself.
+
+The engine computes changes inside its command queue, without an extra CLI
+inspection request. An already-running engine from before this change continues
+returning full snapshots until it restarts.
 
 `af-lib --wait` emits only the final response. Add `--progress` for state/phase/queue
 changes on stderr. Elapsed-time-only heartbeat messages are no longer emitted.
@@ -32,16 +53,19 @@ Capture comparable outputs without modifying an existing project or catalog:
 node benchmarks/cli/tokens.mjs /path/to/output.json
 ```
 
-The capture includes ten samples from real disposable CLI calls and the repository
-example edit. It stores old/new strings for counting with any model tokenizer.
-Recorded `o200k_base` measurements are in `docs/cli-tokens.json`: 24–38% fewer tokens.
-The example edit inspection falls from 26,205 to 18,107 tokens. Search falls from
-252 to 156. Progress savings are additional and depend on job duration.
+The capture includes thirteen samples from disposable CLI calls and the repository
+example edit. The example marker insertion is simulated; the small-project edits
+run through the actual CLI. It stores original, first-pass and current strings for
+counting with any model tokenizer. Recorded `o200k_base` measurements are in
+`docs/cli-tokens.json`. The example marker edit falls from 26,264 original tokens
+to 18,139 after whitespace/default culling, then 124 with changed-state output.
+Small-project undo falls from 2,270 to 245 tokens. Progress savings are additional
+and depend on job duration.
 
-Full project snapshots after edits and waveform sample arrays remain substantial.
-They carry useful state, so this change preserves them. Library search/overview
-already use compact metadata, and waveform `--summary` remains available when
-sample arrays are unnecessary.
+Full inspections and waveform sample arrays remain substantial. They carry useful
+state, so this change preserves them. Library search/overview already use compact
+metadata, and waveform `--summary` remains available when sample arrays are
+unnecessary.
 
 ## Latency
 

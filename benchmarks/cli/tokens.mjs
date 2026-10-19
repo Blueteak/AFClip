@@ -7,7 +7,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {formatResponse} from '../../src/shared/cli-output.ts';
+import {formatResponse,projectChanges} from '../../src/shared/cli-output.ts';
 import {revisions} from '../../src/shared/project.ts';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const output=process.argv[2];
@@ -20,17 +20,35 @@ function run(cli,args,input){
  assert.equal(child.status,0,child.stdout+child.stderr);
  return JSON.parse(child.stdout);
 }
-function sample(command,response){
- const before=JSON.stringify(response,null,2),after=formatResponse(response);
- samples.push({command,before,after,beforeChars:before.length,afterChars:after.length});
+function sample(command,response,optimized=response){
+ const before=JSON.stringify(response,null,2),firstPass=formatResponse(response),after=formatResponse(optimized);
+ samples.push({command,before,firstPass,after,beforeChars:before.length,afterChars:after.length});
+}
+function edit(command,args){
+ const before=run('clip',['inspect',project,'--full']).result;
+ const actual=run('clip',args);
+ const after=run('clip',['inspect',project,'--full']).result;
+ assert.deepEqual(actual,JSON.parse(formatResponse({ok:true,result:projectChanges(before,after)})));
+ sample(command,{ok:true,result:after},actual);
+ return actual.result;
 }
 try{
  sample('af-clip create',run('clip',['create',project,'--full']));
  sample('af-clip inspect empty',run('clip',['inspect',project,'--full']));
- sample('af-clip marker-add',run('clip',['marker-add',project,'--time','1','--name','Cut','--full']));
- sample('af-clip undo',run('clip',['undo',project,'--full']));
+ const added=edit('af-clip marker-add',['marker-add',project,'--time','1','--name','Cut']);
+ assert.equal(added.changes.markers[0].name,'Cut');assert.equal(added.project,undefined);
+ const undone=edit('af-clip undo',['undo',project]);
+ assert.deepEqual(undone.removed.markers,[added.changes.markers[0].id]);
+ edit('af-clip redo',['redo',project]);
+ edit('af-clip marker-remove',['marker-remove',project,added.changes.markers[0].id]);
+ const fullEdit=run('clip',['marker-add',project,'--time','2','--name','Full response','--full']);
+ assert.equal(fullEdit.result.project.markers[0].name,'Full response');assert.equal(fullEdit.result.changes,undefined);
  const fixture=JSON.parse(fs.readFileSync(path.join(root,'examples/vellum-first-edit/project.json'),'utf8'));
  sample('af-clip inspect example edit',{ok:true,result:{project:fixture,revisions:revisions(fixture),history:{undo:0,redo:0},renderLock:null}});
+ const beforeEdit={project:fixture,revisions:revisions(fixture),history:{undo:0,redo:0},renderLock:null};
+ const edited=structuredClone(fixture);edited.revision++;edited.markers.push({id:'marker_benchmark',revision:1,name:'Cut',time:{num:1,den:1}});
+ const afterEdit={project:edited,revisions:revisions(edited),history:{undo:1,redo:0},renderLock:null};
+ sample('af-clip marker-add example edit',{ok:true,result:afterEdit},{ok:true,result:projectChanges(beforeEdit,afterEdit)});
  // One second of silent PCM, enough to exercise real library inspection and jobs.
  const wav=Buffer.alloc(44+96000);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);
  wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(48000,24);
