@@ -120,6 +120,8 @@ Cache eviction protects sources used by active streams, preparation jobs and rec
 
 AFClip's normal import registers audio/video and persists library identity, source version and known locations inside the project media record. Project-bin references are reconciled through a project-owned durable outbox. Removing a timeline clip does not release its bin reference. Removing unused media from the bin does. Closing the project does neither. Promotion makes an Inbox item independent of project references.
 
+After importing or rescanning relocated files and finishing content verification, use AFClip's **File > Refresh media locations** or `af-clip library-sync PROJECT_DIR`. Sync recovers unavailable project paths from the catalog's verified locations for the same source version and saves the known locations. It preserves clip timing, source IDs and saved range annotations. Existing portable copies stay in place. Changed source versions, deleted assets, different catalogs and unverified or unavailable sources are skipped and reported. Location refresh is saved without adding an editing-history entry, as with identity registration; it requires no active render. Playback and export subsequently use the saved path without querying the library.
+
 Open **File > Browse content library**, or `Ctrl+L`, to browse, preview and add an asset or named range to the project bin. **Edit in library** opens the standalone writer. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
 
 ```powershell

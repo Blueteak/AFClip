@@ -39,9 +39,35 @@ export class LibraryLink {
     await this.sync();
   }
   async migrate(){
-    this.state.requireUnlocked();const next=structuredClone(this.state.p);let added=0;
-    try{for(const m of next.media){if(!['video','audio'].includes(m.kind)||m.metadata.library)continue;const linked=await this.register({...m,path:path.resolve(this.state.dir,m.path)});m.metadata=linked.metadata;m.revision++;added++;}
-      if(added){next.revision++;this.state.save(next,false);}return {registered:added};
+    this.state.requireUnlocked();const next=structuredClone(this.state.p);let added=0,relocated=0,updated=0;
+    const skipped:any[]=[];
+    try{for(const m of next.media){
+      if(!['video','audio'].includes(m.kind))continue;
+      const link=m.metadata.library;
+      if(!link){const linked=await this.register({...m,path:path.resolve(this.state.dir,m.path)});m.metadata=linked.metadata;m.revision++;added++;continue;}
+      // The catalog owns location recovery. Never adopt a different source version,
+      // even when its logical asset ID is unchanged after accepting a replacement.
+      let asset:any;
+      try{asset=await libraryCommand({command:'inspect',id:link.assetId,sourceId:link.sourceId,relationships:false});}
+      catch(e:any){skipped.push({mediaId:m.id,reason:e.message});continue;}
+      if(asset.libraryId!==link.libraryId||!asset.sourceMatches||asset.deleted||asset.purged||
+        asset.availability!=='available'||asset.source?.status!=='verified'||!asset.source?.hash){
+        skipped.push({mediaId:m.id,reason:'No verified available location for the saved source version'});continue;
+      }
+      const locations=[...new Set([...(link.sourceLocations||[]),...asset.source.locations])];
+      // Keep portable project copies in place while their file still exists.
+      const current=path.resolve(this.state.dir,m.path);
+      const knownTime=asset.source.locationTimes?.[current]??asset.source.mtimeMs;
+      let usable=false;
+      try{const stat=fs.statSync(current);usable=stat.isFile()&&stat.size===asset.source.size&&
+        (!asset.source.locations.includes(current)||stat.mtimeMs===knownTime);}catch{}
+      const moved=!usable&&current!==path.resolve(asset.path);
+      if(moved){m.path=asset.path;relocated++;}
+      if(moved||JSON.stringify(locations)!==JSON.stringify(link.sourceLocations)){
+        m.metadata.library={...link,sourceLocations:locations};m.revision++;updated++;
+      }
+    }
+      if(added||updated){next.revision++;this.state.save(next,false);}return {registered:added,relocated,updated,skipped};
     }finally{await this.sync();}
   }
 }
