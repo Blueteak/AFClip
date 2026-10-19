@@ -1,0 +1,3523 @@
+{
+  "date": "2026-10-19T07:06:41.067Z",
+  "baselineCommit": "3a94c30",
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) Ultra 9 285K",
+    "cores": 24,
+    "ram": 68044075008,
+    "node": "v24.12.0",
+    "platform": "win32"
+  },
+  "before": {
+    "note": "1000 clips, 10000 catalog records; serial warm commands; 10 repetitions. Startup excluded from editing comparisons.",
+    "samples": [
+      {
+        "tool": "af-clip",
+        "label": "startup",
+        "ms": 343.411,
+        "bytes": 238
+      },
+      {
+        "tool": "af-lib",
+        "label": "startup",
+        "ms": 226.0258,
+        "bytes": 462
+      },
+      {
+        "tool": "af-lib",
+        "label": "setup search",
+        "ms": 132.08669999999995,
+        "bytes": 431
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 141.52659999999992,
+        "bytes": 472
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 172.02159999999992,
+        "bytes": 383
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 147.5157999999999,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 150.64779999999996,
+        "bytes": 273
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 149.66800000000012,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 137.6487000000002,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 20.298500000000104
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 137.5426,
+        "bytes": 534
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 166.70229999999992,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 156.5709999999999,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 143.70399999999972,
+        "bytes": 281
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 140.0043999999998,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 137.6504,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 4.332799999999679
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 138.75340000000006,
+        "bytes": 535
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 165.26039999999966,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 140.47859999999991,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 155.10809999999992,
+        "bytes": 289
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 146.35690000000022,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 136.6851999999999,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 2.2511999999996988
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 137.1882999999998,
+        "bytes": 535
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 166.41240000000016,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 141.88110000000006,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 163.95510000000013,
+        "bytes": 298
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 135.44650000000001,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 129.9303,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 2.137399999999616
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 136.65059999999994,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 162.86220000000048,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 159.26729999999952,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 143.95759999999973,
+        "bytes": 307
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 141.67000000000007,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 127.14560000000074,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 2.107100000000173
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 139.5034999999998,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 161.66310000000067,
+        "bytes": 385
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 152.1279999999997,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 140.73310000000038,
+        "bytes": 315
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 128.6877999999997,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 128.36029999999937,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.999300000000403
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 140.98369999999977,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 171.72000000000025,
+        "bytes": 388
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 141.13630000000012,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 159.50830000000042,
+        "bytes": 323
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 147.5679,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 138.8771999999999,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.7367000000003827
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 138.54999999999927,
+        "bytes": 539
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 155.60140000000047,
+        "bytes": 402
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 150.08070000000043,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 157.1846000000005,
+        "bytes": 331
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 145.25900000000001,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 134.57690000000002,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.8580000000001746
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 139.60630000000037,
+        "bytes": 553
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 159.40959999999995,
+        "bytes": 388
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 143.95719999999983,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 146.67789999999877,
+        "bytes": 339
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 141.29579999999987,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 131.07080000000133,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.8096000000005006
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 154.6822000000011,
+        "bytes": 539
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 159.85409999999865,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 139.38030000000072,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 160.5046000000002,
+        "bytes": 347
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 132.933500000001,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 127.9976000000006,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.810299999999188
+      },
+      {
+        "tool": "af-clip",
+        "label": "close",
+        "ms": 149.72450000000026,
+        "bytes": 37
+      },
+      {
+        "tool": "af-lib",
+        "label": "close",
+        "ms": 146.3644000000004,
+        "bytes": 37
+      }
+    ]
+  },
+  "after": {
+    "note": "1000 clips, 10000 catalog records; serial warm commands; 10 repetitions. Startup excluded from editing comparisons.",
+    "samples": [
+      {
+        "tool": "af-clip",
+        "label": "startup",
+        "ms": 339.0346,
+        "bytes": 240
+      },
+      {
+        "tool": "af-lib",
+        "label": "startup",
+        "ms": 222.6553,
+        "bytes": 464
+      },
+      {
+        "tool": "af-lib",
+        "label": "setup search",
+        "ms": 103.56010000000003,
+        "bytes": 431
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 93.83230000000003,
+        "bytes": 472
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 119.36469999999997,
+        "bytes": 383
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 91.41730000000007,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 118.87089999999989,
+        "bytes": 273
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 94.97749999999996,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 95.45159999999987,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 6.791099999999915
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 89.73659999999995,
+        "bytes": 534
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 133.471,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 105.7808,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 128.0462,
+        "bytes": 281
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 95.91350000000011,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 94.39629999999988,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.8669999999999618
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 89.39659999999981,
+        "bytes": 535
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 110.36720000000014,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 92.9025999999999,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 115.7193000000002,
+        "bytes": 289
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 95.29320000000007,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 92.66049999999996,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.616899999999987
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 92.00460000000021,
+        "bytes": 535
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 109.26089999999976,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 92.88990000000013,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 108.05019999999968,
+        "bytes": 298
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 94.01470000000018,
+        "bytes": 5298
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 92.92320000000018,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.7199000000000524
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 87.97659999999996,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 111.60440000000017,
+        "bytes": 384
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 93.17670000000044,
+        "bytes": 100
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 107.54120000000012,
+        "bytes": 307
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 92.75559999999996,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 90.27569999999969,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.5394000000001142
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 92.18149999999969,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 111.66739999999982,
+        "bytes": 385
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 90.75430000000006,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 107.23619999999983,
+        "bytes": 315
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 91.59659999999985,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 97.91520000000037,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.4739000000008673
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 89.3123999999998,
+        "bytes": 536
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 107.36179999999968,
+        "bytes": 388
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 98.49089999999978,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 107.95170000000053,
+        "bytes": 323
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 110.54820000000018,
+        "bytes": 5310
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 89.72770000000037,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.4184000000004744
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 88.09209999999985,
+        "bytes": 539
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 114.98160000000007,
+        "bytes": 402
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 106.22350000000006,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 111.28030000000035,
+        "bytes": 331
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 111.45240000000013,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 92.38619999999992,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.6544999999996435
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 91.09000000000015,
+        "bytes": 553
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 104.9319000000005,
+        "bytes": 388
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 93.99189999999999,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 124.38790000000063,
+        "bytes": 339
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 94.01599999999962,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 91.88290000000052,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.8034999999999854
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect clip",
+        "ms": 89.6877999999997,
+        "bytes": 539
+      },
+      {
+        "tool": "af-clip",
+        "label": "apply clip edit",
+        "ms": 109.07929999999942,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "inspect unchanged",
+        "ms": 95.13850000000002,
+        "bytes": 101
+      },
+      {
+        "tool": "af-clip",
+        "label": "add marker",
+        "ms": 111.27009999999973,
+        "bytes": 347
+      },
+      {
+        "tool": "af-lib",
+        "label": "library search",
+        "ms": 91.49049999999988,
+        "bytes": 5311
+      },
+      {
+        "tool": "af-lib",
+        "label": "library inspect",
+        "ms": 89.35909999999967,
+        "bytes": 2505
+      },
+      {
+        "tool": "HTTP",
+        "label": "inspect clip",
+        "ms": 1.518500000000131
+      },
+      {
+        "tool": "af-clip",
+        "label": "batch setup",
+        "ms": 104.28150000000005,
+        "bytes": 343860
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 120.48450000000048,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 108.0607,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 110.39390000000003,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 120.47689999999966,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 106.83659999999963,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 111.1887999999999,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 122.8704000000007,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 120.55859999999939,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 118.1259,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 106.11819999999989,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 124.2527,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 119.89810000000125,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 121.0036,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 109.45280000000093,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 113.63110000000052,
+        "bytes": 389
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 120.60000000000036,
+        "bytes": 390
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 107.79250000000138,
+        "bytes": 390
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 108.55179999999928,
+        "bytes": 390
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 109.64619999999923,
+        "bytes": 390
+      },
+      {
+        "tool": "af-clip",
+        "label": "individual volume edit",
+        "ms": 119.48459999999977,
+        "bytes": 390
+      },
+      {
+        "tool": "workflow",
+        "label": "20 individual edits",
+        "ms": 2309.079600000001
+      },
+      {
+        "tool": "af-clip",
+        "label": "20 edits in one batch",
+        "ms": 110.66079999999965,
+        "bytes": 3871
+      },
+      {
+        "tool": "workflow",
+        "label": "20 batched edits",
+        "ms": 110.67779999999948
+      },
+      {
+        "tool": "af-clip",
+        "label": "verify conflict",
+        "ms": 106.54879999999866,
+        "bytes": 540
+      },
+      {
+        "tool": "af-clip",
+        "label": "close",
+        "ms": 91.84399999999914,
+        "bytes": 37
+      },
+      {
+        "tool": "af-lib",
+        "label": "close",
+        "ms": 95.5677999999989,
+        "bytes": 37
+      }
+    ]
+  },
+  "startup": [
+    {
+      "label": "invalid project",
+      "ms": 201.70589999999999,
+      "exit": 1
+    },
+    {
+      "label": "invalid catalog",
+      "ms": 191.4275,
+      "exit": 1
+    },
+    {
+      "label": "project race",
+      "ms": 326.75120000000004,
+      "exit": 0
+    },
+    {
+      "label": "project race",
+      "ms": 331.96799999999996,
+      "exit": 0
+    },
+    {
+      "label": "library race",
+      "ms": 205.1237000000001,
+      "exit": 0
+    },
+    {
+      "label": "library race",
+      "ms": 213.33849999999995,
+      "exit": 0
+    },
+    {
+      "label": "close project",
+      "ms": 93.8592000000001,
+      "exit": 0
+    },
+    {
+      "label": "close library",
+      "ms": 94.57229999999981,
+      "exit": 0
+    }
+  ],
+  "coverage": {
+    "af-clip": [
+      {
+        "command": "create",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "collect",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "inspect",
+        "samples": 5,
+        "status": "measured"
+      },
+      {
+        "command": "endpoint",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "import",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "relink",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "library-import",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "library-sync",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "library-status",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-inspect",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-frames",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-prepare",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "source-jobs",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-cancel",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-waveform",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-insert",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "apply",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "asset-builtin",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "asset-duplicate",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "text-fields",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "text-set",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "text-reset",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folders",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-create",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-set",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-members",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-move",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-remove",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "markers",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "marker-add",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "marker-set",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "marker-remove",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "marker-next",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "marker-previous",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "ripple-delete",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "detach-audio",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "unlink",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "undo",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "redo",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "export",
+        "samples": 7,
+        "status": "measured"
+      },
+      {
+        "command": "frame",
+        "samples": 3,
+        "status": "measured"
+      },
+      {
+        "command": "status",
+        "samples": 7,
+        "status": "measured"
+      },
+      {
+        "command": "cancel",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "close",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "checkpoint",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "checkpoints",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "restore",
+        "samples": 1,
+        "status": "measured"
+      }
+    ],
+    "af-lib": [
+      {
+        "command": "gui",
+        "samples": 0,
+        "status": "not measured"
+      },
+      {
+        "command": "endpoint",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "search",
+        "samples": 3,
+        "status": "measured"
+      },
+      {
+        "command": "overview",
+        "samples": 5,
+        "status": "measured"
+      },
+      {
+        "command": "inspect",
+        "samples": 13,
+        "status": "measured"
+      },
+      {
+        "command": "original",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "preview",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "frames",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "selection",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "waveform",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "import",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "register",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "annotate",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "range-save",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "range-delete",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "move",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "promote",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-create",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-update",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "folder-delete",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "tag-create",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "tag-rename",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "tag-delete",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "tag-merge",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "collection-create",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "collection-update",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "collection-delete",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "prepare",
+        "samples": 6,
+        "status": "measured"
+      },
+      {
+        "command": "artifact",
+        "samples": 7,
+        "status": "measured"
+      },
+      {
+        "command": "jobs",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "cancel",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "history",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "undo",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "redo",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "references",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-folder-save",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-folder-remove",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "source-folders",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "rescan",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "replace",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "remove",
+        "samples": 2,
+        "status": "measured"
+      },
+      {
+        "command": "restore",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "purge",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "retain",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "withdraw",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "sync-project",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "checkpoint",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "checkpoints",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "checkpoint-restore",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "cache",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "cache-clear",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "cache-budget",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "close",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "apply",
+        "samples": 1,
+        "status": "measured"
+      },
+      {
+        "command": "call",
+        "samples": 1,
+        "status": "measured"
+      }
+    ]
+  },
+  "commandSamples": [
+    {
+      "tool": "af-clip",
+      "command": "--help",
+      "label": "--help",
+      "ms": 82.62799999999993,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 787
+    },
+    {
+      "tool": "af-clip",
+      "command": "help",
+      "label": "help",
+      "ms": 82.64710000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 588
+    },
+    {
+      "tool": "af-lib",
+      "command": "--help",
+      "label": "--help",
+      "ms": 87.5729,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 839
+    },
+    {
+      "tool": "af-lib",
+      "command": "schema",
+      "label": "schema",
+      "ms": 93.52229999999986,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 8569
+    },
+    {
+      "tool": "af-lib",
+      "command": "help",
+      "label": "help",
+      "ms": 93.46910000000003,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1219
+    },
+    {
+      "tool": "af-lib",
+      "command": "endpoint",
+      "label": "endpoint",
+      "ms": 308.2069999999999,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 462
+    },
+    {
+      "tool": "af-lib",
+      "command": "import",
+      "label": "import",
+      "ms": 322.2355,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1240,
+      "jobs": [
+        {
+          "kind": "verify",
+          "status": "completed",
+          "runningMs": 151
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "import",
+      "label": "import audio",
+      "ms": 212.01800000000026,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1237,
+      "jobs": [
+        {
+          "kind": "verify",
+          "status": "completed",
+          "runningMs": 77
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "register",
+      "label": "register",
+      "ms": 92.17439999999988,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2524,
+      "jobs": []
+    },
+    {
+      "tool": "af-lib",
+      "command": "search",
+      "label": "search",
+      "ms": 96.23379999999997,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 417
+    },
+    {
+      "tool": "af-lib",
+      "command": "overview",
+      "label": "overview",
+      "ms": 92.28099999999995,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1498
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 92.17609999999968,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "search",
+      "label": "search",
+      "ms": 95.38169999999991,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 418
+    },
+    {
+      "tool": "af-lib",
+      "command": "overview",
+      "label": "overview",
+      "ms": 90.35800000000017,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1498
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 95.25999999999976,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "search",
+      "label": "search",
+      "ms": 89.14740000000029,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 418
+    },
+    {
+      "tool": "af-lib",
+      "command": "overview",
+      "label": "overview",
+      "ms": 96.75739999999996,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1498
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 92.8732,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "original",
+      "label": "original",
+      "ms": 90.90719999999965,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 308
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "index cold",
+      "ms": 185.93640000000005,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 424,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 46
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "index warm",
+      "ms": 122.4656,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 422,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 3
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "frames",
+      "label": "frames",
+      "ms": 96.92619999999988,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 788
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 105.87970000000041,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "selection",
+      "label": "selection",
+      "ms": 94.41330000000016,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2710
+    },
+    {
+      "tool": "af-lib",
+      "command": "waveform",
+      "label": "waveform cold",
+      "ms": 154.44399999999996,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 289
+    },
+    {
+      "tool": "af-lib",
+      "command": "waveform",
+      "label": "waveform warm",
+      "ms": 90.52440000000024,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 289
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "preview cold",
+      "ms": 1397.2017999999998,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 390,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 1228
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "preview warm",
+      "ms": 122.21429999999964,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 384,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 8
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "preview",
+      "label": "preview",
+      "ms": 93.39670000000024,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 10485
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "frame cold",
+      "ms": 300.33460000000014,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1546,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 162
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "frame warm",
+      "ms": 91.8121999999994,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 589,
+      "jobs": []
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "contact-sheet cold",
+      "ms": 293.0762999999997,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1809,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 170
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "contact-sheet warm",
+      "ms": 96.32009999999991,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 844,
+      "jobs": []
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "excerpt cold",
+      "ms": 420.0816999999997,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1550,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 272
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "excerpt warm",
+      "ms": 111.1238000000003,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 591,
+      "jobs": []
+    },
+    {
+      "tool": "af-lib",
+      "command": "artifact",
+      "label": "exact frame 420",
+      "ms": 321.8594000000003,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1546,
+      "jobs": [
+        {
+          "kind": "artifact",
+          "status": "completed",
+          "runningMs": 194
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "prepare",
+      "ms": 101.28210000000036,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 351,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "queued",
+          "runningMs": 0
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "jobs",
+      "label": "jobs",
+      "ms": 100.1875,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 411
+    },
+    {
+      "tool": "af-lib",
+      "command": "cancel",
+      "label": "cancel",
+      "ms": 96.07119999999941,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 383
+    },
+    {
+      "tool": "af-lib",
+      "command": "folder-create",
+      "label": "folder-create",
+      "ms": 108.66839999999956,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 175
+    },
+    {
+      "tool": "af-lib",
+      "command": "folder-update",
+      "label": "folder-update",
+      "ms": 92.31710000000021,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 175
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 108.84210000000076,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "move",
+      "label": "move",
+      "ms": 94.07420000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 328
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 93.15939999999955,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2501
+    },
+    {
+      "tool": "af-lib",
+      "command": "promote",
+      "label": "promote",
+      "ms": 107.6251000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 293
+    },
+    {
+      "tool": "af-lib",
+      "command": "folder-delete",
+      "label": "folder-delete",
+      "ms": 93.22410000000036,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 75
+    },
+    {
+      "tool": "af-lib",
+      "command": "tag-create",
+      "label": "tag-create",
+      "ms": 93.18840000000091,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 152
+    },
+    {
+      "tool": "af-lib",
+      "command": "tag-rename",
+      "label": "tag-rename",
+      "ms": 105.9393,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 152
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 92.22679999999855,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2466
+    },
+    {
+      "tool": "af-lib",
+      "command": "annotate",
+      "label": "annotate",
+      "ms": 110.50240000000122,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 382
+    },
+    {
+      "tool": "af-lib",
+      "command": "tag-create",
+      "label": "tag-create",
+      "ms": 109.0036999999993,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 154
+    },
+    {
+      "tool": "af-lib",
+      "command": "overview",
+      "label": "overview",
+      "ms": 107.65670000000136,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1764
+    },
+    {
+      "tool": "af-lib",
+      "command": "tag-merge",
+      "label": "tag-merge",
+      "ms": 95.42389999999978,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 88
+    },
+    {
+      "tool": "af-lib",
+      "command": "overview",
+      "label": "overview",
+      "ms": 104.61360000000059,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1633
+    },
+    {
+      "tool": "af-lib",
+      "command": "tag-delete",
+      "label": "tag-delete",
+      "ms": 97.36549999999988,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 88
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 91.78800000000047,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2507
+    },
+    {
+      "tool": "af-lib",
+      "command": "range-save",
+      "label": "range-save",
+      "ms": 106.59490000000005,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 459
+    },
+    {
+      "tool": "af-lib",
+      "command": "collection-create",
+      "label": "collection-create",
+      "ms": 107.44980000000032,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 182
+    },
+    {
+      "tool": "af-lib",
+      "command": "collection-update",
+      "label": "collection-update",
+      "ms": 93.0653999999995,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 222
+    },
+    {
+      "tool": "af-lib",
+      "command": "collection-delete",
+      "label": "collection-delete",
+      "ms": 107.10319999999956,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 79
+    },
+    {
+      "tool": "af-lib",
+      "command": "range-delete",
+      "label": "range-delete",
+      "ms": 91.33239999999932,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 74
+    },
+    {
+      "tool": "af-lib",
+      "command": "retain",
+      "label": "retain",
+      "ms": 108.58029999999962,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 254
+    },
+    {
+      "tool": "af-lib",
+      "command": "references",
+      "label": "references",
+      "ms": 91.4346999999998,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 256
+    },
+    {
+      "tool": "af-lib",
+      "command": "withdraw",
+      "label": "withdraw",
+      "ms": 90.28050000000076,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 40
+    },
+    {
+      "tool": "af-lib",
+      "command": "sync-project",
+      "label": "sync-project",
+      "ms": 93.13760000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 101
+    },
+    {
+      "tool": "af-lib",
+      "command": "source-folder-save",
+      "label": "source-folder-save",
+      "ms": 94.95550000000003,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 295
+    },
+    {
+      "tool": "af-lib",
+      "command": "source-folders",
+      "label": "source-folders",
+      "ms": 94.88500000000022,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 297
+    },
+    {
+      "tool": "af-lib",
+      "command": "rescan",
+      "label": "rescan",
+      "ms": 121.68950000000041,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 761,
+      "jobs": [
+        {
+          "kind": "scan",
+          "status": "completed",
+          "runningMs": 25
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "source-folder-remove",
+      "label": "source-folder-remove",
+      "ms": 92.35770000000048,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 104
+    },
+    {
+      "tool": "af-lib",
+      "command": "apply",
+      "label": "apply",
+      "ms": 95.09239999999954,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 179
+    },
+    {
+      "tool": "af-lib",
+      "command": "undo",
+      "label": "undo",
+      "ms": 97.35219999999936,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 53
+    },
+    {
+      "tool": "af-lib",
+      "command": "redo",
+      "label": "redo",
+      "ms": 93.84029999999984,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 53
+    },
+    {
+      "tool": "af-lib",
+      "command": "history",
+      "label": "history",
+      "ms": 91.32200000000012,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2327
+    },
+    {
+      "tool": "af-lib",
+      "command": "call",
+      "label": "call",
+      "ms": 109.8793999999998,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 3514
+    },
+    {
+      "tool": "af-lib",
+      "command": "checkpoint",
+      "label": "checkpoint",
+      "ms": 107.21650000000045,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 93
+    },
+    {
+      "tool": "af-lib",
+      "command": "checkpoints",
+      "label": "checkpoints",
+      "ms": 92.74799999999959,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 129
+    },
+    {
+      "tool": "af-lib",
+      "command": "checkpoint-restore",
+      "label": "checkpoint-restore",
+      "ms": 92.95219999999972,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 80
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 92.19170000000122,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1504
+    },
+    {
+      "tool": "af-lib",
+      "command": "replace",
+      "label": "replace",
+      "ms": 110.90099999999984,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 293
+    },
+    {
+      "tool": "af-lib",
+      "command": "prepare",
+      "label": "prepare",
+      "ms": 135.1252999999997,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 429,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 1
+        }
+      ]
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 93.09929999999986,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1477
+    },
+    {
+      "tool": "af-lib",
+      "command": "remove",
+      "label": "remove",
+      "ms": 92.77840000000106,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 308
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 93.66840000000047,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1492
+    },
+    {
+      "tool": "af-lib",
+      "command": "restore",
+      "label": "restore",
+      "ms": 114.43780000000152,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 293
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 93.54410000000098,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1477
+    },
+    {
+      "tool": "af-lib",
+      "command": "remove",
+      "label": "remove",
+      "ms": 95.32330000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 308
+    },
+    {
+      "tool": "af-lib",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 90.90230000000156,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1492
+    },
+    {
+      "tool": "af-lib",
+      "command": "purge",
+      "label": "purge",
+      "ms": 109.16500000000087,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 99
+    },
+    {
+      "tool": "af-clip",
+      "command": "create",
+      "label": "create",
+      "ms": 165.04399999999987,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 3561
+    },
+    {
+      "tool": "af-clip",
+      "command": "endpoint",
+      "label": "endpoint",
+      "ms": 323.58380000000034,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 237
+    },
+    {
+      "tool": "af-clip",
+      "command": "import",
+      "label": "import",
+      "ms": 160.15299999999843,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 9774
+    },
+    {
+      "tool": "af-clip",
+      "command": "relink",
+      "label": "relink",
+      "ms": 151.6864999999998,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2219
+    },
+    {
+      "tool": "af-clip",
+      "command": "library-sync",
+      "label": "library-sync",
+      "ms": 92.42000000000007,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 164,
+      "error": null
+    },
+    {
+      "tool": "af-clip",
+      "command": "library-status",
+      "label": "library-status",
+      "ms": 89.96630000000005,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 110,
+      "error": null
+    },
+    {
+      "tool": "af-clip",
+      "command": "library-import",
+      "label": "library-import",
+      "ms": 131.4373999999989,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 4676
+    },
+    {
+      "tool": "af-clip",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 110.41680000000088,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 9907
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-inspect",
+      "label": "source-inspect",
+      "ms": 110.03790000000117,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 8926
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-prepare",
+      "label": "source-prepare",
+      "ms": 227.17699999999968,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 386,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "completed",
+          "runningMs": 12
+        }
+      ]
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-frames",
+      "label": "source-frames",
+      "ms": 94.66729999999916,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 788
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-jobs",
+      "label": "source-jobs",
+      "ms": 108.39450000000033,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 2596
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-prepare",
+      "label": "source-prepare",
+      "ms": 95.14179999999942,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 333,
+      "jobs": [
+        {
+          "kind": "prepare",
+          "status": "queued",
+          "runningMs": 0
+        }
+      ]
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-cancel",
+      "label": "source-cancel",
+      "ms": 105.12199999999939,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 345
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-waveform",
+      "label": "source-waveform",
+      "ms": 156.551300000001,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 65022
+    },
+    {
+      "tool": "af-clip",
+      "command": "source-insert",
+      "label": "source-insert",
+      "ms": 108.9956000000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 3068
+    },
+    {
+      "tool": "af-clip",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 87.57979999999952,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 10783
+    },
+    {
+      "tool": "af-clip",
+      "command": "detach-audio",
+      "label": "detach-audio",
+      "ms": 97.50840000000062,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1346
+    },
+    {
+      "tool": "af-clip",
+      "command": "unlink",
+      "label": "unlink",
+      "ms": 107.17339999999967,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 892
+    },
+    {
+      "tool": "af-clip",
+      "command": "import",
+      "label": "import",
+      "ms": 99.34089999999924,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 12639
+    },
+    {
+      "tool": "af-clip",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 88.58170000000064,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 12185
+    },
+    {
+      "tool": "af-clip",
+      "command": "apply",
+      "label": "apply",
+      "ms": 92.55409999999938,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 712
+    },
+    {
+      "tool": "af-clip",
+      "command": "text-fields",
+      "label": "text-fields",
+      "ms": 94.17879999999968,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 120
+    },
+    {
+      "tool": "af-clip",
+      "command": "text-set",
+      "label": "text-set",
+      "ms": 97.21119999999974,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 422
+    },
+    {
+      "tool": "af-clip",
+      "command": "text-reset",
+      "label": "text-reset",
+      "ms": 94.92710000000079,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 396
+    },
+    {
+      "tool": "af-clip",
+      "command": "asset-builtin",
+      "label": "asset-builtin",
+      "ms": 109.14559999999983,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 14104
+    },
+    {
+      "tool": "af-clip",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 93.76189999999951,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 13507
+    },
+    {
+      "tool": "af-clip",
+      "command": "asset-duplicate",
+      "label": "asset-duplicate",
+      "ms": 113.66009999999915,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1805
+    },
+    {
+      "tool": "af-clip",
+      "command": "folder-create",
+      "label": "folder-create",
+      "ms": 111.27399999999943,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 433
+    },
+    {
+      "tool": "af-clip",
+      "command": "folders",
+      "label": "folders",
+      "ms": 104.57710000000043,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 129
+    },
+    {
+      "tool": "af-clip",
+      "command": "folder-set",
+      "label": "folder-set",
+      "ms": 95.81790000000001,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 230
+    },
+    {
+      "tool": "af-clip",
+      "command": "inspect",
+      "label": "setup inspect",
+      "ms": 91.32550000000083,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 14355
+    },
+    {
+      "tool": "af-clip",
+      "command": "folder-members",
+      "label": "folder-members",
+      "ms": 98.47979999999916,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 411
+    },
+    {
+      "tool": "af-clip",
+      "command": "folder-move",
+      "label": "folder-move",
+      "ms": 103.32430000000022,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 130
+    },
+    {
+      "tool": "af-clip",
+      "command": "folder-remove",
+      "label": "folder-remove",
+      "ms": 96.78550000000178,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 574
+    },
+    {
+      "tool": "af-clip",
+      "command": "marker-add",
+      "label": "marker-add",
+      "ms": 96.40380000000005,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 271
+    },
+    {
+      "tool": "af-clip",
+      "command": "markers",
+      "label": "markers",
+      "ms": 90.33549999999741,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 89
+    },
+    {
+      "tool": "af-clip",
+      "command": "marker-set",
+      "label": "marker-set",
+      "ms": 99.70530000000144,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 242
+    },
+    {
+      "tool": "af-clip",
+      "command": "marker-next",
+      "label": "marker-next",
+      "ms": 93.70700000000215,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 87
+    },
+    {
+      "tool": "af-clip",
+      "command": "marker-previous",
+      "label": "marker-previous",
+      "ms": 94.66120000000228,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 87
+    },
+    {
+      "tool": "af-clip",
+      "command": "marker-remove",
+      "label": "marker-remove",
+      "ms": 96.43409999999858,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 206
+    },
+    {
+      "tool": "af-clip",
+      "command": "ripple-delete",
+      "label": "ripple-delete",
+      "ms": 108.3817999999992,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 896
+    },
+    {
+      "tool": "af-clip",
+      "command": "undo",
+      "label": "undo",
+      "ms": 106.6797000000006,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1720
+    },
+    {
+      "tool": "af-clip",
+      "command": "redo",
+      "label": "redo",
+      "ms": 94.85299999999916,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1720
+    },
+    {
+      "tool": "af-clip",
+      "command": "undo",
+      "label": "undo",
+      "ms": 91.17589999999836,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1721
+    },
+    {
+      "tool": "af-clip",
+      "command": "checkpoint",
+      "label": "checkpoint",
+      "ms": 149.34000000000015,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 153
+    },
+    {
+      "tool": "af-clip",
+      "command": "checkpoints",
+      "label": "checkpoints",
+      "ms": 95.81500000000233,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 155
+    },
+    {
+      "tool": "af-clip",
+      "command": "restore",
+      "label": "restore",
+      "ms": 140.72979999999734,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 5933
+    },
+    {
+      "tool": "af-clip",
+      "command": "collect",
+      "label": "collect",
+      "ms": 167.71470000000045,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 269
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export software",
+      "ms": 3384.395199999999,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1262,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 782450688,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2302.5346,
+        "renderFps": 52.11648068176695,
+        "wallMs": 3177.5784,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 385.5284999999999
+        },
+        "indexCacheHits": 0,
+        "indexMs": 44.710899999999995,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": false,
+            "frames": 480,
+            "ms": 44.710899999999995
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export gpu",
+      "ms": 3485.2248,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1258,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 643035136,
+        "fullFrameReadback": false,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2021.1252000000002,
+        "renderFps": 59.37286814295324,
+        "wallMs": 3240.8111000000004,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 540.7145
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.406200000000002,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.406200000000002
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "gpu",
+        "encoder": "NVENC D3D11",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export software",
+      "ms": 3395.3868,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1268,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 783798272,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2384.9589,
+        "renderFps": 50.31533247805654,
+        "wallMs": 3214.2385999999997,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 384.0586000000003
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.440999999999999,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.440999999999999
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export gpu",
+      "ms": 3501.065300000002,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1269,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 642314240,
+        "fullFrameReadback": false,
+        "rejectedPaints": 1,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2074.6814999999997,
+        "renderFps": 57.84020342399545,
+        "wallMs": 3275.7414999999996,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 533.1118999999999
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.3648999999999987,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.3648999999999987
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "gpu",
+        "encoder": "NVENC D3D11",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export software",
+      "ms": 3384.7700000000004,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1258,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 782016512,
+        "fullFrameReadback": true,
+        "rejectedPaints": 3,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2351.17,
+        "renderFps": 51.03841917003024,
+        "wallMs": 3172.3862,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 383.2067000000002
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.0345000000000013,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.0345000000000013
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "libx264",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export gpu",
+      "ms": 3509.541799999999,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1261,
+      "stats": {
+        "frames": 120,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 640032768,
+        "fullFrameReadback": false,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 239,
+        "transportedSourceFrames": 120,
+        "sourceFrameUploads": 120,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 2090.1127,
+        "renderFps": 57.41317202656105,
+        "wallMs": 3284.6620000000003,
+        "verification": {
+          "mode": "full",
+          "videoPackets": 120,
+          "audioPackets": 189,
+          "decodedFrames": 120,
+          "ms": 531.0070000000001
+        },
+        "indexCacheHits": 1,
+        "indexMs": 2.4002000000000017,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.4002000000000017
+          }
+        ],
+        "audioClips": 1,
+        "sourceDecode": "software",
+        "composition": "gpu",
+        "encoder": "NVENC D3D11",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "frame",
+      "label": "frame",
+      "ms": 654.603200000005,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1137,
+      "stats": {
+        "frames": 1,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 611454976,
+        "fullFrameReadback": true,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 1,
+        "transportedSourceFrames": 1,
+        "sourceFrameUploads": 1,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 155.19559999999998,
+        "renderFps": 6.443481645098187,
+        "wallMs": 409.9897,
+        "verification": null,
+        "indexCacheHits": 1,
+        "indexMs": 2.2028,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.2028
+          }
+        ],
+        "audioClips": 0,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "png",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "frame",
+      "label": "frame",
+      "ms": 666.363099999995,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1151,
+      "stats": {
+        "frames": 1,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 617070592,
+        "fullFrameReadback": true,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 1,
+        "transportedSourceFrames": 1,
+        "sourceFrameUploads": 1,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 154.4789,
+        "renderFps": 6.473375975618676,
+        "wallMs": 401.4928,
+        "verification": null,
+        "indexCacheHits": 1,
+        "indexMs": 2.5305999999999997,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.5305999999999997
+          }
+        ],
+        "audioClips": 0,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "png",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "frame",
+      "label": "frame",
+      "ms": 549.0829999999987,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 1151,
+      "stats": {
+        "frames": 1,
+        "peakDecodedBytes": 8294400,
+        "peakDecoders": 1,
+        "peakChromiumWorkingSetBytes": 611749888,
+        "fullFrameReadback": true,
+        "rejectedPaints": 2,
+        "decodedSourceFrames": 1,
+        "transportedSourceFrames": 1,
+        "sourceFrameUploads": 1,
+        "sourceFrameReuses": 0,
+        "restarts": 1,
+        "renderMs": 157.0046,
+        "renderFps": 6.369240136913185,
+        "wallMs": 375.4168,
+        "verification": null,
+        "indexCacheHits": 1,
+        "indexMs": 2.3774000000000015,
+        "indexing": [
+          {
+            "mediaId": "media_082a4646719645ce97a6cf771051f19b",
+            "method": "packet",
+            "cacheHit": true,
+            "frames": 480,
+            "ms": 2.3774000000000015
+          }
+        ],
+        "audioClips": 0,
+        "sourceDecode": "software",
+        "composition": "software",
+        "encoder": "png",
+        "rawFrameCacheBytes": 0
+      }
+    },
+    {
+      "tool": "af-clip",
+      "command": "export",
+      "label": "export",
+      "ms": 102.45320000000356,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 312
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "status",
+      "ms": 102.23660000000382,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 365
+    },
+    {
+      "tool": "af-clip",
+      "command": "cancel",
+      "label": "cancel",
+      "ms": 114.99199999999837,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 368
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 97.55589999999938,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 368
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 110.18550000000687,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 368
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 108.16229999999632,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 368
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 105.34900000000198,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 433
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 104.4522999999972,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 433
+    },
+    {
+      "tool": "af-clip",
+      "command": "status",
+      "label": "cancel completion",
+      "ms": 104.1640999999945,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 472
+    },
+    {
+      "tool": "af-lib",
+      "command": "cache",
+      "label": "cache",
+      "ms": 96.85990000000311,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 120
+    },
+    {
+      "tool": "af-lib",
+      "command": "cache-budget",
+      "label": "cache-budget",
+      "ms": 109.34199999999691,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 119
+    },
+    {
+      "tool": "af-lib",
+      "command": "cache-clear",
+      "label": "cache-clear",
+      "ms": 94.55069999999978,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 122
+    },
+    {
+      "tool": "ffprobe",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 34.502199999995355,
+      "ok": true
+    },
+    {
+      "tool": "ffprobe",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 33.514100000000326,
+      "ok": true
+    },
+    {
+      "tool": "ffprobe",
+      "command": "inspect",
+      "label": "inspect",
+      "ms": 32.937400000002526,
+      "ok": true
+    },
+    {
+      "tool": "af-clip",
+      "command": "close",
+      "label": "close",
+      "ms": 91.31500000000233,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 37
+    },
+    {
+      "tool": "af-lib",
+      "command": "close",
+      "label": "close",
+      "ms": 95.8090000000011,
+      "exitCode": 0,
+      "ok": true,
+      "bytes": 37
+    }
+  ],
+  "validation": [
+    "HTTP multibyte JSON and content length",
+    "Typed error details",
+    "Malformed JSON rejection",
+    "Broken connection rejects without retry",
+    "Stale apply leaves project revision unchanged",
+    "Explicit text revisions, stale text rejection and Unicode edit",
+    "Cache opt-out preserves output"
+  ]
+}
