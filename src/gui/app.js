@@ -2211,7 +2211,7 @@ function clipBlock(c, t) {
   if (peers.length) badges.push(h('span', { class: 'clip-badge' }, icon('link')));
   const el = h('div', { class: `clip ${m ? kind : 'missing'} ${selection.has(c.id) ? 'selected' : peerSelected ? 'link-peer' : ''} ${locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
     width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
-    !audible && width > 70 && rowHeight(t.id) >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
+    !audible && width > 70 ? h('span', { class: 'clip-meta', hidden: rowHeight(t.id) < 44 }, shortTc(endF(c) - startF(c))) : null,
     !audible && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
     !audible && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
     locked ? null : h('i', { class: 'handle l' }), locked ? null : h('i', { class: 'handle r' }));
@@ -2585,7 +2585,11 @@ function onDragMove(e) {
   if (!drag) return;
   if (drag.type === 'audio') { audioDrag(e); return; }
   if (drag.type === 'reorder') reorderDrag(e); else if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
-  else if (drag.type === 'trackSize') { drag.h = Math.round(Math.max(TRACK_MIN_H, Math.min(TRACK_MAX_H, drag.h0 + e.clientY - drag.y0))); drag.row.style.setProperty('--track-h', `${drag.h}px`); }
+  else if (drag.type === 'trackSize') {
+    drag.h = Math.round(Math.max(TRACK_MIN_H, Math.min(TRACK_MAX_H, drag.h0 + e.clientY - drag.y0)));
+    drag.row.style.setProperty('--track-h', `${drag.h}px`);
+    for (const label of drag.row.querySelectorAll('.clip-meta')) label.hidden = drag.h < 44;
+  }
 }
 function moveDrag(e) {
   const d = drag, dx = e.clientX - d.x0;
