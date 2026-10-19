@@ -1434,12 +1434,13 @@ function mediaLibraryId(m) {
   const link = m.metadata?.library;
   return libraryMedia[m.id]?.importId || (link?.temporary ? link.assetId : link?.rangeId || link?.assetId);
 }
+const mediaNameCollator = new Intl.Collator(undefined, { numeric: true });
 function filteredMedia() {
   const query = $('search').value.trim().toLowerCase();
   return (project()?.media || []).filter(m => {
     const data = libraryMedia[m.id];
     return [mediaName(m), m.path, mediaLibraryId(m), m.metadata?.library?.assetId, kindLabel(m.kind), data?.assetName, data?.notes, data?.parentNotes, mediaFolder(m), ...(data?.tags || [])].join('\n').toLowerCase().includes(query);
-  }).sort((a, b) => mediaFolder(a).localeCompare(mediaFolder(b)) || mediaName(a).localeCompare(mediaName(b)) || a.id.localeCompare(b.id));
+  }).sort((a, b) => mediaNameCollator.compare(mediaFolder(a), mediaFolder(b)) || mediaNameCollator.compare(mediaName(a), mediaName(b)) || a.id.localeCompare(b.id));
 }
 async function refreshLibraryMedia() {
   if (libraryLoading || dragMedia || !project() || !api.libraryMedia) return;
