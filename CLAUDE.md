@@ -1,1 +1,1 @@
-Read the local AGENT.md file as if it were CLAUDE.md
+Read the local AGENTS.md file as if it were CLAUDE.md

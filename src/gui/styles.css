@@ -531,6 +531,9 @@ kbd, .kbd {
 .tooltip .tip-title { display: flex; align-items: center; gap: 10px; justify-content: space-between; font-weight: 600; color: var(--text); }
 .tooltip .tip-desc { margin-top: 3px; color: var(--text-2); font-size: 11.5px; }
 .tooltip .tip-meta { margin-top: 5px; color: var(--text-3); font: 10.5px var(--mono); white-space: pre-line; }
+.tooltip.compact { max-width: min(280px, calc(100vw - 32px)); }
+.tooltip.compact .tip-title > span { min-width: 0; }
+.tooltip.compact .tip-title > span, .tooltip.compact .tip-desc, .tooltip.compact .tip-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drag-readout { position: fixed; z-index: 85; padding: 4px 7px; background: #25282e; border: 1px solid #3b3f47; border-radius: 4px; font: 11px var(--mono); color: var(--text); pointer-events: none; white-space: pre; box-shadow: 0 6px 16px rgba(0, 0, 0, .45); }
 .drag-readout .bad { color: var(--danger); }
 

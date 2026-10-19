@@ -292,7 +292,7 @@ window.NativePreview = class NativePreview {
   layout(time, seeking = false) {
     const items = window.AFClipTimeline.at(this.setup.plan, time);this.assets?.reset(this.entries,items,seeking);const active = new Set(items.map(i => i.clipId));
     for (const [id, entry] of this.entries) {
-      if (entry.media.kind === 'graphic' && (seeking || entry.layer.hidden || !active.has(id))) {
+      if (entry.media.kind === 'graphic' && (entry.layer.hidden || !active.has(id) || (seeking && time <= entry.clip.start))) {
         entry.graphicVersion = (entry.graphicVersion || 0) + 1;
         entry.graphicNext = null;
         entry.content.style.opacity = '0';
