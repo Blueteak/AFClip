@@ -128,6 +128,7 @@ export class Claude {
       ...(this.config.access?{permissionMode:this.config.access,allowDangerouslySkipPermissions:this.config.access==='bypassPermissions'}:{}),
       canUseTool:async(name,input,options)=>{
         if(name==='AskUserQuestion') { const answer=await this.hooks.ask({kind:'question',title:'Claude needs input',questions:input.questions},options.signal); const answers={}; for(const q of input.questions||[]) {const v=typeof answer==='object'?answer[q.id]??answer[q.question]??answer[q.header]??'':String(answer);answers[q.question]=Array.isArray(v)?v.join(', '):v;}return {behavior:'allow',updatedInput:{...input,answers}}; }
+        if(this.config.access==='bypassPermissions')return {behavior:'allow',updatedInput:input};
         const choices=[{id:'allow',label:'Allow once'},...(options.suggestions?.length?[{id:'session',label:'Allow with suggested permissions'}]:[]),{id:'deny',label:'Deny'}];
         const a=await this.hooks.ask({kind:'approval',title:name,detail:JSON.stringify(input),options:choices},options.signal);
         return a==='allow'||a==='session'?{behavior:'allow',updatedInput:input,...(a==='session'?{updatedPermissions:options.suggestions}:{})}:{behavior:'deny',message:'User denied this action'};
