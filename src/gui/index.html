@@ -95,7 +95,10 @@
         <button id="import" class="icon-button small"><svg class="icon"><use href="#i-import"/></svg></button>
       </div>
       <div class="tab-page" data-page="media">
-        <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search names, tags, notes" aria-label="Search project media by name, tag or notes" spellcheck="false"></label>
+        <div class="media-search">
+          <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search names, tags, notes" aria-label="Search project media by name, tag or notes" spellcheck="false"></label>
+          <button id="add-library" class="icon-button small" aria-label="Add clips from content library"><svg class="icon"><use href="#i-plus"/></svg></button>
+        </div>
         <div id="media-list" class="media-list" tabindex="0"></div>
       </div>
       <div class="tab-page" data-page="history" hidden>

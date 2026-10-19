@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search),readonly=params.get('mode')==='afclip';
-const state={overview:null,items:[],selected:null,folder:'',collection:'',deleted:false,kind:'',offset:0,nextOffset:null,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
+const state={overview:null,items:[],selected:null,folder:params.get('folder')||'',collection:'',deleted:false,kind:'',offset:0,nextOffset:null,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
 let requestsInFlight=0,reloadReady=false;
 function setBrowserView(mode){
   $('assets').classList.toggle('asset-list',mode==='list');
@@ -92,7 +92,7 @@ async function openPreview(a){selectedActions();window.clearTakeSelection?.();st
   $('new-range').hidden=readonly;$('mark-in').hidden=$('mark-out').hidden=false;state.temporarySelection=false;$('new-range').disabled=a.folder==='inbox'||a.source.status!=='verified';
   $('preview-status').textContent=a.availability==='unavailable'?'Original unavailable':a.kind==='video'?(preview.seekProxy?'Fast seek ready · native source playback':'Native source playback · prepare for fast seeking'):'Source audio · sample-accurate ranges';
   if(a.kind==='video'){
-    const project={cacheLimitBytes:128*1024**2,media:[{id:a.id,kind:'video',name:a.name}],tracks:[{id:'source'}],clips:[{id:'preview',mediaId:a.id,trackId:'source',start:0,duration:a.duration,sourceIn:0,speed:1}],transitions:[]};
+    const project={cacheLimitBytes:128*1024**2,media:[{id:a.id,kind:'video',name:a.name,duration:a.duration}],tracks:[{id:'source'}],clips:[{id:'preview',mediaId:a.id,trackId:'source',start:0,duration:a.duration,sourceIn:0,speed:1}],transitions:[]};
     native=new window.NativePreview({project,width:a.source.metadata?.width||1920,height:a.source.metadata?.height||1080,plan:window.AFClipTimeline.compile(project),media:{[a.id]:{kind:'video',url:preview.url,pts:preview.pts,seekProxy:preview.seekProxy}},graphics:{}},$('native-host'),e=>say(e.message,true));
     await native.seek(0);
   }
