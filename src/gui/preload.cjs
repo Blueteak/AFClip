@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   mediaUrl: file => ipcRenderer.invoke('afclip:media-url', file),
   showOutput: file => ipcRenderer.invoke('afclip:show-output', file),
   ready: () => ipcRenderer.invoke('afclip:ready'),
+  agents: (action, payload = {}) => ipcRenderer.invoke('afclip:agents', action, payload),
   onEvent: listener => { const receive = (_event, value) => listener(value); ipcRenderer.on('afclip:event', receive); return () => ipcRenderer.removeListener('afclip:event', receive); },
 }));

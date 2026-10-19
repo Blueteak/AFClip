@@ -19,6 +19,16 @@ Agent passes publish coherent, atomic batches. Check each batch against changes 
 
 Show a brief conflict status in the GUI and actionable details through the CLI. The agent decides whether to reread and retry or ask the user about conflicting intentions. Retry policy belongs to the agent, not the app.
 
+### Local agent conversations
+
+Use installed Codex and Claude Code with their existing sign-ins; no AFClip account. Agents retain their native tools and permission rules and edit through the ordinary CLI. Settings holds per-provider executable, model, thinking and access defaults, captured when a conversation starts. Provider stays fixed; the steer/queue preference applies to each subsequent message.
+
+Conversations appear as circular widgets with shadows, attached to timeline items, tracks or empty timeline positions. `A` opens the hovered item's discussion, using a containing multi-selection; outside the timeline it uses the selection or project. Annotation-style popups contain the transcript, composer, pasted-image previews and native questions/approvals. Selection and playhead are captured on submission as context, never an editing restriction.
+
+Allow concurrent conversations, with one unsettled conversation per associated item. Expose active-discussion summaries through the CLI; existing revision checks handle conflicting edits. Item widgets follow their targets; deleted targets retain their last location. Empty-space anchors retain their track/time.
+
+Closing the window leaves work running locally. Questions wait for the user to return. After a controller crash or computer restart, restore interrupted conversations without automatically repeating work. Capture an ordinary CLI checkpoint before each submitted agent turn. Stop and settle are distinct: settling requires finished/stopped work, removes the widget and deletes AFClip's pasted-image copies. Provider-owned transcripts remain. Settled-history browsing, conversation-navigation shortcuts and Content Library chat UI are deferred.
+
 ## Project state and history
 
 Committed GUI and CLI edits save automatically. Recover the last committed state after a crash; unfinished drags are not committed edits.

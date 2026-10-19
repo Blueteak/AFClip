@@ -154,7 +154,7 @@ app.whenReady().then(async () => {
       else { start = Number(match[1]); if (match[2]) end = Math.min(end, Number(match[2])); }
       if (start > end || start >= stat.size) return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${stat.size}` } });
     }
-    const type = { '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.mkv': 'video/x-matroska', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
+    const type = { '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.flac': 'audio/flac', '.ogg': 'audio/ogg', '.mp4': 'video/mp4', '.mov': 'video/mp4', '.webm': 'video/webm', '.mkv': 'video/x-matroska', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
     const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Length': String(end - start + 1), 'Access-Control-Allow-Origin':'file://',
       ...(range ? { 'Content-Range': `bytes ${start}-${end}/${stat.size}` } : {}) };
     const stream = req.method === 'HEAD' ? null : require('node:stream').Readable.toWeb(require('node:fs').createReadStream(file, { start, end }));
@@ -286,6 +286,20 @@ app.whenReady().then(async () => {
     return `afclip-media://${id}/media`;
   });
   handle('show-output', file => { if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result'); shell.showItemInFolder(path.resolve(file)); });
+  const agentClient = await import('../agents/local.mjs');
+  handle('agents', async (action, payload) => {
+    const result = await agentClient.agents(projectDir, action, payload);
+    const imageRoot = path.resolve(agentClient.location(projectDir).dir, 'images') + path.sep;
+    function grantImages(value) {
+      if (!value || typeof value !== 'object') return;
+      if (Array.isArray(value.images)) for (const image of value.images) {
+        if (typeof image.path === 'string' && path.resolve(image.path).startsWith(imageRoot)) image.dataUrl = grantSourceFile(image.path);
+      }
+      for (const child of Object.values(value)) if (child && typeof child === 'object') grantImages(child);
+    }
+    grantImages(result);
+    return result;
+  });
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();

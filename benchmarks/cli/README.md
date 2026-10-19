@@ -110,6 +110,25 @@ state, so this change preserves them. Library search/overview already use compac
 metadata, and waveform `--summary` remains available when sample arrays are
 unnecessary.
 
+`af-clip agent list` returns `items` with conversation ID, provider, status, anchor
+and the latest request capped at 400 characters. Defaults to 50 discussions,
+maximum 100 per page; `nextOffset` continues. `context` includes the last GUI
+snapshot with `receivedAt` and at most 20 discussion summaries; `moreDiscussions`
+directs callers to `list`. These snapshots can outlive the GUI.
+
+`agent read ID` returns 20 messages by default, maximum 100, with `nextOffset`
+when more remain. Tool messages retain the command line and mark omitted output
+with `outputAvailable:true`. Image references retain ID/name, not image bytes or
+local storage paths. Empty pending requests, false queue/cancel flags, provider
+settings and repeated captured context are omitted. `--full` retains complete
+messages, diagnostics and controller metadata. Create/send/respond/stop return
+ID, provider, status and any pending input/error; settle returns an empty result.
+
+A disposable three-discussion session, with real Codex/Claude CLI edits and an
+image-backed clip trim, measured with `tiktoken` / `o200k_base`: list 270 tokens
+versus 12,916 with `--full`; trim-conversation read 1,427 versus 5,488 with
+`--full`. Provider transcripts and GUI state are unaffected by these omissions.
+
 ## Latency
 
 Run against a 1080p60 fixture built by `benchmarks/macos/project.ts`, with local sources at least 19 seconds long:

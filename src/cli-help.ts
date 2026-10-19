@@ -4,6 +4,7 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip collect <project-dir> <new-folder> [--revision N]
   af-clip inspect <project-dir> [--id ID | --collection NAME | --since REVISION]
   af-clip endpoint <project-dir>
+  af-clip agent <project-dir> [list|context|providers|settings|create|send|read|respond|stop|settle] [ID] [--text TEXT | --file JSON] [--offset N --limit N]
   af-clip import <project-dir> <source-file> [--kind video|audio|image|graphic]
   af-clip relink <project-dir> <media-id> <replacement-file> [--revision N]
   af-clip library-import <project-dir> <asset-or-range-id>
@@ -96,6 +97,7 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  const lines=usage.filter(line=>line.trim().split(' ')[1].split('|').includes(topic));
  if(!lines.length)throw new Error(`Unknown command: ${topic}`);
  let notes='';
+ if(topic==='agent')notes='Local agent conversations use installed Codex/Claude logins. context returns the last GUI snapshot (receivedAt) and active discussions, not a guaranteed live selection. list returns up to 50 discussion summaries (max 100); nextOffset continues. --full includes transcripts/settings. read ID returns 20 messages (max 100); nextOffset continues. Tool output is summarized to its command; --full retains complete diagnostics. create/send/settings/respond accept --file JSON. create: {provider:codex|claude,anchor:{kind,items:[{kind,id}],trackId?,time?:{num,den}},context:{}}. send: {id,text,context?,images?:[{dataUrl,name}]}. respond: {id,requestId,answer}. settings: {providers:{codex|claude:{executable?,model?,effort?,access?,delivery:steer|queue}}}. Model/thinking/access are copied into new chats; delivery is read for each message. stop interrupts; settle requires idle/stopped and deletes AFClip image copies. All editing still uses the ordinary CLI.\n';
  if(topic==='apply')notes=section('Batch:', 'Folders contain')+section('Apply supports','The engine keeps');
  if(topic.startsWith('source-'))notes=section('source-inspect returns','Graphics import');
  if(topic.startsWith('folder'))notes=section('Folders contain','Project changes');
