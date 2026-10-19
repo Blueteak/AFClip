@@ -123,7 +123,7 @@ const withLinked = list => { const out = new Map(list.map(c => [c.id, c])); for 
 
 // ---------------------------------------------------------------- Preferences
 const prefs = (() => {
-  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', binView: 'grid', welcomed: false, tips: {}, marks: {} };
+  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, trackHeights: {}, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', binView: 'grid', welcomed: false, tips: {}, marks: {} };
   try { return { ...defaults, ...JSON.parse(localStorage.getItem('afclip.ui') || '{}') }; } catch { return defaults; }
 })();
 const savePrefs = () => localStorage.setItem('afclip.ui', JSON.stringify(prefs));
@@ -678,7 +678,17 @@ function zoom(factor, anchorX) {
   drawTimeline();
   scroll.scrollLeft = atSec * pps - anchor;
 }
-function trackHeight(delta) { prefs.trackH = Math.max(30, Math.min(110, prefs.trackH + delta)); savePrefs(); applyLayout(); drawTimeline(); }
+function trackHeight(delta) { prefs.trackH = Math.max(TRACK_MIN_H, Math.min(110, prefs.trackH + delta)); savePrefs(); applyLayout(); drawTimeline(); }
+// Per-track heights override the default, keyed by project so track ids never collide.
+const TRACK_MIN_H = 28, TRACK_MAX_H = 240;
+const rowHeight = id => prefs.trackHeights[project()?.id]?.[id] ?? prefs.trackH;
+function setRowHeight(id, px) {
+  const pid = project()?.id; if (!pid) return;
+  const own = prefs.trackHeights[pid] ||= {};
+  if (px == null) delete own[id]; else own[id] = px;
+  if (!Object.keys(own).length) delete prefs.trackHeights[pid];
+  savePrefs(); drawTimeline();
+}
 function showTab(name) {
   for (const t of document.querySelectorAll('.bin .tab')) t.classList.toggle('active', t.dataset.tab === name);
   for (const p of document.querySelectorAll('.bin .tab-page')) p.hidden = p.dataset.page !== name;
@@ -2132,7 +2142,8 @@ function trackRow(t, width, f = folderOf(t)) {
     h('button', { class: `icon-button ${t.disabled ? 'off' : f?.disabled ? 'inherit' : ''}`, disabled: off || lockedTrack(t.id), onclick: () => toggleTrack(t, 'disabled'),
       tip: { title: t.disabled ? 'Enable track' : 'Disable track', desc: 'Disabling hides the picture and silences the audio. Clips stay editable.', meta: f?.disabled ? `Folder “${f.name}” is disabled` : null } }, icon(t.disabled || f?.disabled ? 'eye-off' : 'eye')),
     h('button', { class: `icon-button ${t.locked ? 'off' : held ? 'inherit' : ''}`, disabled: off || held, onclick: () => toggleTrack(t, 'locked'),
-      tip: { title: t.locked ? 'Unlock track' : 'Lock track', desc: 'Locked tracks reject every GUI and CLI edit, including agent batches.', meta: held ? `Folder “${f.name}” is locked` : null } }, icon(t.locked || held ? 'lock' : 'unlock')));
+      tip: { title: t.locked ? 'Unlock track' : 'Lock track', desc: 'Locked tracks reject every GUI and CLI edit, including agent batches.', meta: held ? `Folder “${f.name}” is locked` : null } }, icon(t.locked || held ? 'lock' : 'unlock')),
+    h('i', { class: 'track-resize', onpointerdown: e => beginTrackResize(e, t.id), tip: { title: 'Track height', hint: [{ keys: '#Drag', text: 'resize' }, { keys: '#Double-click', text: 'reset' }] } }));
   head.onpointerdown = e => headDown(e, { track: t.id });
   const lane = h('div', { class: `lane ${tool === 'razor' ? 'razor' : ''}`, style: { width: `${width}px` }, dataset: { track: t.id } });
   lane.tip = { title: 'Track', hint: tool === 'razor' ? [{ text: 'Click a clip to split it' }] : [{ keys: '#Click', text: 'move playhead' }, { keys: '#Drag', text: 'box select' }, { keys: '#Right-click', text: 'paste / add track' }] };
@@ -2153,7 +2164,9 @@ function trackRow(t, width, f = folderOf(t)) {
     lane.append(el);
   }
   const members = f ? folderMembers(f.id) : [];
-  return h('div', { class: `track ${disabledTrack(t.id) ? 'disabled' : ''} ${lockedTrack(t.id) ? 'locked' : ''} ${f ? 'in-folder' : ''} ${members.at(-1) === t ? 'folder-end' : ''} ${selTracks.has(t.id) ? 'selected' : ''}`, dataset: { track: t.id } }, head, lane);
+  const row = h('div', { class: `track ${disabledTrack(t.id) ? 'disabled' : ''} ${lockedTrack(t.id) ? 'locked' : ''} ${f ? 'in-folder' : ''} ${members.at(-1) === t ? 'folder-end' : ''} ${selTracks.has(t.id) ? 'selected' : ''}`, dataset: { track: t.id } }, head, lane);
+  row.style.setProperty('--track-h', `${rowHeight(t.id)}px`);
+  return row;
 }
 // Folder header. Collapsed, its lane is a read-only overview of the clips inside, one strip per track.
 let lastFolderOverviewDown = null;
@@ -2198,7 +2211,7 @@ function clipBlock(c, t) {
   if (peers.length) badges.push(h('span', { class: 'clip-badge' }, icon('link')));
   const el = h('div', { class: `clip ${m ? kind : 'missing'} ${selection.has(c.id) ? 'selected' : peerSelected ? 'link-peer' : ''} ${locked ? 'locked' : ''}`, dataset: { id: c.id }, style: { left: `${left}px`, width: `${width}px` } },
     width > 30 ? h('div', { class: 'clip-body' }, icon(kindIcon(kind)), h('span', { class: 'clip-name' }, clipName(c)), width > 110 ? h('span', { class: 'clip-badges' }, badges) : null) : null,
-    !audible && width > 70 && prefs.trackH >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
+    !audible && width > 70 && rowHeight(t.id) >= 44 ? h('span', { class: 'clip-meta' }, shortTc(endF(c) - startF(c))) : null,
     !audible && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
     !audible && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
     locked ? null : h('i', { class: 'handle l' }), locked ? null : h('i', { class: 'handle r' }));
@@ -2420,6 +2433,17 @@ function headDown(e, unit) {
   const ids = unit.folder ? folderMembers(unit.folder).map(t => t.id) : selTracks.has(unit.track) && !selFolder ? moveUnit()?.ids || [unit.track] : [unit.track];
   startDrag({ type: 'reorder', unit: { ...unit, ids }, ids, x0: e.clientX, y0: e.clientY, moved: false, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, drop: null, line: null });
 }
+// Double-click is detected by hand because a finished resize redraws the row.
+let lastResizeDown = null;
+function beginTrackResize(e, id) {
+  if (e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const previous = lastResizeDown, now = performance.now();
+  lastResizeDown = { id, time: now, y: e.clientY };
+  if (previous?.id === id && now - previous.time < 500 && Math.abs(e.clientY - previous.y) < 5) { lastResizeDown = null; setRowHeight(id, null); return; }
+  startDrag({ type: 'trackSize', id, y0: e.clientY, h0: rowHeight(id), h: null, row: e.target.closest('.track') });
+  e.target.classList.add('active');
+}
 function headClick(d) {
   lastHeaderClick = { key: d.unit.folder || d.unit.track, time: performance.now(), x: d.x0, y: d.y0 };
   if (d.unit.folder) selectFolder(d.unit.folder);
@@ -2561,6 +2585,7 @@ function onDragMove(e) {
   if (!drag) return;
   if (drag.type === 'audio') { audioDrag(e); return; }
   if (drag.type === 'reorder') reorderDrag(e); else if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
+  else if (drag.type === 'trackSize') { drag.h = Math.round(Math.max(TRACK_MIN_H, Math.min(TRACK_MAX_H, drag.h0 + e.clientY - drag.y0))); drag.row.style.setProperty('--track-h', `${drag.h}px`); }
 }
 function moveDrag(e) {
   const d = drag, dx = e.clientX - d.x0;
@@ -2667,6 +2692,7 @@ function onDragUp(e) {
     });
     return;
   }
+  if (d.type === 'trackSize') { endDrag(); if (d.h != null && d.h !== d.h0) setRowHeight(d.id, d.h); else drawTimeline(); return; }
   if (d.type === 'reorder') {
     endDrag();
     if (!d.moved) { headClick(d); return; }
