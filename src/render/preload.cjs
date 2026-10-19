@@ -6,7 +6,7 @@ const { Decoder, frameIndex } = require('./decoder.cjs');
 const file = process.argv.find(x => x.startsWith('--afclip-render='))?.slice(16);
 const config = JSON.parse(fs.readFileSync(file, 'utf8'));
 const decoders = new Map();
-const stats = { peakDecodedBytes: 0, peakDecoders: 0, decodedSourceFrames: 0, sourceFrameUploads: 0, sourceFrameReuses: 0, restarts: 0 };
+const stats = { peakDecodedBytes: 0, peakDecoders: 0, decodedSourceFrames: 0, transportedSourceFrames: 0, sourceFrameUploads: 0, sourceFrameReuses: 0, restarts: 0 };
 async function draw(items) {
   const wanted = new Set(items.filter(i => i.kind === 'video' || i.kind === 'image').map(i => i.clipId));
   for (const [id, decoder] of decoders) if (!wanted.has(id)) {
@@ -24,7 +24,7 @@ async function draw(items) {
     if (!decoder) {
       const total = [...decoders.values()].reduce((n, d) => n + d.buffer.length, 0) + media.width * media.height * 4;
       if (total > config.decodedBudgetBytes) throw new Error(`Active decoded frames exceed ${config.decodedBudgetBytes} byte budget`);
-      decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log')); decoders.set(item.clipId, decoder); stats.restarts++;
+      decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log'), config.decodeStrides?.[item.clipId] || 1); decoders.set(item.clipId, decoder); stats.restarts++;
     }
     // Slow motion, low-frame-rate video and stills keep the same source pixels.
     // CSS transforms, fades and HTML effects still run for every output frame.
@@ -33,15 +33,18 @@ async function draw(items) {
       continue;
     }
     const previous = decoder.index;
+    let previousFrames = decoder.framesRead;
     let buffer;
     try { buffer = await decoder.read(index); }
     catch (error) {
       if (!media.hwaccel) throw error;
       decoder.close(); media.hwaccel = false;
-      decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log'));
+      decoder = new Decoder(media, config.ffmpeg, index, path.join(config.work, 'decode.log'), config.decodeStrides?.[item.clipId] || 1);
+      previousFrames = 0;
       decoders.set(item.clipId, decoder); buffer = await decoder.read(index);
     }
     stats.decodedSourceFrames += index - previous;
+    stats.transportedSourceFrames += decoder.framesRead - previousFrames;
     if (canvas.width !== media.width || canvas.height !== media.height) { canvas.width = media.width; canvas.height = media.height; }
     canvas.getContext('2d', { colorSpace: 'srgb' }).putImageData(new ImageData(new Uint8ClampedArray(buffer.buffer, buffer.byteOffset, buffer.byteLength), media.width, media.height, { colorSpace: 'srgb' }), 0, 0);
     decoder.presentedIndex = index;
