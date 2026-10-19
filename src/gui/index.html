@@ -65,6 +65,8 @@
     <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.6-2.7 2.6M12 17h.01"/></symbol>
     <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
     <symbol id="i-speed" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.5 18a9.5 9.5 0 1 1 17 0"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
     <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
     <symbol id="i-fade" viewBox="0 0 24 24"><path d="M3 19 12 5h9"/><path d="M3 19h18" opacity=".45"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></symbol>
@@ -97,6 +99,7 @@
       <div class="tab-page" data-page="media">
         <div class="media-search">
           <label class="search"><svg class="icon"><use href="#i-search"/></svg><input id="search" type="search" placeholder="Search names, tags, notes" aria-label="Search project media by name, tag or notes" spellcheck="false"></label>
+          <span id="bin-view" class="view-switch"><button class="icon-button small" data-view="grid" aria-label="Grid view"><svg class="icon"><use href="#i-grid"/></svg></button><button class="icon-button small" data-view="list" aria-label="List view"><svg class="icon"><use href="#i-list"/></svg></button></span>
           <button id="add-library" class="icon-button small" aria-label="Add clips from content library"><svg class="icon"><use href="#i-plus"/></svg></button>
         </div>
         <div id="media-list" class="media-list" tabindex="0"></div>

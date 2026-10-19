@@ -144,6 +144,15 @@ kbd, .kbd {
 .media-row.audio .media-thumb img { object-fit: fill; padding: 4px 3px; }
 .media-row.selected .media-thumb { box-shadow: inset 0 0 0 1px rgba(79, 157, 255, .55); }
 .media-row.missing .name { color: var(--danger); }
+.view-switch { display: flex; flex-shrink: 0; }
+.media-list.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 2px; align-content: start; }
+.media-list.grid > .section-title, .media-list.grid > .empty-note { grid-column: 1 / -1; }
+.media-list.grid .media-row { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 5px; height: auto; padding: 5px; }
+.media-list.grid .media-thumb { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.media-list.grid .media-thumb .icon { width: 20px; height: 20px; }
+.media-list.grid .media-text { gap: 1px; padding: 0 1px; }
+.media-list.grid .name { font-size: 11.5px; }
+.media-list.grid .media-row.selected .media-thumb { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .empty-note { padding: 18px 12px; color: var(--text-3); line-height: 1.7; text-align: center; }
 .empty-note .kbd-group { margin: 0 2px; vertical-align: -3px; }
 .link-button { color: var(--accent); }
