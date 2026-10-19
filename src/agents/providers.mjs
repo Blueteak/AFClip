@@ -117,7 +117,7 @@ class InputStream {
   [Symbol.asyncIterator](){return this;}
 }
 export class Claude {
-  constructor(config,hooks={}) {this.config=config;this.hooks=hooks;this.closed=false;}
+  constructor(config,hooks={}) {this.config=config;this.hooks=hooks;this.closed=false;this.pendingSends=new Set();}
   async open(cwd,instructions='',sessionId) {
     const {query}=await import('@anthropic-ai/claude-agent-sdk');
     this.input=new InputStream();
@@ -147,12 +147,26 @@ export class Claude {
         if(b.type==='tool_use')this.hooks.message?.(b.id,'tool',b.name+' '+JSON.stringify(b.input),false);
       }
       if(m.type==='user' && Array.isArray(m.message.content))for(const b of m.message.content)if(b.type==='tool_result')this.hooks.message?.(b.tool_use_id+':result','tool',typeof b.content==='string'?b.content:JSON.stringify(b.content),false);
-      if(m.type==='result') this.hooks.done?.(m.is_error?(m.errors?.join('\n')||m.result||m.subtype):null,false);
+      if(m.type==='result') {
+        // A steering send can be folded into this turn or run after its result.
+        // Only finish the chat once every submitted message has been answered.
+        const answered=m.user_message_uuids || (m.user_message_uuid?[m.user_message_uuid]:null);
+        if(answered)for(const id of answered)this.pendingSends.delete(id);
+        else {
+          // Older CLIs omit the UUID echo. Their queue count also handles batches
+          // of several messages answered by one turn; oldest send is the fallback.
+          const remaining=m.queued_turn_count ?? Math.max(0,this.pendingSends.size-1);
+          while(this.pendingSends.size>remaining)this.pendingSends.delete(this.pendingSends.values().next().value);
+        }
+        if(!this.pendingSends.size && !(m.queued_turn_count>0))this.hooks.done?.(m.is_error?(m.errors?.join('\n')||m.result||m.subtype):null,false);
+      }
     }
     if(!this.closed)this.hooks.error?.(new Error('Claude session disconnected. Send a message to resume.'));
   }
   async send(text,images=[],steer=false) {
-    this.input.push({type:'user',message:{role:'user',content:[{type:'text',text},...images.map(i=>({type:'image',source:{type:'base64',media_type:i.mime,data:fs.readFileSync(i.path).toString('base64')}}))]},parent_tool_use_id:null,session_id:'',uuid:randomUUID(),priority:steer?'now':'next'});
+    const message={type:'user',message:{role:'user',content:[{type:'text',text},...images.map(i=>({type:'image',source:{type:'base64',media_type:i.mime,data:fs.readFileSync(i.path).toString('base64')}}))]},parent_tool_use_id:null,session_id:'',uuid:randomUUID(),priority:steer?'now':'next'};
+    this.pendingSends.add(message.uuid);
+    this.input.push(message);
   }
   async stop(){await this.query?.interrupt();}
   close(){this.closed=true;this.input?.end();this.query?.close();}
