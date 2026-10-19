@@ -239,6 +239,19 @@ app.whenReady().then(async () => {
     if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
+  handle('new-project', async () => {
+    const selected = await dialog.showSaveDialog(window, {title:'New project folder', buttonLabel:'Create', defaultPath:path.join(path.dirname(projectDir), 'Untitled')});
+    if (selected.canceled || !selected.filePath) return null;
+    const destination = path.resolve(selected.filePath);
+    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'create', destination], {windowsHide:true, timeout:30000});
+    const reply = JSON.parse(result.stdout.trim());
+    if (!reply.ok) throw new Error(reply.error?.message || 'Could not create project');
+    const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
+    const child = require('node:child_process').spawn(process.execPath, [__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])], {env, detached:true, windowsHide:false, stdio:'ignore'});
+    await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
+    child.unref();
+    return {path:destination};
+  });
   handle('collect', async revision => {
     const selected = await dialog.showSaveDialog(window, {title:'Collect project folder', buttonLabel:'Collect', defaultPath:path.join(path.dirname(projectDir), path.basename(projectDir)+'-collected')});
     if (selected.canceled) return null;
