@@ -1,5 +1,17 @@
 # CLI performance
 
+## Repeated editing
+
+See [the editing-loop measurements](../../docs/cli-edit-loop.md) for repeated
+inspection, mutations and library queries. Keep returned revisions and changes,
+use focused inspection, and combine related edits into an atomic `apply` batch
+when they belong to one undo step. This avoids process launches and repeated
+project saves without weakening conflict checks.
+
+CLI entry points enable Node's module compile cache before loading command code.
+Set `NODE_DISABLE_COMPILE_CACHE=1` to disable it. This does not cache responses or
+project state, and command output contracts are unchanged.
+
 ## Output tokens
 
 The goal is the fewest tokens per completed task, with enough information for the

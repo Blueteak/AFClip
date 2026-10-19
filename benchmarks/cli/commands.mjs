@@ -110,7 +110,7 @@ try{
   }
 }finally{
   if(projectOpen)clip('close');if(libraryOpen)lib('close');
-  const helpSource=['src/cli.ts','src/cli-help.ts'].filter(p=>fs.existsSync(path.join(root,p))).map(p=>fs.readFileSync(path.join(root,p),'utf8')).join('\n');
+  const helpSource=['src/cli-main.ts','src/cli-help.ts'].filter(p=>fs.existsSync(path.join(root,p))).map(p=>fs.readFileSync(path.join(root,p),'utf8')).join('\n');
   const editor=[...helpSource.matchAll(/^  af-clip ([a-z][a-z|-]*)/gm)].flatMap(m=>m[1].split('|'));
   for(const [tool,expected] of [['af-clip',[...new Set(editor)]],['af-lib',Object.keys(commandSchema)]])report.coverage[tool]=expected.map(command=>({command,samples:report.samples.filter(s=>s.tool===tool&&s.command===command).length,status:report.samples.some(s=>s.tool===tool&&s.command===command&&s.ok)?'measured':'not measured'}));
   report.notes.push('GUI opens an interactive window and is reviewed separately, not timed by this noninteractive suite.','FFmpeg export is a processing baseline, not pixel-equivalent HTML composition or identical NVENC rate control. AFClip includes indexing, muxing, full verification and application startup.');save();
