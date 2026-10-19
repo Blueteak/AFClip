@@ -179,9 +179,23 @@ async function main() {
     emit({ type: 'progress', phase: 'verify', progress: .99, message: mode === 'full' ? 'Checking container and decoding every output frame' : 'Checking output streams and timestamps' });
     verification = await verifyOutput({ file: partial, ffprobe, run, mode, expected: { frames: stats.frames, width, height, fps: project.fps.num / project.fps.den, duration: end - begin } });
   }
+  let imageDimensions = {};
+  if (config.kind === 'frame') {
+    const { reviewSize, reviewFilter } = require('../shared/review-image.cjs');
+    const imageSize = reviewSize(config.imageSize);
+    if (imageSize !== 'full') {
+      // Compose at project resolution so pixel-based graphics keep their layout.
+      const original = path.join(work, 'review-original.png');
+      fs.renameSync(partial, original);
+      try { await run('review-image', ffmpeg, ['-v', 'error', '-y', '-i', original, '-vf', reviewFilter(imageSize), '-frames:v', '1', partial]); }
+      finally { fs.rmSync(original, { force: true }); }
+    }
+    const png = fs.readFileSync(partial);
+    imageDimensions = { width: png.readUInt32BE(16), height: png.readUInt32BE(20), imageSize };
+  }
   cancelCheck(); fs.renameSync(partial, config.output); partial = null;
   const wallMs = performance.now() - started;
-  emit({ type: 'complete', output: config.output, kind: config.kind, width, height, frameTime: config.frameTime, duration: end - begin, frames: stats.frames,
+  emit({ type: 'complete', output: config.output, kind: config.kind, width, height, ...imageDimensions, frameTime: config.frameTime, duration: end - begin, frames: stats.frames,
     stats: { ...stats, wallMs, verification, indexCacheHits, indexMs: indexing.reduce((sum, entry) => sum + entry.ms, 0), indexing, audioClips: audio?.clips || 0, sourceDecode: 'software', composition: config.mode, encoder: config.kind === 'frame' ? 'png' : config.mode === 'gpu' ? 'NVENC D3D11' : 'libx264', rawFrameCacheBytes: 0 } });
 }
 function cleanIntermediates() {

@@ -195,6 +195,10 @@ af-clip cancel .cache/my-edit
 af-clip export .cache/my-edit exports/software.mp4 --mode software --wait
 ```
 
+Review PNGs default to a 1024-pixel longest edge, preserving aspect ratio without upscaling. Use `--image-size low` for a 512-pixel coarse check or `--image-size full` for project-resolution text/detail inspection. Composition runs at project resolution before resizing, preserving pixel-based graphic layouts. `--full` controls JSON verbosity only. MP4 exports keep project resolution.
+
+The 1024px default is an AFClip tradeoff, not a universal model threshold. [OpenAI vision guidance](https://developers.openai.com/api/docs/guides/images-vision) ties input tokens to model-specific patches/tiles and detail settings. Smaller dimensions can reduce tokens; JPEG compression alone is not a token budget. API `detail: low` is model-dependent and separate from these physical render sizes. Start with review, then request one full frame when small text or fine detail is unclear. Use the [image input calculator](https://developers.openai.com/api/docs/guides/image-cost-calculator) for a particular model and detail setting.
+
 Without `--wait`, export/frame return a job ID immediately. Status can inspect that ID. `--wait` returns the final job and exits nonzero if it failed or was cancelled. Logs and job records live under `.afclip/jobs/<job-id>/`.
 
 Every render holds the engine's editing lock, including single-frame and short-section renders. Rendering happens in a separate Node worker with Electron/FFmpeg children. A failure releases the lock while preserving committed project state. Cancellation signals the worker, stops its child processes and removes the partial output. Completion renames a temporary output beside the destination, preserving any previous completed output until the new file is ready. Output paths cannot replace imported media or accepted/editable graphic assets.
