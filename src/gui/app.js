@@ -315,7 +315,7 @@ function run(id, via = 'mouse') {
 const editable = () => !!project() && !exportJobId;
 const hasSelection = () => selection.size > 0 || !!selTransition || !!selMarker || selTracks.size > 0 || !!selFolder;
 
-action('newProject', { menu: 'File', group: 0, label: 'New Project…', icon: 'folder', keys: ['Ctrl+N'], desc: 'Create a project folder and open it in a new window.', run: () => perform(() => api.newProject(), result => result ? `Created project: ${result.path}` : 'New project cancelled') });
+action('newProject', { menu: 'File', group: 0, label: 'New Project…', icon: 'folder', keys: ['Ctrl+N'], desc: 'Create a project folder and switch to it.', run: () => perform(() => api.newProject(), result => result ? `Opening project: ${result.path}` : 'New project cancelled') });
 action('import', { menu: 'File', group: 1, label: 'Import media…', icon: 'import', keys: ['Ctrl+I'], desc: 'Add footage, music, sound effects or images. Originals stay where they are.', enabled: editable, run: () => importMedia() });
 action('library', { menu: 'File', group: 1, label: 'Browse content library…', icon: 'folder', keys: ['Ctrl+L'], desc: 'Browse and preview reusable assets and ranges. Edit annotations in the standalone library.', run: () => api.library() });
 action('importGraphic', { menu: 'File', group: 1, label: 'Import HTML asset folder…', icon: 'graphic', keys: ['Ctrl+Shift+I'], desc: 'Add an HTML/CSS/JS graphic. The folder needs an index.html.', enabled: editable, run: () => importMedia('graphic') });
