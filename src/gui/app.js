@@ -140,6 +140,7 @@ let selection = new Set(), selTransition = null, selPoint = null, selMarker = nu
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
+let agents = null;
 const HEAD_W = 176;
 const playback = new window.TimelinePlayback(api, {
   time: time => {
@@ -329,6 +330,8 @@ action('delete', { menu: 'Edit', group: 2, label: 'Delete', icon: 'trash', keys:
 action('rippleDelete', { menu: 'Edit', group: 2, label: 'Ripple delete In/Out range', icon: 'trash', keys: ['Shift+Delete'], desc: 'Remove the marked range across all tracks and close the gap. Out includes its frame. Affected locked tracks block the edit.', enabled: () => editable() && inF != null && outF != null && outF >= inF, run: () => rippleDelete(inF, outF + 1) });
 action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().filter(c => !hiddenTrack(c.trackId)).map(c => c.id)) });
 action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl+Shift+A'], enabled: hasSelection, run: () => select([]) });
+action('agentChat', { menu: 'Edit', group: 'agents', label: 'Agent chat', icon: 'chat', keys: ['A'], desc: 'Open or start an agent chat on the hovered timeline item, track or time. Elsewhere it uses the selection, or the project.', enabled: () => !!project() && !!agents?.available(), run: () => agents.openTarget() });
+action('agentSettings', { menu: 'Edit', group: 'agents', label: 'Agent settings…', icon: 'sliders', desc: 'Provider, model, thinking, access and steering for new agent chats.', enabled: () => !!agents?.available(), run: () => agents.openSettings() });
 
 action('split', { menu: 'Clip', group: 1, label: 'Split at playhead', icon: 'scissors', keys: ['Ctrl+K'], desc: 'Cut the selected clips (or every unlocked clip) under the playhead.', enabled: editable, run: splitAtPlayhead });
 action('dissolve', { menu: 'Clip', group: 1, label: 'Add dissolve', icon: 'dissolve', keys: ['Ctrl+D'], desc: 'Cross-dissolve at the cut nearest the playhead, centered, 1 second or as long as the footage allows.', enabled: editable, run: addDissolve });
@@ -1744,6 +1747,7 @@ function drawPlayhead() {
   if (rr) rr.hidden = !hasRange;
   tr.hidden = !hasRange;
   if (hasRange) { const s = frameX(inF ?? 0), e = frameX((outF ?? lastFrame()) + 1); for (const el of [rr, tr]) if (el) { el.style.left = `${s}px`; el.style.width = `${Math.max(1, e - s)}px`; } }
+  agents?.contextChanged();
 }
 
 // ---------------------------------------------------------------- Inspector
@@ -2102,7 +2106,7 @@ function drawTimeline() {
   }
   if (!p.tracks.length) host.append(h('div', { class: 'tl-empty-note' }, 'Drag media here from the bin, or double-click it to add it at the playhead.'));
   $('tl-empty').style.width = `${HEAD_W + width}px`;
-  drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover();
+  drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover(); agents?.reposition();
 }
 // Keep clip names readable when a clip starts left of the visible area.
 function pinLabels() {
@@ -2874,7 +2878,7 @@ function buildChrome() {
 
 // ---------------------------------------------------------------- Keyboard
 // While the Source monitor is up, transport keys drive the source and timeline keys stay inert.
-const SOURCE_SAFE = new Set(['import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'binGrid', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
+const SOURCE_SAFE = new Set(['agentChat', 'agentSettings', 'import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'binGrid', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
 function sourceShortcut(combo, e) {
   if (combo === 'Enter' && e.target.closest?.('button')) return false;
   const keys = {
@@ -2977,10 +2981,148 @@ document.addEventListener('pointerdown', () => {
   if (graphicTextEdit) playback.native?.finishText();
 }, true);
 
+// ---------------------------------------------------------------- Agent chats
+// Timeline knowledge for agents.js: what is hovered, where an anchor sits now, and what to send as context.
+const AGENT_WORDS = { clip: 'clip', transition: 'transition', marker: 'marker', track: 'track', folder: 'folder' };
+function agentItemLabel({ kind, id }) {
+  if (kind === 'clip') { const c = clipById(id); return c && clipName(c); }
+  if (kind === 'transition') { const t = transitionById(id); return t && (mediaById(t.assetId)?.metadata?.asset?.name || 'Transition'); }
+  if (kind === 'marker') return markerById(id)?.name;
+  if (kind === 'track') return trackById(id)?.name;
+  if (kind === 'folder') return folderById(id)?.name;
+  if (kind === 'project') return project()?.name;
+  return null;
+}
+function agentAnchor(items, extra = {}) {
+  if (!items.length && !extra.kind) items = [{ kind: 'project', id: project().id }];
+  const kind = extra.kind || items[0].kind, first = items[0];
+  const anchor = { kind, items, ...extra };
+  if (first?.kind === 'clip') { const c = clipById(first.id); if (c) Object.assign(anchor, { trackId: c.trackId, time: c.start }); }
+  if (first?.kind === 'transition') { const t = transitionById(first.id), b = t && clipById(t.toClipId); if (t) anchor.trackId = t.trackId; if (b) anchor.time = b.start; }
+  if (first?.kind === 'marker') { const m = markerById(first.id); if (m) anchor.time = m.time; }
+  if (first?.kind === 'track') anchor.trackId = first.id;
+  const time = anchor.time ? ` · ${tc(toF(anchor.time))}` : '';
+  anchor.label = items.length > 1 ? plural(items.length, AGENT_WORDS[kind] || 'item')
+    : first ? agentItemLabel(first) || kind
+    : kind === 'point' && anchor.trackId ? `${trackById(anchor.trackId)?.name || 'Track'}${time}` : `Timeline${time}`;
+  return anchor;
+}
+function agentSelection() {
+  if (selection.size) return [...selection].filter(clipById).map(id => ({ kind: 'clip', id }));
+  if (selTransition && transitionById(selTransition)) return [{ kind: 'transition', id: selTransition }];
+  if (selMarker && markerById(selMarker)) return [{ kind: 'marker', id: selMarker }];
+  if (selTracks.size) return [...selTracks].map(id => ({ kind: 'track', id }));
+  if (selFolder && folderById(selFolder)) return [{ kind: 'folder', id: selFolder }];
+  return [];
+}
+// The hovered timeline thing, or the selection (else the project) when the pointer is elsewhere.
+// A hovered item that belongs to the selection stands for the whole selection.
+function agentTarget() {
+  if (!project()) return null;
+  const el = document.elementFromPoint(pointer.x, pointer.y), scroll = $('tl-scroll');
+  if (!el || !scroll.contains(el)) return agentAnchor(agentSelection());
+  const at = Math.max(0, laneFrame(pointer.x));
+  const clip = el.closest('.clip');
+  if (clip && clipById(clip.dataset.id)) return agentAnchor(selection.has(clip.dataset.id) ? agentSelection() : [{ kind: 'clip', id: clip.dataset.id }]);
+  const xf = el.closest('.xfade');
+  if (xf && transitionById(xf.dataset.id)) return agentAnchor([{ kind: 'transition', id: xf.dataset.id }]);
+  const flag = el.closest('.marker');
+  if (flag?.group) return agentAnchor([{ kind: 'marker', id: (flag.group.find(m => m.id === selMarker) || flag.group[0]).id }]);
+  if (el.closest('.ruler')) return agentAnchor([], { kind: 'point', time: fromF(at) });
+  const row = el.closest('#tracks > .track');
+  if (row?.dataset.folder) return agentAnchor([{ kind: 'folder', id: row.dataset.folder }]);
+  if (row?.dataset.track && el.closest('.track-head')) return agentAnchor(selTracks.has(row.dataset.track) ? agentSelection() : [{ kind: 'track', id: row.dataset.track }]);
+  if (row?.dataset.track) return agentAnchor([], { kind: 'point', trackId: row.dataset.track, time: fromF(at) });
+  return agentAnchor([], { kind: 'timeline', time: fromF(at) });
+}
+// Viewport point for an anchor's chat glyph. `last` is the remembered { trackId, time } once its items are gone.
+function agentLocate(anchor, last) {
+  if (!project() || anchor.kind === 'project') return null;
+  const scroll = $('tl-scroll'), view = scroll.getBoundingClientRect(), lanesLeft = view.left + HEAD_W, top = view.top + 26;
+  const right = view.left + scroll.clientWidth, bottom = view.top + scroll.clientHeight;
+  const laneX = time => $('tracks').getBoundingClientRect().left + HEAD_W + secs(time) * pps;
+  const rulerY = () => $('ruler').getBoundingClientRect().top + 13;
+  const folderRect = id => document.querySelector(`#tracks > .track[data-folder="${CSS.escape(id)}"]`)?.getBoundingClientRect() || null;
+  const rowOf = trackId => {
+    const t = trackById(trackId); if (!t) return null;
+    if (hiddenTrack(t.id)) return folderRect(t.folderId);
+    return document.querySelector(`#tracks > .track[data-track="${CSS.escape(t.id)}"]`)?.getBoundingClientRect() || null;
+  };
+  const inX = x => x >= lanesLeft + 4 && x <= right - 4;
+  const out = (x, y, pos, head = false) => ({ x, y, pos, visible: y >= top + 4 && y <= bottom - 4 && (head || inX(x)) });
+  const onRuler = (x, pos) => ({ x, y: rulerY(), pos, visible: inX(x) });
+  for (const item of anchor.items || []) {
+    if (item.kind === 'clip') {
+      const c = clipById(item.id), r = c && rowOf(c.trackId); if (!r) continue;
+      const s = laneX(c.start), e = laneX(endOf(c));
+      return out(Math.max(s + 10, Math.min(e, right) - 18), r.top + 10, { trackId: c.trackId, time: c.start });
+    }
+    if (item.kind === 'transition') {
+      const t = transitionById(item.id), b = t && clipById(t.toClipId), r = b && rowOf(t.trackId); if (!r) continue;
+      return out(laneX(b.start), r.top + 10, { trackId: t.trackId, time: b.start });
+    }
+    if (item.kind === 'marker') { const m = markerById(item.id); if (m) return onRuler(laneX(m.time) - 14, { time: m.time }); continue; }
+    if (item.kind === 'track' || item.kind === 'folder') {
+      const r = item.kind === 'track' ? rowOf(item.id) : folderRect(item.id); if (!r) continue;
+      return out(lanesLeft, r.top + r.height / 2, item.kind === 'track' ? { trackId: item.id } : {}, true);
+    }
+  }
+  const pos = anchor.items?.length ? last || anchor : anchor;
+  if (pos.time == null && !pos.trackId) return null;
+  const x = laneX(pos.time || ZERO), r = pos.trackId && rowOf(pos.trackId);
+  if (r) return out(x, r.top + r.height / 2, pos);
+  if (anchor.kind === 'timeline' || pos.trackId) { const e = $('tl-empty').getBoundingClientRect(); return out(x, Math.min(e.top + 14, bottom - 10), pos); }
+  return onRuler(x, pos);
+}
+function agentHighlight(items) {
+  for (const el of document.querySelectorAll('.agent-focus')) el.classList.remove('agent-focus');
+  for (const { kind, id } of items || []) {
+    const q = CSS.escape(id);
+    const el = kind === 'clip' ? document.querySelector(`.clip[data-id="${q}"]`) : kind === 'transition' ? document.querySelector(`.xfade[data-id="${q}"]`)
+      : kind === 'track' ? document.querySelector(`#tracks > .track[data-track="${q}"]`) : kind === 'folder' ? document.querySelector(`#tracks > .track[data-folder="${q}"]`)
+      : kind === 'marker' ? [...$('ruler').querySelectorAll('.marker')].find(m => m.group?.some(o => o.id === id)) : null;
+    el?.classList.add('agent-focus');
+  }
+}
+function agentReveal(anchor) {
+  const items = (anchor.items || []).filter(i => i.kind !== 'project' && agentItemLabel(i) != null), kind = items[0]?.kind;
+  if (kind === 'clip') { select(items.map(i => i.id)); seek(Math.min(...items.map(i => startF(clipById(i.id))))); }
+  else if (kind === 'transition') selectTransition(items[0].id);
+  else if (kind === 'marker') { selectMarker(items[0].id); seek(markerF(markerById(items[0].id))); }
+  else if (kind === 'track') selectTracks(items.map(i => i.id));
+  else if (kind === 'folder') selectFolder(items[0].id);
+  else if (anchor.time) seek(toF(anchor.time));
+}
+// Small, exact GUI state captured with every message. Times are project rationals { num, den } in seconds.
+function agentItemContext({ kind, id }) {
+  if (kind === 'clip') { const c = clipById(id); return c && { kind, id, name: clipName(c), trackId: c.trackId, start: c.start, duration: c.duration, mediaId: c.mediaId, ...(c.linkId ? { linkId: c.linkId } : {}) }; }
+  if (kind === 'transition') { const t = transitionById(id); return t && { kind, id, trackId: t.trackId, fromClipId: t.fromClipId, toClipId: t.toClipId, duration: t.duration, alignment: t.alignment }; }
+  if (kind === 'marker') { const m = markerById(id); return m && { kind, id, name: m.name, time: m.time }; }
+  if (kind === 'track') { const t = trackById(id); return t && { kind, id, name: t.name, index: tracks().indexOf(t), ...(t.folderId ? { folderId: t.folderId } : {}) }; }
+  if (kind === 'folder') { const f = folderById(id); return f && { kind, id, name: f.name, trackIds: folderMembers(id).map(t => t.id) }; }
+  if (kind === 'project') return { kind, id, name: project()?.name };
+  return null;
+}
+function agentContext(anchor) {
+  const p = project(); if (!p) return null;
+  const sel = {};
+  if (selection.size) sel.clips = [...selection];
+  if (selTransition) sel.transition = selTransition;
+  if (selMarker) sel.marker = selMarker;
+  if (selTracks.size) sel.tracks = [...selTracks];
+  if (selFolder) sel.folder = selFolder;
+  if (selPoint) sel.volumePoint = { clipId: selPoint.clipId, time: selPoint.time };
+  const context = { capturedAt: new Date().toISOString(), projectId: p.id, projectRevision: p.revision, fps: rate(), playhead: fromF(playF), playheadTimecode: tc(playF), selection: sel };
+  if (inF != null || outF != null) context.range = { in: fromF(inF ?? 0), out: fromF((outF ?? lastFrame()) + 1) };
+  if (anchor) context.anchor = { kind: anchor.kind, label: anchor.label, ...(anchor.trackId ? { trackId: anchor.trackId } : {}), ...(anchor.time ? { time: anchor.time } : {}),
+    items: (anchor.items || []).map(i => agentItemContext(i) || { kind: i.kind, id: i.id, missing: true }) };
+  return context;
+}
+
 // ---------------------------------------------------------------- Events and startup
 window.addEventListener('beforeunload', () => source.clear());
 window.afclipPrepareReload = () => {
-  if (graphicTextEdit || !connected || drag || modal || markerPop || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
+  if (graphicTextEdit || !connected || drag || modal || markerPop || agents?.holdsReload() || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
   return true;
@@ -3000,6 +3142,11 @@ api.onEvent(async event => {
 });
 
 applyLayout(); buildMenubar(); buildChrome(); idleHint();
+agents = window.AFClipAgents?.({
+  api, h, icon, kbd, dialog, closeModal, field, segmented, toast, say, report, explain, hideTip, openMenu,
+  blocked: () => !!modal || !!openMenuState, pointer: () => pointer, project, hasSelection,
+  target: agentTarget, anchor: agentAnchor, label: agentItemLabel, locate: agentLocate, context: agentContext, highlight: agentHighlight, reveal: agentReveal,
+}) || null;
 refresh().then(async () => {
   say('Connected to project');
   if (project().media.some(m => sourceBound(m) && !m.metadata?.library)) {

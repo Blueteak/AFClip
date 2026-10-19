@@ -12,6 +12,14 @@ One background process owns each open project. GUI and CLI send commands through
 
 The process stays alive while a GUI, CLI operation or render needs it, then exits after a short idle period. Sequential CLI calls share ordinary undo history while that process remains alive. Its exit ends the editing session; persistent checkpoints remain available.
 
+### Agent session controller
+
+A detached, authenticated localhost controller per project hosts installed Codex app-server sessions and Claude Code through the Agent SDK. Electron is its client; closing the window does not cancel work. The controller holds an engine event subscription during active work or pending user input. Idle controllers release provider processes after fifteen minutes without a client; persisted provider session IDs support explicit continuation.
+
+Store provider defaults, item/session associations, display transcripts and pasted images in local application storage, outside project files. Providers retain their own authentication and conversation persistence. Model/thinking/access settings are copied into new conversations, while steer/queue is read per message. Native permission requests remain pending until answered, including while the GUI is closed.
+
+The controller invokes the existing CLI for checkpoints and instructs agents to use that CLI for edits. `af-clip agent` exposes context, active discussions and session controls to external agents through the same controller. Timestamp captured GUI context so clients can distinguish it from current engine state. No separate agent editing API or item-scoped permission system is introduced.
+
 The TypeScript choice is provisional until the prototype demonstrates responsive command handling alongside media work. Runtime validation is required for incoming commands and project data; TypeScript types alone do not validate external input.
 
 ### CLI token budget
