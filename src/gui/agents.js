@@ -444,11 +444,15 @@ window.AFClipAgents = host => {
     const g = el?.closest?.('.agent-glyph[data-agent]');
     if (g) { toggle(g.dataset.agent); return; }
     if (pop && pop.el.contains(el)) { pop.textarea.focus(); return; }
-    const anchor = host.target(); if (!anchor) return;
+    openAnchor(host.target(), true);
+  }
+  function openAnchor(anchor, toggleExisting = false) {
+    if (!anchor) return;
+    const p = host.pointer();
     const items = anchor.items || [];
     const holders = conversations.filter(c => itemsOf(c).some(i => items.some(t => sameItem(i, t))));
-    if (!holders.length) { if (pop?.draft && draftKey(pop.draft.anchor) === draftKey(anchor)) close(); else openDraft(anchor); return; }
-    if (holders.length === 1 && items.every(t => itemsOf(holders[0]).some(i => sameItem(i, t)))) { toggle(holders[0].id); return; }
+    if (!holders.length) { if (toggleExisting && pop?.draft && draftKey(pop.draft.anchor) === draftKey(anchor)) close(); else openDraft(anchor); return; }
+    if (holders.length === 1 && items.every(t => itemsOf(holders[0]).some(i => sameItem(i, t)))) { toggleExisting ? toggle(holders[0].id) : open(holders[0].id); return; }
     const free = items.filter(t => !holders.some(c => itemsOf(c).some(i => sameItem(i, t))));
     host.openMenu([
       ...holders.map(c => ({ label: liveLabel(c.anchor), icon: 'chat', run: () => open(c.id) })),
@@ -544,7 +548,7 @@ window.AFClipAgents = host => {
 
   return {
     available: () => true,
-    openTarget, openSettings, reposition, contextChanged,
+    openTarget, openAnchor, openSettings, reposition, contextChanged,
     holdsReload: () => sending || !!(pop && (pop.textarea.value || pop.images.length)),
   };
 };

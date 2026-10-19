@@ -452,6 +452,11 @@ function buildMenubar() {
   }
 }
 function contextMenu(e, items) { e.preventDefault(); hideTip(); openMenu(items, e.clientX, e.clientY); }
+function timelineContextMenu(e, items) {
+  const anchor = agentTarget(e.target, e.clientX, true);
+  contextMenu(e, [...items, '-', { label: 'New Chat', icon: 'chat', keys: ['A'],
+    disabled: !anchor || !agents?.available(), run: () => agents.openAnchor(anchor) }]);
+}
 
 // ---------------------------------------------------------------- Dialogs, palette, shortcuts
 let modal = null;
@@ -2122,7 +2127,7 @@ function trackRow(t, width, f = folderOf(t)) {
   const nameEl = h('span', { class: 'track-name' }, t.name);
   nameEl.tip = { title: t.name, desc: `Track ${trackLabel(t)} of ${tracks().length}${f ? ` in “${f.name}”` : ''}. Higher tracks draw over lower ones; audio from every enabled track is mixed.`, hint: HEAD_HINT };
   const off = !editable(), held = !!f?.locked;
-  const head = h('div', { class: 'track-head', oncontextmenu: e => { if (!selTracks.has(t.id)) selectTracks([t.id]); contextMenu(e, trackMenu(t)); } },
+  const head = h('div', { class: 'track-head', oncontextmenu: e => { if (!selTracks.has(t.id)) selectTracks([t.id]); timelineContextMenu(e, trackMenu(t)); } },
     h('span', { class: 'track-index' }, trackLabel(t)), nameEl,
     h('button', { class: `icon-button ${t.disabled ? 'off' : f?.disabled ? 'inherit' : ''}`, disabled: off || lockedTrack(t.id), onclick: () => toggleTrack(t, 'disabled'),
       tip: { title: t.disabled ? 'Enable track' : 'Disable track', desc: 'Disabling hides the picture and silences the audio. Clips stay editable.', meta: f?.disabled ? `Folder “${f.name}” is disabled` : null } }, icon(t.disabled || f?.disabled ? 'eye-off' : 'eye')),
@@ -2134,7 +2139,7 @@ function trackRow(t, width, f = folderOf(t)) {
   lane.oncontextmenu = e => {
     if (e.target.closest('.clip, .xfade')) return;
     const gap = gapAt(t.id, laneFrame(e.clientX)), revision = project().revision;
-    contextMenu(e, [{ label: 'Ripple delete gap across all tracks', icon: 'trash', disabled: !editable() || !gap,
+    timelineContextMenu(e, [{ label: 'Ripple delete gap across all tracks', icon: 'trash', disabled: !editable() || !gap,
       run: () => gap && rippleDelete(gap.start, gap.end, revision) }, '-', { action: 'paste' }, { action: 'addTrack' }, '-', { action: 'selectAll' }]);
   };
   for (const c of clipsOn(t.id)) lane.append(clipBlock(c, t));
@@ -2144,7 +2149,7 @@ function trackRow(t, width, f = folderOf(t)) {
     const w = d * pps;
     const el = h('div', { class: `xfade ${selTransition === tr.id ? 'selected' : ''}`, dataset: { id: tr.id }, style: { left: `${(secs(b.start) - before) * pps}px`, width: `${Math.max(4, w)}px` } }, w > 18 ? icon('dissolve') : null);
     el.tip = { title: mediaById(tr.assetId)?.metadata.asset?.name||'Transition', follow: true, meta: `Duration ${shortTc(toF(tr.duration))} · ${tr.alignment}`, hint: [{ keys: '#Click', text: 'select' }, { keys: 'Delete', text: 'remove' }] };
-    el.oncontextmenu = e => { selectTransition(tr.id); contextMenu(e, [{ action: 'delete' }]); };
+    el.oncontextmenu = e => { selectTransition(tr.id); timelineContextMenu(e, [{ action: 'delete' }]); };
     lane.append(el);
   }
   const members = f ? folderMembers(f.id) : [];
@@ -2156,7 +2161,7 @@ function folderRow(f, width) {
   const members = folderMembers(f.id), off = !editable();
   const nameEl = h('span', { class: 'track-name' }, f.name);
   nameEl.tip = { title: f.name, desc: `Folder with ${plural(members.length, 'track')}. Its Disable and Lock apply to every track inside and keep their own settings.`, hint: HEAD_HINT };
-  const head = h('div', { class: 'track-head folder-head', oncontextmenu: e => { selectFolder(f.id); contextMenu(e, folderMenu(f)); } },
+  const head = h('div', { class: 'track-head folder-head', oncontextmenu: e => { selectFolder(f.id); timelineContextMenu(e, folderMenu(f)); } },
     h('button', { class: 'icon-button folder-toggle', disabled: off, onclick: () => setCollapsed(f, !f.collapsed), tip: { title: f.collapsed ? 'Expand folder' : 'Collapse folder', keys: 'Ctrl+Shift+F' } }, icon('chevron-down')),
     icon('folder', 'sm folder-glyph'), nameEl, h('span', { class: 'folder-count' }, members.length),
     h('button', { class: `icon-button ${f.disabled ? 'off' : ''}`, disabled: off || f.locked, onclick: () => toggleFolder(f, 'disabled'),
@@ -2180,7 +2185,7 @@ function folderRow(f, width) {
     };
   }
   lane.tip = { title: f.name, desc: f.collapsed ? 'Clip overview. Expand the folder to edit its clips.' : null, hint: f.collapsed ? [{ keys: '#Double-click', text: 'expand' }, { keys: 'Ctrl+Shift+F', text: 'expand' }] : [{ keys: '#Click', text: 'move playhead' }] };
-  lane.oncontextmenu = e => { selectFolder(f.id); contextMenu(e, folderMenu(f)); };
+  lane.oncontextmenu = e => { selectFolder(f.id); timelineContextMenu(e, folderMenu(f)); };
   return h('div', { class: `track folder-row ${f.collapsed ? 'collapsed' : ''} ${f.disabled ? 'disabled' : ''} ${f.locked ? 'locked' : ''} ${selFolder === f.id ? 'selected' : ''}`, dataset: { folder: f.id } }, head, lane);
 }
 function clipBlock(c, t) {
@@ -2202,7 +2207,7 @@ function clipBlock(c, t) {
     meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, audible ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   '), peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”` : null].filter(Boolean).join('\n'),
     hint: locked ? [{ text: blockReason(t.id) }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
       ...(audible ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
-  el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); contextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', peers.length ? { action: 'unlink' } : { action: 'detachAudio' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
+  el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); timelineContextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', peers.length ? { action: 'unlink' } : { action: 'detachAudio' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
 }
 const waveformRequests = new Map();
@@ -2759,10 +2764,10 @@ function markerDrag(e) {
 }
 $('ruler').addEventListener('contextmenu', e => {
   const el = e.target.closest('.marker'), at = Math.max(0, laneFrame(e.clientX));
-  if (!el) { contextMenu(e, [{ label: 'Add marker', icon: 'marker', disabled: !editable(), run: () => addMarker(nextMarkerName(), at) }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
+  if (!el) { timelineContextMenu(e, [{ label: 'Add marker', icon: 'marker', disabled: !editable(), run: () => addMarker(nextMarkerName(), at) }, '-', { action: 'prevMarker' }, { action: 'nextMarker' }]); return; }
   e.preventDefault();
   const g = el.group, m = g.find(x => x.id === selMarker) || g[0];
-  markerPopover(m);
+  timelineContextMenu(e, [{ label: 'Edit marker', icon: 'marker', run: () => markerPopover(m) }]);
 });
 $('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: 'M', text: 'add marker' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
 $('mini-ruler').tip = { title: 'Sequence overview', hint: [{ keys: '#Click', text: 'jump' }, { keys: '#Drag', text: 'scrub' }] };
@@ -3017,11 +3022,10 @@ function agentSelection() {
 }
 // The hovered timeline thing, or the selection (else the project) when the pointer is elsewhere.
 // A hovered item that belongs to the selection stands for the whole selection.
-function agentTarget() {
+function agentTarget(el = document.elementFromPoint(pointer.x, pointer.y), x = pointer.x, timeline = false) {
   if (!project()) return null;
-  const el = document.elementFromPoint(pointer.x, pointer.y), scroll = $('tl-scroll');
-  if (!el || !scroll.contains(el)) return agentAnchor(agentSelection());
-  const at = Math.max(0, laneFrame(pointer.x));
+  if (!el || (!timeline && !$('tl-scroll').contains(el))) return agentAnchor(agentSelection());
+  const at = Math.max(0, laneFrame(x));
   const clip = el.closest('.clip');
   if (clip && clipById(clip.dataset.id)) return agentAnchor(selection.has(clip.dataset.id) ? agentSelection() : [{ kind: 'clip', id: clip.dataset.id }]);
   const xf = el.closest('.xfade');
@@ -3029,7 +3033,7 @@ function agentTarget() {
   const flag = el.closest('.marker');
   if (flag?.group) return agentAnchor([{ kind: 'marker', id: (flag.group.find(m => m.id === selMarker) || flag.group[0]).id }]);
   if (el.closest('.ruler')) return agentAnchor([], { kind: 'point', time: fromF(at) });
-  const row = el.closest('#tracks > .track');
+  const row = el.closest('.track');
   if (row?.dataset.folder) return agentAnchor([{ kind: 'folder', id: row.dataset.folder }]);
   if (row?.dataset.track && el.closest('.track-head')) return agentAnchor(selTracks.has(row.dataset.track) ? agentSelection() : [{ kind: 'track', id: row.dataset.track }]);
   if (row?.dataset.track) return agentAnchor([], { kind: 'point', trackId: row.dataset.track, time: fromF(at) });
