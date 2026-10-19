@@ -138,7 +138,7 @@ let playF = 0, inF = null, outF = null, tool = 'select', pps = 40, fitZoom = tru
 let selTracks = new Set(), selFolder = null;
 let selection = new Set(), selTransition = null, selPoint = null, selMarker = null, binSelection = null, clipboard = null;
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
-let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', finishedExport = null, monitorView = 'frame';
+let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
 const HEAD_W = 176;
 const playback = new window.TimelinePlayback(api, {
@@ -161,7 +161,7 @@ const playback = new window.TimelinePlayback(api, {
   error: error => report(error, 'Preview stopped'),
 });
 function syncPlayButton() {
-  const running = monitorView === 'export' ? !$('export-video').paused : playback.wantsPlay;
+  const running = playback.wantsPlay;
   const button = document.querySelector('#transport-buttons [data-action="play"]');
   const label = running ? 'Pause' : 'Play';
   if (button && button.getAttribute('aria-label') !== label) { button.replaceChildren(icon(running ? 'pause' : 'play')); button.setAttribute('aria-label', label); }
@@ -265,11 +265,13 @@ function resolveTip(target) {
   const spec = typeof target.tip === 'function' ? target.tip() : target.tip;
   if (!spec) return null;
   const a = spec.action ? actions[spec.action] : null;
-  return { title: spec.title || a?.label?.replace(/…$/, ''), desc: spec.desc ?? a?.desc, keys: spec.keys ?? a?.keys?.[0], meta: spec.meta, hint: spec.hint, follow: spec.follow };
+  return { title: spec.title || a?.label?.replace(/…$/, ''), desc: spec.desc ?? a?.desc, keys: spec.keys ?? a?.keys?.[0], meta: spec.meta, hint: spec.hint, follow: spec.follow, compact: spec.compact };
 }
 function showTip(target) {
   const spec = resolveTip(target); if (!spec || !target.isConnected) return;
-  tipEl.replaceChildren(...[h('div', { class: 'tip-title' }, h('span', {}, spec.title), kbd(spec.keys)), spec.desc && h('div', { class: 'tip-desc' }, spec.desc), spec.meta && h('div', { class: 'tip-meta' }, spec.meta)].filter(Boolean));
+  tipEl.classList.toggle('compact', !!spec.compact);
+  const meta = spec.compact && spec.meta ? spec.meta.split('\n').map(line => h('div', { class: 'tip-line' }, line)) : [spec.meta];
+  tipEl.replaceChildren(...[h('div', { class: 'tip-title' }, h('span', {}, spec.title), kbd(spec.keys)), spec.desc && h('div', { class: 'tip-desc' }, spec.desc), spec.meta && h('div', { class: 'tip-meta' }, ...meta)].filter(Boolean));
   tipEl.hidden = false;
   const r = target.getBoundingClientRect(), w = tipEl.offsetWidth, ht = tipEl.offsetHeight;
   const cx = spec.follow || r.width > 240 ? pointer.x : r.left + r.width / 2;
@@ -1267,8 +1269,8 @@ async function onJob(job, { silent = false } = {}) {
   if (seenJobs.has(job.id)) return; seenJobs.add(job.id);
   if (exportJobId === job.id) exportJobId = null;
   if (done && jobOutput(job)) {
-    finishedExport = jobOutput(job); $('export-tab').hidden = false;
-    if (!silent) toast({ kind: 'ok', title: 'Export complete', body: basename(finishedExport), timeout: 12000, actions: [{ label: 'Play', primary: true, run: playExport }, { label: 'Show in folder', run: () => api.showOutput(finishedExport) }] });
+    const output = jobOutput(job);
+    if (!silent) toast({ kind: 'ok', title: 'Export complete', body: basename(output), timeout: 12000, actions: [{ label: 'Show in folder', primary: true, run: () => api.showOutput(output) }] });
   } else if (!silent) {
     const gpu = (jobModes.get(job.id) || prefs.renderMode) === 'gpu' && job.status === 'failed';
     toast({ kind: job.status === 'failed' ? 'error' : 'info', title: job.status === 'failed' ? 'Export failed' : 'Export cancelled', timeout: gpu ? 0 : 8000,
@@ -1315,16 +1317,8 @@ function openExport() {
     } }] });
 }
 function cancelExport() { if (exportJobId) perform(() => api.command({ command: 'cancel', jobId: exportJobId }), 'Cancelling export'); }
-async function playExport() {
-  if (!finishedExport) return;
-  const video = $('export-video');
-  video.src = await api.mediaUrl(finishedExport);
-  setMonitorView('export');
-  video.play().catch(error => say(error.message, 'error'));
-}
 function togglePlay() {
   if (monitorView === 'source') { source.togglePlay(); return; }
-  if (monitorView === 'export' && finishedExport) { const v = $('export-video'); v.paused ? v.play() : v.pause(); return; }
   clearTimeout(frameTimer);
   if (playback.wantsPlay) { playback.pause(); rememberMarks(); }
   else playback.play(secs(fromF(playF)));
@@ -1335,9 +1329,7 @@ function setMonitorView(view) {
   const previous = monitorView;
   monitorView = view;
   for (const t of document.querySelectorAll('.monitor .tab')) t.classList.toggle('active', t.dataset.view === view);
-  const video = $('export-video');
-  if (view !== 'export') video.pause();
-  video.hidden = view !== 'export'; video.controls = view === 'export'; syncPlayButton();
+  syncPlayButton();
   drawMonitor();
   if (previous !== view && (previous === 'source' || view === 'source')) { drawInspector(); idleHint(); }
   // Edits made while browsing sources were not previewed. Bring Program up to date.
@@ -1493,11 +1485,10 @@ function drawMedia() {
     if (thumb.state === 'idle') { thumbTargets.set(thumbEl, thumb); thumbObserver.observe(thumbEl); }
     const row = h('div', { class: `media-row ${m.kind} ${status ? 'missing' : ''} ${used ? '' : 'unused'} ${binSelection === m.id ? 'selected' : ''}`, draggable: 'true', dataset: { id: m.id } },
       thumbEl, h('span', { class: 'media-text' }, h('span', { class: 'name' }, mediaName(m)), h('span', { class: 'meta' }, meta)));
-    row.tip = () => ({ title: mediaName(m), desc: kindLabel(m.kind) + (used ? ` · used in ${used} clip${used > 1 ? 's' : ''}` : ' · not used yet'),
-      meta: [status, selectedRange ? `${link.temporary ? 'Selection' : 'Range'} ${tc(toF(link.start))} → ${tc(toF(link.end))} · saved project timing` : null,
-        data?.tags?.length ? data.tags.join(' · ') : null, data?.notes, data?.parentNotes ? `Source notes: ${data.parentNotes}` : null,
-        data?.takes ? `${data.takes} take${data.takes === 1 ? '' : 's'} in library` : null, link ? `Library ID: ${mediaLibraryId(m)}${link.temporary ? ' · whole source' : ''}` : null,
-        m.metadata?.width ? `${m.metadata.width}×${m.metadata.height}${m.metadata.fps ? ` · ${Math.round(secs(frac(...m.metadata.fps.split('/').map(Number))) * 100) / 100} fps` : ''}` : null, d ? `Source duration ${tc(Math.round(d * fps()))}` : null, m.metadata?.authoringPath || m.path].filter(Boolean).join('\n'),
+    row.tip = () => ({ compact: true, title: mediaName(m), desc: [kindLabel(m.kind), d ? shortTc(Math.round(d * fps())) : null, used ? `${used} clip${used > 1 ? 's' : ''}` : 'Unused'].filter(Boolean).join(' · '),
+      meta: [status, selectedRange ? `${link.temporary ? 'Selection' : 'Range'} ${shortTc(toF(link.start))} → ${shortTc(toF(link.end))}` : null,
+        m.metadata?.width ? `${m.metadata.width}×${m.metadata.height}${m.metadata.fps ? ` · ${Math.round(secs(frac(...m.metadata.fps.split('/').map(Number))) * 100) / 100} fps` : ''}` : null,
+        data?.tags?.length ? data.tags.join(' · ') : null, m.metadata?.authoringPath || m.path].filter(Boolean).join('\n'),
       hint: [{ keys: '#Click', text: 'preview' }, { keys: '#Double-click', text: 'add at playhead' }, { keys: '#Drag', text: 'to timeline' }] });
     row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); openSource(m); };
     row.ondblclick = () => editable() && addMediaAt(m, null, playF);
@@ -1507,7 +1498,7 @@ function drawMedia() {
     if(m.metadata.asset&&m.metadata.asset.role!=='content'){
       row.draggable=false;row.ondragstart=null;
       row.querySelector('.meta').textContent=m.metadata.asset.role;
-      row.tip={title:mediaName(m),desc:'Double-click to apply to the selected '+(m.metadata.asset.role==='transition'?'transition':'clip'),meta:m.metadata.authoringPath||m.path};
+      row.tip={compact:true,title:mediaName(m),desc:'Double-click to apply to the selected '+(m.metadata.asset.role==='transition'?'transition':'clip'),meta:m.metadata.authoringPath||m.path};
       row.onclick=()=>{binSelection=m.id;list.focus();drawMedia();};
       row.ondblclick=()=>editable()&&applyAsset(m);
       row.oncontextmenu=e=>contextMenu(e,[{label:'Apply to selection',disabled:!editable(),run:()=>applyAsset(m)},{label:'Remove from project bin',disabled:!!used||!editable()||m.metadata.builtin==='dissolve',run:()=>edit(()=>({ops:[remove('media',m.id)],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0}}),'Asset removed')}]);
@@ -1692,12 +1683,11 @@ function drawMonitor() {
   const state = $('frame-state');
   state.className = `frame-state ${busy ? 'busy' : stale ? 'stale' : ''}`;
   state.replaceChildren();
-  if (monitorView === 'export') state.append(icon('export'), basename(finishedExport));
-  else if (busy) state.append(icon('render'), playback.busy ? (playback.ready ? 'Seeking' : playback.audioDirty ? 'Updating audio' : 'Preparing preview') : `Rendering ${tc(cur)}`);
+  if (busy) state.append(icon('render'), playback.busy ? (playback.ready ? 'Seeking' : playback.audioDirty ? 'Updating audio' : 'Preparing preview') : `Rendering ${tc(cur)}`);
   else if (playback.wantsPlay) state.append(icon('play'), 'Playing');
   else if (stale) state.append(icon('alert'), shown.f !== cur ? 'Not at playhead' : 'Edited since render', kbd('Enter'));
   else if (shown) state.append(h('span', {}, `Frame ${tc(shown.f)}`));
-  state.tip = monitorView === 'export' ? null : busy ? { title: 'Rendering exact frame', desc: frameJobId ? 'Full-resolution frame from original media.' : 'Preview uses the same composition and timing as export.' } : stale ? { action: 'renderFrame', desc: 'The image shows an earlier frame or project state. Render to update it.' } : null;
+  state.tip = busy ? { title: 'Rendering exact frame', desc: frameJobId ? 'Full-resolution frame from original media.' : 'Preview uses the same composition and timing as export.' } : stale ? { action: 'renderFrame', desc: 'The image shows an earlier frame or project state. Render to update it.' } : null;
   $('stage').classList.toggle('stale', stale && monitorView === 'frame');
   $('stage-busy').hidden = !busy;
   $('preview').hidden = monitorView !== 'frame' || !shown || shown.native;
@@ -2819,12 +2809,11 @@ function buildChrome() {
     ['mark-in','I','Mark source In',()=>source.mark()], ['mark-out','O','Mark source Out',()=>source.mark(true)],
     ['clear','Clear','Clear temporary marks',()=>source.clearMarks()], ['insert','Insert','Insert at timeline playhead',insertMonitoredSource],
   ]) $('source-buttons').append(h('button', {class:'chip-button', dataset:{source:name}, disabled:true, onclick:click, tip:{title}}, label));
-  for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'export' ? playExport() : tab.dataset.view === 'source' ? openSource(mediaById(source.mediaId)) : setMonitorView('frame');
+  for (const tab of document.querySelectorAll('.monitor .tab')) tab.onclick = () => tab.dataset.view === 'source' ? openSource(mediaById(source.mediaId)) : setMonitorView('frame');
   $('source-tab').tip = { title: 'Source monitor', desc: 'Preview bin media and its library annotations without touching the timeline.' };
   // Working on the timeline returns the monitor to Program.
   document.querySelector('.timeline.panel').addEventListener('pointerdown', () => { if (monitorView === 'source') setMonitorView('frame'); }, true);
   document.querySelector('.monitor [data-view="frame"]').tip = { title: 'Program monitor', desc: 'Live timeline preview with audio. Enter renders a full-resolution frame.', keys: 'Enter' };
-  $('export-tab').tip = { title: 'Last export', desc: 'Play the most recent finished MP4.', keys: 'Space' };
   $('search').oninput = drawMedia;
   $('search').tip = { title: 'Search media', desc: 'Filter the bin by file name.' };
   const tcInput = $('timecode');
@@ -2850,7 +2839,6 @@ function buildChrome() {
       s.onpointerup = () => { s.onpointermove = s.onpointerup = null; s.classList.remove('active'); savePrefs(); drawTimeline(); };
     };
   }
-  for (const name of ['play', 'pause', 'ended']) $('export-video').addEventListener(name, syncPlayButton);
   new ResizeObserver(() => { if (fitZoom && project()) drawTimeline(); }).observe($('tl-scroll'));
   let pinFrame = 0;
   $('tl-scroll').addEventListener('scroll', () => { cancelAnimationFrame(pinFrame); pinFrame = requestAnimationFrame(pinLabels); }, { passive: true });

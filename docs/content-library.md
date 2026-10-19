@@ -15,7 +15,7 @@ Node 24 or newer is required. Run `npm ci` and `npm link` from the checkout once
 
 `npm run library:dev` or `af-lib gui --dev` watches the library HTML, CSS and JavaScript plus shared AFClip styles, native preview and timeline code. It reloads after a short debounce and preserves the selected asset, filters, playhead and In/Out marks. Reload waits while annotations are unsaved, a dialog is open, playback is running, a request is in flight or an input has focus. Save your edit and move focus out of the field to apply a pending reload. Main-process, preload and service code still require restarting their processes.
 
-The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. AFClip's library browser uses a separate read-only capability and session; annotation writes through that capability are rejected by the service.
+The browser version uses the local URL returned by `endpoint`. The desktop version adds a native file picker, file drops, reveal in Explorer and original-file drag-out. Keep endpoint tokens local. The library window opened from an AFClip project supports editing and inserting into that project. The separate `readerGui` endpoint remains read-only; annotation writes through that capability are rejected by the service.
 
 ## Workflow
 
@@ -129,7 +129,7 @@ AFClip's normal import registers audio/video and persists library identity, sour
 
 After importing or rescanning relocated files and finishing content verification, use AFClip's **File > Refresh media locations** or `af-clip library-sync PROJECT_DIR`. Sync recovers unavailable project paths from the catalog's verified locations for the same source version and saves the known locations. It preserves clip timing, source IDs and saved range annotations. Existing portable copies stay in place. Changed source versions, deleted assets, different catalogs and unverified or unavailable sources are skipped and reported. Location refresh is saved without adding an editing-history entry, as with identity registration; it requires no active render. Playback and export subsequently use the saved path without querying the library.
 
-Open **File > Browse content library**, or `Ctrl+L`, to browse, preview and add an asset or named range to the project bin. **Edit in library** opens the standalone writer. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
+Open **File > Browse content library**, or `Ctrl+L`, to browse, preview, edit annotations, blocks and takes, and add an asset or named range to the project bin. Existing project media is registered when opening this browser; CLI users can explicitly migrate it:
 
 ```powershell
 af-clip library-sync PROJECT_DIR
@@ -140,13 +140,13 @@ Agents can find clips with `af-lib search --q "impact" --kind audio`, then pass 
 
 AFClip's Media List shows current library names grouped by home folder. Search includes filenames, tags, notes, parent asset context and folder names. Hover a row for tags, notes, take counts and source details. Range rows show the saved selection duration; changed ranges, replaced sources and removed library records are flagged without changing saved project timing or paths. Metadata refreshes every five seconds and when the window gains focus. If the library is unavailable, the list retains its last metadata and project editing remains available. Older projects register audio/video in the background when the editor opens. Images and graphics stay under Project media.
 
-In the Media List, the row tooltip shows the Library ID and the context menu offers **Copy library ID**. Temporary editorial selections offer **Copy source library ID**, since those selections are not saved library ranges. Pasting an ID into Media List search finds matching project items.
+In the Media List, the context menu offers **Copy library ID**. Temporary editorial selections offer **Copy source library ID**, since those selections are not saved library ranges. Pasting an ID into Media List search finds matching project items.
 
 Media rows include cached video thumbnails, image previews or audio waveforms. Selecting a row opens the Source monitor, where playback and seeking are independent of the project timeline. The source view displays full-clip tags and notes, annotation ranges and takes as read-only data. Selecting an annotation seeks to its source time. Imported ranges open at their saved In point. Return to Program to view the edit; double-click or Enter in the Media List still inserts media at the timeline playhead. Graphics continue to preview on the timeline.
 
 Audio source previews in both apps draw channel peaks and RMS levels from cached sample data at the display's pixel density. They preserve stereo channels, including opposite-phase signals. The waveform can seek independently of annotation editing. Library CLI consumers can request the same data with `waveform --id ID`, optionally supplying `--start`, `--duration` and `--bins` from 1 to 32768. Default output covers the whole source with up to 16384 bins per channel. Each channel has signed `min`/`max` and `rms` arrays; any visual gain in the viewer does not change the audio samples or playback volume.
 
-The read-only browser also allows temporary In/Out marks, which are inserted without creating library annotations. CLI callers use `library-import PROJECT ASSET --selection '{"revision":N,"sourceId":"SOURCE_ID","startSample":0,"endSample":22050}'`, or `startFrame`/`endFrame` for prepared video. The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
+The project-linked library browser also allows temporary In/Out marks, which are inserted without creating library annotations. CLI callers use `library-import PROJECT ASSET --selection '{"revision":N,"sourceId":"SOURCE_ID","startSample":0,"endSample":22050}'`, or `startFrame`/`endFrame` for prepared video. The selected range's exact source timing and revision are saved in media provenance. Timeline insertion fits that selection to the project's frame grid; subsequent library range edits do not change existing clips. Existing project playback/export uses its saved original paths without contacting the library. Images and graphics remain project-owned.
 
 ## Source monitor and CLI integration
 

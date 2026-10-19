@@ -143,9 +143,10 @@ window.AssetRuntime = class AssetRuntime {
         // An effect can make an opaque source fully transparent. Never expose
         // that source while its first processed frame is still in flight.
         entry.layer.style.visibility=item?.effects?.length?'hidden':'';
-        // Only compose may reveal an effect output. Re-entering a clip or
-        // seeking within it must not resurrect pixels from an earlier time.
-        if(entry.effectOutput&&(!item?.effects?.length||seeking||!this.previousItems?.has(id)))entry.effectOutput.hidden=true;
+        // Retain a completed frame during scrubbing, but never resurrect it on
+        // re-entry or at the start of a reveal that should begin transparent.
+        // The unprocessed source stays hidden until compose produces output.
+        if(entry.effectOutput&&(!item?.effects?.length||!this.previousItems?.has(id)||(seeking&&item.progress<=0)))entry.effectOutput.hidden=true;
       }
     }
     this.previousItems=active;

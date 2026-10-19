@@ -133,6 +133,14 @@ ready, including entry by backward scrubbing. After a source seek, playback
 allows time to recover and uses temporary rate correction instead of immediately
 seeking again for the accumulated clock error.
 
+Scrubbing through HTML content, effects or transitions finishes the current
+render and keeps only the newest waiting position. Completed graphics and effect
+frames remain visible between updates within a clip. Entering a clip or seeking
+to its start still hides previous output until the requested frame is ready;
+the unprocessed source of an effect stays hidden so transparent reveals do not
+flash opaque. Release settles on the selected frame. Heavy effects can reduce
+scrub update frequency without continually cancelling every frame.
+
 Simple setups and a few lightweight effects target 1080p60. Arbitrary custom
 JavaScript can exceed that budget. Playback bounds work by dropping superseded
 requests; exact rendering waits for each requested frame. General effect-output

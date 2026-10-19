@@ -101,6 +101,7 @@ module.exports = function sourceMedia({ projectDir, inspect, libraryEndpoint, gr
             ranges: ranges.map(range => ({ id: range.id, revision: range.revision, sourceId: range.sourceId, boundaries: range.boundaries, exactStart: range.start, exactEnd: range.end, name: range.name, start: seconds(range.start), end: seconds(range.end),
               tags: names(range.tags), notes: range.notes || '', trackId: range.trackId || 'annotations' })),
             takes: asset.takes || [],
+            blocks: asset.blocks || [],
           };
           result.name = link?.rangeId || link?.temporary ? link.name || asset.name : asset.name;
           if (asset.availability === 'available') {
