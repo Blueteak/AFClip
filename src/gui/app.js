@@ -123,7 +123,7 @@ const withLinked = list => { const out = new Map(list.map(c => [c.id, c])); for 
 
 // ---------------------------------------------------------------- Preferences
 const prefs = (() => {
-  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', welcomed: false, tips: {}, marks: {} };
+  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', binView: 'grid', welcomed: false, tips: {}, marks: {} };
   try { return { ...defaults, ...JSON.parse(localStorage.getItem('afclip.ui') || '{}') }; } catch { return defaults; }
 })();
 const savePrefs = () => localStorage.setItem('afclip.ui', JSON.stringify(prefs));
@@ -380,6 +380,7 @@ action('taller', { menu: 'View', group: 2, label: 'Taller tracks', keys: ['Ctrl+
 action('shorter', { menu: 'View', group: 2, label: 'Shorter tracks', keys: ['Ctrl+-'], run: () => trackHeight(-10) });
 action('autoRender', { menu: 'View', group: 3, label: 'Update preview after edits', desc: 'Refresh the program monitor when GUI or CLI edits change the project.', checked: () => prefs.autoRender, run: () => { prefs.autoRender = !prefs.autoRender; savePrefs(); syncChrome(); if (prefs.autoRender) requestFrame(0); } });
 action('softwareRender', { menu: 'View', group: 3, label: 'Use software rendering', icon: 'chip', desc: 'Software preview decoding and CPU exports. Use it when the GPU path is unavailable.', checked: () => prefs.renderMode === 'software', run: () => setRenderMode(prefs.renderMode === 'gpu' ? 'software' : 'gpu') });
+action('binGrid', { menu: 'View', group: 4, label: 'Media bin as grid', icon: 'grid', keys: ['Ctrl+B'], desc: 'Switch the media bin between thumbnail grid and list.', checked: () => prefs.binView === 'grid', run: () => setBinView(prefs.binView === 'grid' ? 'list' : 'grid') });
 action('resetLayout', { menu: 'View', group: 4, label: 'Reset panel layout', run: () => { Object.assign(prefs, { leftW: 250, rightW: 290, tlH: 330, trackH: 50 }); savePrefs(); applyLayout(); fitZoom = true; drawTimeline(); } });
 action('palette', { menu: 'Help', group: 1, label: 'Search commands…', icon: 'command', keys: ['Ctrl+Space'], desc: 'Find any action by name and see its shortcut.', run: () => openPalette() });
 action('shortcuts', { menu: 'Help', group: 1, label: 'Keyboard shortcuts', icon: 'keyboard', keys: ['?', 'Ctrl+/'], run: () => openShortcuts() });
@@ -1464,6 +1465,9 @@ function drawMedia() {
   for(const c of clips())for(const effect of c.effects||[])usage.set(effect.assetId,(usage.get(effect.assetId)||0)+1);
   const visible = filteredMedia();
   $('media-count').textContent = query ? `${visible.length}/${media.length}` : media.length || '';
+  const grid = prefs.binView === 'grid';
+  list.classList.toggle('grid', grid);
+  for (const b of $('bin-view').children) b.classList.toggle('on', b.dataset.view === prefs.binView);
   const scrollTop = list.scrollTop;
   thumbObserver.disconnect();
   list.replaceChildren();
@@ -1509,10 +1513,33 @@ function drawMedia() {
   else if (!visible.length) list.append(h('div', { class: 'empty-note' }, 'Nothing matches that search.'));
   list.scrollTop = scrollTop;
 }
+function setBinView(view) {
+  if (prefs.binView === view) return;
+  prefs.binView = view; savePrefs(); drawMedia(); syncChrome();
+  $('media-list').querySelector('.selected')?.scrollIntoView({ block: 'nearest' });
+}
+// Grid Up/Down picks the nearest card in the adjacent visual row, so folder breaks and
+// short rows behave like the eye expects.
+function gridStep(i, dir) {
+  const rows = [...$('media-list').querySelectorAll('.media-row')], at = rows[i]?.getBoundingClientRect();
+  if (!at) return 0;
+  const x = at.left + at.width / 2;
+  let best = null, bestY = Infinity, bestX = Infinity;
+  rows.forEach((el, j) => {
+    const r = el.getBoundingClientRect(), dy = (r.top - at.top) * dir;
+    if (dy < 1) return;
+    const dx = Math.abs(r.left + r.width / 2 - x);
+    if (dy < bestY - 1 || (Math.abs(dy - bestY) <= 1 && dx < bestX)) { best = j; bestY = dy; bestX = dx; }
+  });
+  return best ?? i;
+}
 $('media-list').addEventListener('keydown', e => {
-  const media = filteredMedia(), i = media.findIndex(m => m.id === binSelection);
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    binSelection = media[Math.max(0, Math.min(media.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))]?.id; drawMedia(); $('media-list').querySelector('.selected')?.scrollIntoView({ block: 'nearest' }); e.preventDefault(); e.stopPropagation();
+  const media = filteredMedia(), i = media.findIndex(m => m.id === binSelection), grid = prefs.binView === 'grid';
+  const vertical = e.key === 'ArrowDown' || e.key === 'ArrowUp', horizontal = grid && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
+  if (vertical || horizontal) {
+    const dir = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : -1;
+    const next = i < 0 ? 0 : grid && vertical ? gridStep(i, dir) : i + dir;
+    binSelection = media[Math.max(0, Math.min(media.length - 1, next))]?.id; drawMedia(); $('media-list').querySelector('.selected')?.scrollIntoView({ block: 'nearest' }); e.preventDefault(); e.stopPropagation();
     // Held arrows settle before a source loads.
     clearTimeout(sourceTimer); sourceTimer = setTimeout(() => openSource(mediaById(binSelection)), 90);
   }
@@ -2797,6 +2824,7 @@ function buildChrome() {
   $('command-center').onclick = () => run('palette', 'key');
   $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Space', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });
   $('mode-chip').onclick = () => run('softwareRender');
+  for (const b of $('bin-view').children) { b.onclick = () => setBinView(b.dataset.view); b.tip = { title: b.dataset.view === 'grid' ? 'Grid view' : 'List view', keys: 'Ctrl+B' }; }
   for (const tab of document.querySelectorAll('.bin .tab')) tab.onclick = () => showTab(tab.dataset.tab);
   document.querySelector('.bin [data-tab="media"]').tip = { title: 'Media bin', desc: 'Imported footage, audio, images and graphics. Originals stay where they are.' };
   document.querySelector('.bin [data-tab="history"]').tip = { title: 'History', desc: 'Shared undo/redo and restorable checkpoints.' };
@@ -2846,7 +2874,7 @@ function buildChrome() {
 
 // ---------------------------------------------------------------- Keyboard
 // While the Source monitor is up, transport keys drive the source and timeline keys stay inert.
-const SOURCE_SAFE = new Set(['import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
+const SOURCE_SAFE = new Set(['import', 'importGraphic', 'library', 'export', 'checkpoint', 'showHistory', 'save', 'palette', 'shortcuts', 'welcome', 'binGrid', 'zoomIn', 'zoomOut', 'zoomFit', 'taller', 'shorter']);
 function sourceShortcut(combo, e) {
   if (combo === 'Enter' && e.target.closest?.('button')) return false;
   const keys = {
