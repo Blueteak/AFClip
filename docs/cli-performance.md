@@ -24,9 +24,29 @@ Library `--wait` now polls after 25 ms initially, doubling up to 500 ms for long
 
 Warm project inspection took about 91 ms including Node startup; cold engine startup plus inspection took 203 ms. Marker changes, undo and redo took 90–97 ms. Project import took 257 ms. Library search took 89 ms on the small fixture catalog. A 30-second stereo waveform took 309 ms cold and 88 ms from memory. A full-resolution PNG took 1.1 seconds through the CLI. These measurements do not establish large-project or million-item catalog performance.
 
+## Follow-up: repeated and skipped source frames
+
+The renderer now retains a clip's uploaded source pixels when the selected source frame has not changed. It still evaluates transforms, fades, graphics and effects on every output frame. A restarted decoder always uploads its first frame, and leaving a clip releases its canvas as before. Sped-up footage still consumes every decoded frame for exact positioning, but intermediate pictures are no longer copied into the reusable RGBA buffer.
+
+Three two-second exports per case, using the same 4K60 source, a 1080p60 output, translation, rotation and scaling, with Node 24.19.0 on both sides:
+
+- Quarter-speed footage: median **41.94 → 63.10 fps**, up 50%. Source uploads fell from 120 to 30; 90 output frames reused the existing pixels. Median CLI time fell from 3.64 to 2.61 seconds.
+- Still image: **53.12 → 130.41 fps**, 2.46× throughput. One upload serves all 120 output frames. Median CLI time fell from 3.14 to 1.62 seconds.
+- Four-times speed: **16.11 → 16.20 fps**, no meaningful throughput improvement. Skipping buffer copies does not avoid decoding, RGBA conversion or pipe transfer for intermediate frames.
+
+All nine MP4 comparisons are byte-for-byte identical and passed full decoded-frame verification. The separate committed speed benchmark also completed successfully. A separate slow-motion dissolve with a blur effect also produced identical output with reuse enabled, reducing source uploads from 120 to 32. These are short export workloads, not a sustained GUI playback claim. [Follow-up measurements](cli-frame-reuse-performance.json) include individual samples and output hashes. Reproduce with `benchmarks/cli/speeds.cjs`; local artifacts are under `.cache/cli-followup/`.
+
+## HTML transition export handoff
+
+After integrating the newer HTML asset renderer, repeated dissolve exports differed even with the performance changes disabled. The asset iframe acknowledged its JavaScript render before its compositor paint was guaranteed to reach the parent document. A parent frame token therefore could not establish that the transition image belonged to that frame.
+
+Exact exports and PNG renders now request the transition bitmap and draw it beside the frame token in the parent compositor. Arbitrary DOM transitions use the existing raster fallback. Interactive native playback retains its existing presentation path. Transition canvases are hidden when inactive and released when the asset runtime closes.
+
+Two repeated full-verification dissolve exports and two PNG renders at the cut now match byte-for-byte. This correctness fix adds bitmap work: that control measured 13.88–13.95 fps, versus 14.55–14.76 fps through the unfenced iframe path. The Mac fixture builder also now preserves built-in assets and creates transitions using the current asset schema.
+
 ## Limits and reproduction
 
-Software export is still below real time, especially across dissolves. Automatic decoder threading does not remove full-resolution RGBA transfer, CPU canvas composition, Chromium readback or x264 encoding. The Mac shared-texture/VideoToolbox export backend is still absent. These fixes do not establish a hardware-limit throughput ceiling or resolve the previously reported intermittent GUI playback stalls.
+Full-motion software export is still below real time, especially across dissolves. Automatic decoder threading does not remove full-resolution RGBA transfer, CPU canvas composition, Chromium readback or x264 encoding. The Mac shared-texture/VideoToolbox export backend is still absent. These fixes do not establish a hardware-limit throughput ceiling or resolve the previously reported intermittent GUI playback stalls.
 
 The paired export comparison used the shell's native ARM Node 22.22.1 for both sides, with Electron 44.8.0 doing the rendering. Library comparisons used the required Node 24.19.0. A complete additional run uses Node 24.19.0 for the committed benchmark. Do not compare process startup times across Node versions as an optimization claim.
 

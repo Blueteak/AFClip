@@ -15,7 +15,7 @@ const sources = await Promise.all(inputs.map(file => inspectMedia(file)));
 for (const m of sources) if (m.kind !== 'video' || m.duration.num/m.duration.den < 19) throw new Error('Sources must contain at least 19 seconds of video');
 const root = path.resolve(import.meta.dirname, '../..');
 const titles = ['opening','closing'].map(name=>importGraphic(dir,path.join(root,'examples/vellum-first-edit/graphics',name)));
-project.media = [...sources,...titles];
+project.media = [...project.media,...sources,...titles];
 project.tracks = ['footage','titles'].map(id=>({id,revision:0,name:id,disabled:false,locked:false}));
 const t = (seconds:number) => ({num:Math.round(seconds*60),den:60});
 function clip(id:string, trackId:string, mediaId:string, start:number, duration:number, sourceIn:number) {
@@ -24,7 +24,8 @@ function clip(id:string, trackId:string, mediaId:string, start:number, duration:
 project.clips = Array.from({length:8},(_,i)=>clip('shot_'+(i+1),'footage',sources[i%sources.length].id,i*8,8,i<sources.length?1:10));
 project.clips[0].fadeIn=t(.6); project.clips[7].fadeOut=t(1.2);
 project.clips.push(clip('opening_title','titles',titles[0].id,0,8,0),clip('closing_title','titles',titles[1].id,58,6,0));
-project.transitions=Array.from({length:7},(_,i)=>({id:'dissolve_'+(i+1),revision:0,trackId:'footage',fromClipId:'shot_'+(i+1),toClipId:'shot_'+(i+2),duration:t(1),alignment:'center'}));
+const dissolve = project.media.find((m:any)=>m.metadata.builtin==='dissolve');
+project.transitions=Array.from({length:7},(_,i)=>({id:'dissolve_'+(i+1),revision:0,trackId:'footage',fromClipId:'shot_'+(i+1),toClipId:'shot_'+(i+2),duration:t(1),alignment:'center',assetId:dissolve.id,params:{},seed:i,audio:'crossfade'}));
 validateProject(project);
 fs.writeFileSync(path.join(dir,'project.json'),JSON.stringify(project,null,2));
 console.log(dir);
