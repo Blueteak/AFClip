@@ -345,7 +345,14 @@ kbd, .kbd {
 .marker-name b { font-weight: 500; color: var(--text-3); }
 .marker:hover .marker-name { color: var(--text); }
 .marker.beyond { opacity: .6; }
-.marker.selected { color: #f2f5fa; opacity: 1; z-index: 3; }
+.marker.selected { opacity: 1; z-index: 3; filter: brightness(1.25); }
+.marker[data-color="cyan"], .marker-color[data-color="cyan"] { color: #4cc3d9; }
+.marker[data-color="blue"], .marker-color[data-color="blue"] { color: #4f9dff; }
+.marker[data-color="purple"], .marker-color[data-color="purple"] { color: #a57ee8; }
+.marker[data-color="pink"], .marker-color[data-color="pink"] { color: #e57ab5; }
+.marker[data-color="red"], .marker-color[data-color="red"] { color: #ff6b6b; }
+.marker[data-color="orange"], .marker-color[data-color="orange"] { color: #f08c4a; }
+.marker[data-color="yellow"], .marker-color[data-color="yellow"] { color: #e9c84c; }
 .marker.selected .marker-name { color: var(--text); background: #2a2d33; }
 .marker.dragging { cursor: grabbing; }
 .marker-line { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed rgba(242, 245, 250, .4); }
@@ -355,7 +362,15 @@ kbd, .kbd {
 .marker-popover .popover-heading { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-2); border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; }
 .marker-popover .popover-heading input { flex: 1; min-width: 0; height: 26px; padding: 4px 6px; font-weight: 600; background: var(--bg-0); border: 1px solid var(--line-2); border-radius: 4px; color: var(--text); }
 .marker-popover .popover-heading input:focus { border-color: var(--accent); }
-.marker-popover .popover-body { padding: 12px; }
+.marker-popover .popover-body { padding: 12px; display: grid; gap: 12px; }
+.marker-colors { display: flex; justify-content: space-between; }
+.marker-color { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; color: var(--marker); }
+.marker-color::before { content: ""; width: 12px; height: 15px; background: currentColor; clip-path: polygon(0 0, 100% 0, 100% 58%, 50% 100%, 0 58%); opacity: .75; }
+.marker-color:hover:not(:disabled)::before, .marker-color.active::before { opacity: 1; }
+.marker-color:hover:not(:disabled) { background: var(--bg-3); }
+.marker-color.active { background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+.marker-color:focus-visible { outline: 1px solid var(--accent); outline-offset: 0; }
+.marker-color:disabled { cursor: default; opacity: .5; }
 .marker-popover .field { padding: 0; grid-template-columns: 48px 1fr; }
 .marker-popover .field input { background: var(--bg-0); border-color: var(--line-2); }
 .marker-popover .popover-actions { display: flex; align-items: center; padding: 8px 12px; background: var(--bg-2); border-top: 1px solid var(--line); border-radius: 0 0 4px 4px; }
