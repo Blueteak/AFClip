@@ -45,7 +45,12 @@ export class Operations {
     if(c.collection){this.db.get(c.collection,'collection');clauses.push('i.id IN (SELECT id FROM search_members WHERE collection=?)');params.push(c.collection);}
     if(c.minDuration!==undefined){clauses.push('i.duration>=?');params.push(Number(c.minDuration));}
     if(c.maxDuration!==undefined){clauses.push('i.duration<=?');params.push(Number(c.maxDuration));}
-    const rows=this.db.db.prepare(`SELECT i.id FROM ${textSearch?'search_text JOIN search_items i ON i.rowid=search_text.rowid':'search_items i'} WHERE ${clauses.join(' AND ')} ORDER BY ${textSearch?'search_text.rowid':'i.name,i.id'} LIMIT ? OFFSET ?`).all(...params,limit+1,offset) as any[];
+    const matches=`FROM ${textSearch?'search_text JOIN search_items i ON i.rowid=search_text.rowid':'search_items i'} WHERE ${clauses.join(' AND ')}`;
+    // Group before pagination so matching annotations neither duplicate clips nor consume page slots.
+    const query=c.groupByAsset
+      ? `SELECT a.id FROM search_items a WHERE a.type='asset' AND a.id IN (SELECT i.assetId ${matches}) ORDER BY a.name,a.id LIMIT ? OFFSET ?`
+      : `SELECT i.id ${matches} ORDER BY ${textSearch?'search_text.rowid':'i.name,i.id'} LIMIT ? OFFSET ?`;
+    const rows=this.db.db.prepare(query).all(...params,limit+1,offset) as any[];
     const more=rows.length>limit;return {libraryId:this.db.meta('id'),revision:this.db.meta('revision'),items:rows.slice(0,limit).map(r=>c.compact?this.summary(r.id):this.inspect(r.id,{relationships:false})),offset,nextOffset:more?offset+limit:null,complete:!more,elapsedMs:performance.now()-start};
   }
   relationships(id:string,options:any={}) {
