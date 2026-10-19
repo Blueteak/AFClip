@@ -36,6 +36,8 @@ The GUI is a keyboard-first dark editor modeled on Premiere and Resolve conventi
 
 Transitions now reference editable HTML/CSS/JS assets. The inspector exposes asset parameters and independent audio settings; clips support ordered effects through the same runtime. See [HTML assets](docs/html-assets.md) for authoring, timing rules and the Sample validation commands. Existing transition records intentionally require replacement.
 
+Use **File > Collect project…** or `af-clip collect <project-dir> <new-folder>` to copy an edit, all bin sources and HTML assets into a portable folder. The source project stays unchanged.
+
 Relink moved or replacement footage, audio and images from the project bin context menu or `af-clip relink`. Cuts and clip settings survive, and undo restores the old file reference.
 
 Exports use fast container and timestamp verification by default. Choose **Thorough** verification in the Export dialog or pass `--verify full` to also decode and count the output frames.

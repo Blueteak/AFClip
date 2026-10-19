@@ -56,7 +56,7 @@ async function request(route, payload) {
     method: payload ? 'POST' : 'GET',
     headers: { Authorization: `Bearer ${endpoint.token}`, ...(payload ? { 'Content-Type': 'application/json' } : {}) },
     body: payload ? JSON.stringify(payload) : undefined,
-    signal: AbortSignal.timeout(30000),
+    signal: payload?.command === 'collect' ? undefined : AbortSignal.timeout(30000),
   });
   const reply = await response.json();
   if (!reply.ok) throw new Error(`${reply.error?.code || 'Command failed'}: ${reply.error?.message || response.statusText}`);
@@ -235,6 +235,11 @@ app.whenReady().then(async () => {
   handle('command', payload => {
     if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
+  });
+  handle('collect', async revision => {
+    const selected = await dialog.showSaveDialog(window, {title:'Collect project folder', buttonLabel:'Collect', defaultPath:path.join(path.dirname(projectDir), path.basename(projectDir)+'-collected')});
+    if (selected.canceled) return null;
+    return request('/command', {command:'collect', output:selected.filePath, revision});
   });
   handle('relink', async (id, revision) => {
     const {project} = await request('/inspect');

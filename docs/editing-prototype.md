@@ -215,7 +215,21 @@ af-clip relink path/to/project media_id path/to/replacement.mp4
 
 Relinking keeps the media ID, cuts, clip settings and transitions. The replacement must have the same media kind and, for video, the same presence of audio. Its duration must cover existing cuts, volume points and transition handles. Locked tracks and active renders block the operation. Undo restores the old reference without moving or deleting files. Agents can pass `--revision N` to reject changes since their inspection.
 
-Audio/video replacements register with the Content Library. Saved range annotations remain attached only when the library confirms the same asset and source; otherwise the bin item references the replacement's whole source. Existing timeline cuts stay unchanged. HTML assets use their existing authoring/reload workflow. Bulk folder relinking and Collect project remain open.
+Audio/video replacements register with the Content Library. Saved range annotations remain attached only when the library confirms the same asset and source; otherwise the bin item references the replacement's whole source. Existing timeline cuts stay unchanged. HTML assets use their existing authoring/reload workflow. Bulk folder relinking remains open.
+
+## Collect project
+
+Use **File > Collect project…** or `Ctrl+Alt+S`, or run:
+
+```powershell
+af-clip collect path/to/project path/to/new-folder
+```
+
+Choose a new folder outside the original project, with an existing parent directory. Collection copies the saved project, every bin source including unused media, and complete accepted HTML asset folders with their fonts, scripts and styles. Repeated references to one source file share one copied file. Editable graphic folders start from the accepted versions. Unsaved external authoring changes, undo history, checkpoints, caches and render outputs are excluded.
+
+The copy has its own project ID and relative media paths. Move the whole folder, then open or export it normally. Saved Content Library identities remain as provenance; playback and export use the copied originals and do not require that catalog. The source project stays unchanged. Collection captures one committed revision; later edits do not enter that copy. Pass `--revision N` to require a previously inspected revision.
+
+Existing destinations are never merged or overwritten. Missing sources fail collection. If a copy fails, its new folder is removed; `project.json` is written only after all files finish copying. An interrupted process can leave an incomplete folder without a manifest. Remove that incomplete folder or choose another destination before retrying.
 
 ## Graphic assets and history
 
@@ -267,7 +281,7 @@ A disposable project verified field discovery, per-clip persistence, checkpoint 
 
 `af-clip endpoint <project-dir>` returns the local `/v1` HTTP endpoint and bearer token. The GUI keeps that token in its main process. `GET /inspect`, `POST /command` and `GET /events` share engine state; SSE emits `hello`, `change` and `job` events. The engine binds only to `127.0.0.1` and rejects browser origins. Keep the token local.
 
-`project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.afclip/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. The project folder currently references source media and is not a Collect-project bundle.
+`project.json` is the readable authoritative manifest. Accepted changes save by writing and flushing a temporary file, then renaming it over the manifest. Do not edit the manifest directly while its engine is running. `.afclip/` contains daemon coordination, accepted graphic versions, bounded checkpoints, render jobs and logs. Normal projects reference source media; Collect project creates a separate portable copy.
 
 ## Manual validation and remaining scope
 
@@ -275,7 +289,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: video barcodes, project collection and bulk relinking, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: video barcodes, bulk relinking, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 
