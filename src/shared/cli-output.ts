@@ -19,7 +19,9 @@ export function projectChanges(before:any,after:any):any {
    const deleted=old.filter((o:any)=>!ids.has(o.id)).map((o:any)=>o.id);
    if(deleted.length)removed[key]=deleted;
    // Collection order is information too, especially track compositing order.
-   if(!same(old.map((o:any)=>o.id),next.map((o:any)=>o.id)))order[key]=next.map((o:any)=>o.id);
+   // Removals and appended additions are already implied by removed/changes.
+   const kept=old.map((o:any)=>o.id).filter((id:string)=>ids.has(id)),nextIds=next.map((o:any)=>o.id);
+   if(!same(kept,nextIds.slice(0,kept.length)))order[key]=nextIds;
   }else if(!same(before.project[key],project[key])){
    if(key in project)(changes.project??={})[key]=project[key];
    else (removed.project??=[]).push(key);
@@ -41,9 +43,16 @@ export function compactResult(value:any):any {
  const empty=(...keys:string[])=>{for(const key of keys){omit(key,[]);omit(key,{});}};
  if(value.metadata&&(value.kind||value.recordType==='source')){
   const {streams,format,...metadata}=value.metadata;
-  if(Array.isArray(streams))metadata.streams=streams.map((s:any)=>Object.fromEntries(
-   ['index','codec_type','codec_name','profile','field_order','width','height','pix_fmt','sample_fmt','sample_rate','channels','channel_layout','time_base','avg_frame_rate','r_frame_rate','duration','start_time','nb_frames','color_space','color_transfer','color_primaries','color_range','disposition','tags','side_data_list']
-    .filter(key=>s[key]!==undefined).map(key=>[key,s[key]])));
+  // Stills have no frame timing; only set disposition flags carry information.
+  const still=value.kind==='image';
+  if(still&&metadata.fps==='0/0')delete metadata.fps;
+  if(Array.isArray(streams))metadata.streams=streams.map((s:any)=>{
+   const stream:any=Object.fromEntries(
+    ['index','codec_type','codec_name','profile','field_order','width','height','pix_fmt','sample_fmt','sample_rate','channels','channel_layout',...(still?[]:['time_base','avg_frame_rate','r_frame_rate']),'duration','start_time','nb_frames','color_space','color_transfer','color_primaries','color_range','disposition','tags','side_data_list']
+     .filter(key=>s[key]!==undefined).map(key=>[key,s[key]]));
+   if(stream.disposition){const flags=Object.fromEntries(Object.entries(stream.disposition).filter(([,v])=>v));if(Object.keys(flags).length)stream.disposition=flags;else delete stream.disposition;}
+   return stream;
+  });
   if(format)metadata.format=Object.fromEntries(['format_name','duration','start_time','size','bit_rate','tags'].filter(key=>format[key]!==undefined).map(key=>[key,format[key]]));
   out.metadata=metadata;
  }
@@ -64,6 +73,12 @@ export function compactResult(value:any):any {
   if(value.pts.length)out.timing={first:value.pts[0],last:value.pts.at(-1)};
  }
  if(value.revisions&&(value.project||value.baseRevision!==undefined)){omit('renderLock',null);}
+ // Import results name the new media; don't repeat it under changes.
+ if(value.media?.id&&Array.isArray(value.changes?.media)){
+  const media=value.changes.media.filter((m:any)=>JSON.stringify(m)!==JSON.stringify(value.media)),{media:_,...changes}=value.changes;
+  out.changes=media.length?{...changes,media}:changes;
+  if(!Object.keys(out.changes).length)delete out.changes;
+ }
  if(value.trackId&&value.mediaId){
   omit('volume',1);omit('mute',false);omit('speed',{num:1,den:1});
   for(const key of ['sourceIn','fadeIn','fadeOut'])omit(key,{num:0,den:1});

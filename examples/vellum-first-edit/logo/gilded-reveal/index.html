@@ -1,0 +1,60 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:transparent}canvas{position:absolute;inset:0;width:100%;height:100%}</style>
+<canvas id="output"></canvas><script>
+// Angled wipe with a hot gold leading edge, blur-to-sharp settle, then a glint sweep.
+// Light is the layer's own pixels, gold-tinted and added, so dark ink stays dark.
+const out = document.getElementById('output'), layer = new OffscreenCanvas(1, 1);
+const clamp = x => Math.max(0, Math.min(1, x)), smooth = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+// Band across the frame along the wipe axis, centred at position x (0..1).
+function band(ctx, width, height, angle, x, size, stops) {
+  const dx = Math.cos(angle), dy = Math.sin(angle), span = width * Math.abs(dx) + height * Math.abs(dy);
+  const cx = width / 2 + (x - .5) * span * dx, cy = height / 2 + (x - .5) * span * dy, h = size * span / 2;
+  const g = ctx.createLinearGradient(cx - dx * h, cy - dy * h, cx + dx * h, cy + dy * h);
+  for (const [at, color] of stops) g.addColorStop(at, color);
+  return g;
+}
+window.render = ({ width, height, time, inputs: [image], params: p }) => {
+  for (const c of [out, layer]) { if (c.width !== width) c.width = width; if (c.height !== height) c.height = height; }
+  const ctx = out.getContext('2d'), k = clamp((time - p.start) / p.duration), e = smooth(k);
+  const angle = p.angle * Math.PI / 180;
+  ctx.clearRect(0, 0, width, height);
+  if (k <= 0) return out;
+  // Settle: slight blur and scale-down into place.
+  ctx.save();
+  const s = 1 + .035 * (1 - e);
+  ctx.translate(width / 2, height / 2); ctx.scale(s, s); ctx.translate(-width / 2, -height / 2);
+  if (p.blur && e < 1) ctx.filter = `blur(${p.blur * (1 - e)}px)`;
+  ctx.drawImage(image, 0, 0);
+  ctx.restore();
+  if (p.wipe && k < 1) {
+    // Edge travels from -soft to 1+soft so both ends are fully hidden/shown.
+    const soft = .08, front = -soft + e * (1 + 2 * soft);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = band(ctx, width, height, angle, front, soft * 2, [[0, '#000'], [.5, 'rgba(0,0,0,.5)'], [1, 'rgba(0,0,0,0)']]);
+    ctx.fillRect(0, 0, width, height);
+  }
+  // Light: hot edge during the wipe, then a narrower glint sweep at glintAt.
+  const lights = [];
+  if (k < 1) lights.push([p.wipe ? -.08 + e * 1.16 : e * 1.2 - .1, .16, p.intensity * Math.sin(Math.PI * k)]);
+  const g = (time - p.glintAt) / .9;
+  if (g > 0 && g < 1) lights.push([-.1 + smooth(g) * 1.2, .09, p.intensity * Math.sin(Math.PI * g)]);
+  const lctx = layer.getContext('2d');
+  for (const [x, size, a] of lights) {
+    // Light band clipped to the layer's alpha and tinted by its colour, so dark
+    // areas such as ink stay dark while gold trim catches the light. Added, then bloomed.
+    lctx.globalCompositeOperation = 'copy'; lctx.drawImage(out, 0, 0);
+    // Multiply shows the fill where the layer is empty, so re-mask to the layer afterwards.
+    lctx.globalCompositeOperation = 'multiply'; lctx.fillStyle = p.glow; lctx.fillRect(0, 0, width, height);
+    lctx.globalCompositeOperation = 'destination-in'; lctx.drawImage(out, 0, 0);
+    lctx.fillStyle = band(lctx, width, height, angle, x, size, [[0, 'rgba(0,0,0,0)'], [.5, `rgba(0,0,0,${clamp(a)})`], [1, 'rgba(0,0,0,0)']]);
+    lctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(layer, 0, 0); ctx.drawImage(layer, 0, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(14px)'; ctx.globalAlpha = .6;
+    ctx.drawImage(layer, 0, 0);
+    ctx.filter = 'none'; ctx.globalAlpha = 1;
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  return out;
+};
+</script>

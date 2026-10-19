@@ -70,8 +70,9 @@ Top-level help is a command index. `help COMMAND` includes its usage and contrac
 Project edits return `baseRevision`, `revision`, changed `revisions`, and history.
 `changes` contains new or changed objects grouped by collection, plus changed
 project settings under `changes.project`. `removed` contains removed IDs grouped
-by collection. `order` contains the final ID sequence for collections whose order
-or membership changed. `removedRevisions` lists revision keys that disappeared.
+by collection. `order` contains the final ID sequence for collections whose
+existing order changed or whose additions were not appended at the end.
+`removedRevisions` lists revision keys that disappeared.
 Empty change sections are omitted. Command-specific results such as `media` and
 `clip` remain available.
 
