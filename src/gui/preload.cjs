@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   inspect: () => ipcRenderer.invoke('afclip:inspect'),
   waveform: id => ipcRenderer.invoke('afclip:waveform', id),
   command: payload => ipcRenderer.invoke('afclip:command', payload),
+  relinkMedia: (id, revision) => ipcRenderer.invoke('afclip:relink', id, revision),
   importMedia: kind => ipcRenderer.invoke('afclip:import', kind),
   library: id => ipcRenderer.invoke('afclip:library', id),
   editLibrary: id => ipcRenderer.invoke('afclip:edit-library', id),

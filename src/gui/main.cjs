@@ -236,6 +236,14 @@ app.whenReady().then(async () => {
     if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
+  handle('relink', async (id, revision) => {
+    const {project} = await request('/inspect');
+    const media = project.media.find(m => m.id === id);
+    if (!media || media.kind === 'graphic') throw new Error('Select video, audio or an image to relink');
+    const selected = await dialog.showOpenDialog(window, {title: 'Relink media', properties: ['openFile'], defaultPath: path.resolve(projectDir, media.path)});
+    if (selected.canceled) return null;
+    return request('/command', {command:'relink', id, revision, path:selected.filePaths[0]});
+  });
   handle('import', async kind => {
     const graphic = kind === 'graphic';
     const selected = graphic

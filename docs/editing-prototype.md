@@ -205,6 +205,18 @@ Both modes decode original media with FFmpeg on the CPU. Each live clip has a re
 
 The renderer supports even output dimensions up to 4096 pixels per side. Video currently requires tagged limited-range BT.709 SDR. HDR is rejected on import; other unsupported color tags fail explicitly at render. Audio is mixed offline from original media with volume, mute, fades, dissolves and speed changes, then encoded to AAC alongside H.264 video. There is no live speaker recording.
 
+## Relink media
+
+Right-click a video, audio or image in the project bin and choose **Relink media…**, or run:
+
+```powershell
+af-clip relink path/to/project media_id path/to/replacement.mp4
+```
+
+Relinking keeps the media ID, cuts, clip settings and transitions. The replacement must have the same media kind and, for video, the same presence of audio. Its duration must cover existing cuts, volume points and transition handles. Locked tracks and active renders block the operation. Undo restores the old reference without moving or deleting files. Agents can pass `--revision N` to reject changes since their inspection.
+
+Audio/video replacements register with the Content Library. Saved range annotations remain attached only when the library confirms the same asset and source; otherwise the bin item references the replacement's whole source. Existing timeline cuts stay unchanged. HTML assets use their existing authoring/reload workflow. Bulk folder relinking and Collect project remain open.
+
 ## Graphic assets and history
 
 ```powershell
@@ -263,7 +275,7 @@ Manual engine checks covered persistent ownership across calls, stale batch reje
 
 A separate disposable project verified cancellation during source indexing: the render lock rejected an edit, cancellation released it, an existing valid MP4 retained its exact SHA-256, and no partial output remained. A second cancellation after the software encoder's first rendered frame also released the lock, removed partial output and preserved the previous MP4. A missing-source worker failure left the daemon PID unchanged, released the lock and allowed a subsequent edit. These checks did not interrupt the example project. The actual GUI also passed a CLI rename/undo over SSE and a GUI volume edit/undo through the shared engine. The temporary edits were restored before export.
 
-The rest of the MVP is still open: video barcodes, collection/relink UI, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
+The rest of the MVP is still open: video barcodes, project collection and bulk relinking, complete GUI coverage of CLI operations, and packaging. The standalone [Content Library](content-library.md) owns reusable audio/video annotations and source preparation. AFClip registers project-bin media with the library and stores source paths and provenance so existing edits can play and export without the library service. Fresh long-edit performance targets have not been agreed. Frame selection uses integer presentation timestamps and the stream time base. A manual VFR check covered 15 requested times, including 100 ms holds and exact 30 fps boundaries, plus six sequential frame reads. Every sampled frame matched its known gray identifier within one level. This caught and corrected a one-frame error caused by FFprobe decimal timestamp rounding. The 90-frame fixture reused its index in 1.33 ms versus 39.1 ms to generate it.
 
 ## First edit measurements
 
