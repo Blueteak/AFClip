@@ -29,10 +29,10 @@ const notes:Record<string,string>={
   apply:'Atomic ordered operations, 1-1000. Result is an array in operation order, each with its ID and revision at that point. Later operations must use revisions resulting from earlier operations. Relationship changes also bump parent/tag revisions; inspect those objects again. Conflict rolls back the entire batch. Example: promote revision 2 then annotate revision 3 on the same asset.',
   call:'Read exact API request JSON from a file or stdin (-). Service payloads keep full search/overview responses unless compact:true is requested. CLI flags other than catalog/wait/timeout/author do not apply to the request.'
 };
-export const commandSchema=Object.fromEntries(Object.entries(specs).map(([command,spec])=>[command,{command,fields:Object.fromEntries(spec.split(' ').filter(Boolean).map(field=>{const [name,type='string']=field.split(':');return [name,type];})),notes:notes[command]||''}]));
-export const globals:Record<string,string>={catalog:'string',author:'human|agent',wait:'boolean',timeout:'number'};
+export const commandSchema=Object.fromEntries(Object.entries(specs).map(([command,spec])=>[command,{command,fields:Object.fromEntries(spec.split(' ').filter(Boolean).map(field=>{const [name,type='string']=field.split(':');return [name,type];})),...(notes[command]?{notes:notes[command]}:{})}]));
+export const globals:Record<string,string>={catalog:'string',author:'human|agent',wait:'boolean',timeout:'number',full:'boolean',pretty:'boolean',progress:'boolean'};
 export function schema(command?:string){
   if(command&&!commandSchema[command])throw new Error(`Unknown command: ${command}`);
   return {version:1,...(command?commandSchema[command]:{commands:commandSchema}),globalOptions:globals,
-    wait:'--wait emits progress JSON to stderr and one final JSON response to stdout. --timeout seconds defaults to 300; a timeout leaves jobs running and returns their IDs.'};
+    wait:'--wait returns one final JSON response; --progress also emits changes to stderr. --timeout seconds defaults to 300; a timeout leaves jobs running and returns their IDs.'};
 }

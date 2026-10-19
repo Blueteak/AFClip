@@ -1,0 +1,66 @@
+{
+  "encoding": "o200k_base",
+  "method": "Same response serialized with previous pretty JSON and new default formatter. Real disposable CLI fixtures plus the repository example project. Search/overview baseline uses previous compact payload. Progress savings excluded. Counts vary with IDs and paths.",
+  "samples": [
+    {
+      "command": "af-clip create",
+      "beforeTokens": 1812,
+      "afterTokens": 1277,
+      "savedPercent": 29.5
+    },
+    {
+      "command": "af-clip inspect empty",
+      "beforeTokens": 2022,
+      "afterTokens": 1437,
+      "savedPercent": 28.9
+    },
+    {
+      "command": "af-clip marker-add",
+      "beforeTokens": 2163,
+      "afterTokens": 1541,
+      "savedPercent": 28.8
+    },
+    {
+      "command": "af-clip undo",
+      "beforeTokens": 2238,
+      "afterTokens": 1626,
+      "savedPercent": 27.3
+    },
+    {
+      "command": "af-clip inspect example edit",
+      "beforeTokens": 26205,
+      "afterTokens": 18107,
+      "savedPercent": 30.9
+    },
+    {
+      "command": "af-lib import --wait",
+      "beforeTokens": 692,
+      "afterTokens": 496,
+      "savedPercent": 28.3
+    },
+    {
+      "command": "af-lib search",
+      "beforeTokens": 252,
+      "afterTokens": 156,
+      "savedPercent": 38.1
+    },
+    {
+      "command": "af-lib inspect",
+      "beforeTokens": 920,
+      "afterTokens": 643,
+      "savedPercent": 30.1
+    },
+    {
+      "command": "af-lib overview",
+      "beforeTokens": 802,
+      "afterTokens": 568,
+      "savedPercent": 29.2
+    },
+    {
+      "command": "af-lib jobs",
+      "beforeTokens": 230,
+      "afterTokens": 175,
+      "savedPercent": 23.9
+    }
+  ]
+}

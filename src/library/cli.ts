@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import {formatResponse} from '../shared/cli-output.ts';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
@@ -46,17 +47,18 @@ Search --folder inbox selects only Inbox; --include-inbox includes it with the l
 waveform --summary returns timing/level summaries without sample arrays.
 Use help COMMAND or COMMAND --help for fields; schema [COMMAND] returns JSON discovery.
 --fields id,name,revision projects search items or overview fields.
---wait emits progress on stderr; --timeout SECONDS defaults to 300.
+--full includes default-valued fields; --pretty indents JSON.
+--wait returns the final result; --progress emits changes on stderr. --timeout SECONDS defaults to 300.
 `;
 async function main(){
   const args=process.argv.slice(2),command=args.shift();
   if(!command||['--help','-h'].includes(command)){console.log(help);return;}
   if(command==='schema'||command==='help'||args.includes('--help')||args.includes('-h')){
     const target=['schema','help'].includes(command)?args[0]:command;
-    console.log(command==='help'&&!target?help:JSON.stringify({ok:true,result:schema(target)},null,2));return;
+    console.log(command==='help'&&!target?help:formatResponse({ok:true,result:schema(target)}));return;
   }
   const definition=commandSchema[command];if(!definition)throw new Error(`Unknown command: ${command}. Use schema to list commands.`);
-  const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false,timeout=300;
+  const c:any={command},positionals:string[]=[];let catalog:string|undefined,wait=false,timeout=300,full=false,pretty=false,progress=false;
   const allowed={...globals,...definition.fields};
   for(let i=0;i<args.length;i++){
     if(!args[i].startsWith('--')){positionals.push(args[i]);continue;}
@@ -70,7 +72,7 @@ async function main(){
       else if(type==='json')value=JSON.parse(value);
       else if(type.includes('|')&&!type.split('|').includes(value))throw new Error(`--${key} must be ${type}`);
     }
-    if(key==='catalog')catalog=value;else if(key==='wait')wait=value;else if(key==='timeout')timeout=value;else c[key==='include-inbox'?'inbox':key]=value;
+    if(key==='catalog')catalog=value;else if(key==='wait')wait=value;else if(key==='timeout')timeout=value;else if(key==='full')full=value;else if(key==='pretty')pretty=value;else if(key==='progress')progress=value;else c[key==='include-inbox'?'inbox':key]=value;
   }
   if(timeout<=0)throw new Error('--timeout must be positive seconds');
   if(positionals.length>(['import','register','rescan','call'].includes(command)?1:0))throw new Error(`Unexpected positional argument for ${command}`);
@@ -80,7 +82,7 @@ async function main(){
     if(!positionals[0])throw new Error('call requires a JSON file or - for stdin');
     payload=JSON.parse(fs.readFileSync(positionals[0]==='-'?0:positionals[0],'utf8'));if(c.author)payload.author=c.author;
   }
-  if(['search','overview'].includes(command)){c.compact=!c.full;delete c.full;}
+  if(['search','overview'].includes(command)){c.compact=!full;}
   const fields=c.fields;delete c.fields;
   const ep=await libraryEndpoint(catalog);let result:any;
   if(command==='endpoint')result=ep;
@@ -89,15 +91,15 @@ async function main(){
   }else result=await request(ep,'/command',payload);
   let status='complete',error:any;
   if(result.jobs?.length){
-    const ids=result.jobs.map((j:any)=>j.id),deadline=Date.now()+timeout*1000;let last='',lastProgress=0,pollMs=25;
+    const ids=result.jobs.map((j:any)=>j.id),deadline=Date.now()+timeout*1000;let last='',pollMs=25;
     for(;;){
       const selected=await request(ep,'/command',{command:'jobs',ids});result={...result,jobs:selected};
       const failed=selected.filter((j:any)=>['failed','cancelled'].includes(j.status));
       const pending=selected.some((j:any)=>['queued','running'].includes(j.status));
       status=pending?'accepted':'complete';
-      if(wait){const progress=selected.map((j:any)=>({id:j.id,status:j.status,phase:j.phase,queuePosition:j.queuePosition,elapsedMs:j.elapsedMs,runningMs:j.runningMs}));
+      if(wait&&progress){const progress=selected.map((j:any)=>({id:j.id,status:j.status,phase:j.phase,queuePosition:j.queuePosition,elapsedMs:j.elapsedMs,runningMs:j.runningMs}));
         const signature=JSON.stringify(progress.map(({elapsedMs,runningMs,...j}:any)=>j));
-        if(signature!==last||Date.now()-lastProgress>=2000){console.error(JSON.stringify({progress}));last=signature;lastProgress=Date.now();}}
+        if(signature!==last){console.error(JSON.stringify({progress}));last=signature;}}
       if(failed.length){status='failed';error={code:'JOB_FAILED',message:'Background work failed or was cancelled',details:{jobs:failed}};break;}
       if(!pending||!wait)break;
       if(Date.now()>=deadline){status='accepted';error={code:'WAIT_TIMEOUT',message:'Wait timed out; jobs remain active. Inspect jobs or cancel explicitly.',details:{ids}};break;}
@@ -111,6 +113,6 @@ async function main(){
   }
   if(fields){const project=(o:any)=>Object.fromEntries(fields.map((key:string)=>{if(!(key in o))throw new Error(`Unknown result field: ${key}`);return [key,o[key]];}));result=command==='search'?{...result,items:result.items.map(project)}:project(result);}
   if(error)process.exitCode=1;
-  console.log(JSON.stringify({ok:!error,status,result,...(error?{error}:{})},null,2));
+  console.log(formatResponse({ok:!error,status,result,...(error?{error}:{})},{full:full||!!fields||command==='call',pretty}));
 }
-main().catch(e=>{console.log(JSON.stringify({ok:false,error:{code:e.code||'CLI',message:e.message,details:e.details||{}}},null,2));process.exitCode=1;});
+main().catch(e=>{console.log(formatResponse({ok:false,error:{code:e.code||'CLI',message:e.message,...(e.details?{details:e.details}:{})}}));process.exitCode=1;});

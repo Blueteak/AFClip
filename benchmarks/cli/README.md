@@ -1,5 +1,50 @@
 # CLI performance
 
+## Output tokens
+
+Both CLIs emit single-line JSON by default. `--pretty` restores indentation;
+`--full` includes default-valued fields. Use both for the previous response format.
+The `ok` / `result` envelope remains. HTTP responses and stored data are unchanged.
+
+Default output omits these known values:
+
+- Completed library response envelope: `status:"complete"`. Pending and failed states remain.
+- Project inspection: `renderLock:null`.
+- Clips: volume 1, mute false, speed 1/1, sourceIn/fadeIn/fadeOut 0/1,
+  null linkId, empty effects/volumePoints/text, and default transform components
+  x/y/rotation 0, scale/opacity 1, fit `fit`.
+- Tracks and folders: disabled/locked/collapsed false and null folderId.
+- Library assets and ranges: deleted/purged false, empty notes/tags/takes/
+  annotationTracks/references/ranges, availability `available`, sourceStatus `verified`.
+
+Omitted fields have the values above. IDs, revisions, pagination, non-default
+values, errors and user-authored metadata remain. Use `--full` when passing output
+to a consumer that requires explicit defaults or complete project objects.
+`af-lib --fields` retains explicitly selected fields, even defaults.
+`af-lib call` retains the complete API response.
+
+`af-lib --wait` emits only the final response. Add `--progress` for state/phase/queue
+changes on stderr. Elapsed-time-only heartbeat messages are no longer emitted.
+
+Capture comparable outputs without modifying an existing project or catalog:
+
+```sh
+node benchmarks/cli/tokens.mjs /path/to/output.json
+```
+
+The capture includes ten samples from real disposable CLI calls and the repository
+example edit. It stores old/new strings for counting with any model tokenizer.
+Recorded `o200k_base` measurements are in `docs/cli-tokens.json`: 24–38% fewer tokens.
+The example edit inspection falls from 26,205 to 18,107 tokens. Search falls from
+252 to 156. Progress savings are additional and depend on job duration.
+
+Full project snapshots after edits and waveform sample arrays remain substantial.
+They carry useful state, so this change preserves them. Library search/overview
+already use compact metadata, and waveform `--summary` remains available when
+sample arrays are unnecessary.
+
+## Latency
+
 Run against a 1080p60 fixture built by `benchmarks/macos/project.ts`, with local sources at least 19 seconds long:
 
 ```sh
