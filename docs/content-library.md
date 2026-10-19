@@ -221,7 +221,7 @@ The library is an MVP, not a claim that every acceptance condition in the full o
 
 The Blocks track sits below Takes and above Full clip. Drag empty space to mark
 unusable footage, drag a block to move it, or drag its edges to trim. Click a
-block to add an optional reason. Delete and undo work as they do for Takes.
+block to select it without opening a popup. Delete and undo work as they do for Takes.
 Both Takes and Blocks tracks are 25% shorter than regular annotation tracks.
 
 Blocks are saved on assets as `blocks: [{start,end,text?}]`, using source seconds

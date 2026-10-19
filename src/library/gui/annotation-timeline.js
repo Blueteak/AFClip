@@ -82,7 +82,7 @@ async function createSpan(start,end,x,trackId=TAKES_TRACK){
   closeAnnotationPopover();
   await changeSpans(a.id,takes=>takes.push({start,end}),trackId===BLOCKS_TRACK?'blocks':'takes');
   if(state.selected?.id!==a.id)return;
-  const record=spanRecords().find(t=>t.trackId===trackId&&t.start===start&&t.end===end);selectedSpan=record;state.insertRange=null;state.temporarySelection=false;updateAnnotationPlayhead();say(record.name+' created');if(trackId===BLOCKS_TRACK)openAnnotationPopover(record,x);
+  const record=spanRecords().find(t=>t.trackId===trackId&&t.start===start&&t.end===end);selectedSpan=record;state.insertRange=null;state.temporarySelection=false;updateAnnotationPlayhead();say(record.name+' created');
 }
 const deletingAnnotations=new Set();
 async function deleteAnnotation(record){
@@ -100,10 +100,11 @@ async function deleteAnnotation(record){
   finally{deletingAnnotations.delete(record.id);}
 }
 function openAnnotationPopover(record,x){
+  if(record.recordType==='block'){closeAnnotationPopover();updateAnnotationPlayhead();return;}
   stop();if(!isSpan(record))selectedSpan=null;state.insertRange=record.recordType==='range'?record:null;updateAnnotationPlayhead();const cached=annotationDrafts.get(record.id);const draft=(cached&&(cached.dirty||cached.saving)?cached:null)||{revision:record.revision,name:record.name,notes:record.notes,tags:new Set(record.tags),dirty:false,version:0,spanRecord:isSpan(record)?record:null};
   annotationDrafts.set(record.id,draft);activePopover={id:record.id,rangeId:['range','take','block'].includes(record.recordType)?record.id:null,x};
   const disabled=readonly||state.selected.deleted||state.selected.folder==='inbox';
-  annotationPopover.innerHTML=`<form id="popover-form"><div class="popover-heading">${isSpan(record)?`<strong>${esc(record.name)}</strong>`:`<input id="popover-name" aria-label="Annotation name" value="${esc(draft.name)}" required ${disabled?'disabled':''}>`}<button type="button" id="popover-close" aria-label="Close tags and notes">×</button></div><div class="popover-body">${isSpan(record)?'':'<div class="popover-label">Tags</div><div class="tag-picker" id="popover-tags"></div>'}<label>${isSpan(record)?(record.recordType==='block'?'Reason (optional)':'Text (optional)'):'Notes'}<textarea id="popover-notes" rows="3" placeholder="Add notes…" ${disabled?'disabled':''}>${esc(draft.notes)}</textarea></label><div id="popover-error" role="status"></div></div><div class="popover-actions"><button type="button" id="popover-delete" title="Delete ${isSpan(record)?record.recordType:'annotation'} · Del (hovered or selected)" aria-keyshortcuts="Delete" ${disabled||!['range','take','block'].includes(record.recordType)?'hidden':''}>Delete <kbd>Del</kbd></button></div></form>`;
+  annotationPopover.innerHTML=`<form id="popover-form"><div class="popover-heading">${isSpan(record)?`<strong>${esc(record.name)}</strong>`:`<input id="popover-name" aria-label="Annotation name" value="${esc(draft.name)}" required ${disabled?'disabled':''}>`}<button type="button" id="popover-close" aria-label="Close tags and notes">×</button></div><div class="popover-body">${isSpan(record)?'':'<div class="popover-label">Tags</div><div class="tag-picker" id="popover-tags"></div>'}<label>${isSpan(record)?'Text (optional)':'Notes'}<textarea id="popover-notes" rows="3" placeholder="Add notes…" ${disabled?'disabled':''}>${esc(draft.notes)}</textarea></label><div id="popover-error" role="status"></div></div><div class="popover-actions"><button type="button" id="popover-delete" title="Delete ${isSpan(record)?record.recordType:'annotation'} · Del (hovered or selected)" aria-keyshortcuts="Delete" ${disabled||!['range','take','block'].includes(record.recordType)?'hidden':''}>Delete <kbd>Del</kbd></button></div></form>`;
   const changed=()=>{draft.dirty=true;draft.version++;clearTimeout(draft.timer);draft.timer=setTimeout(()=>savePopoverDraft(record,draft).catch(timelineError),300);};
   for(const tag of isSpan(record)?[]:state.overview.tags){const b=timelineElement('button','tag-chip',tag.name);b.type='button';b.disabled=disabled;b.classList.toggle('active',draft.tags.has(tag.id));b.setAttribute('aria-pressed',draft.tags.has(tag.id));b.onclick=()=>{draft.tags.has(tag.id)?draft.tags.delete(tag.id):draft.tags.add(tag.id);b.classList.toggle('active',draft.tags.has(tag.id));b.setAttribute('aria-pressed',draft.tags.has(tag.id));changed();};$('popover-tags').append(b);}
   if($('popover-name'))$('popover-name').oninput=e=>{draft.name=e.target.value;changed();};$('popover-notes').oninput=e=>{draft.notes=e.target.value;changed();};
@@ -199,10 +200,10 @@ async function renderAnnotationTimeline(){
     const ends=[];
     for(const r of (compact?spanRecords(a):a.ranges).filter(r=>(r.trackId||'annotations')===track.id).sort((x,y)=>secs(x.start)-secs(y.start))){
       let stack=ends.findIndex(end=>end<=secs(r.start));if(stack<0)stack=ends.length;ends[stack]=secs(r.end);
-      const block=timelineElement('button','annotation-block'+(isSpan(r)?' take-block'+(r.recordType==='block'?' blocked-span':''):''));block.type='button';block.dataset.range=r.id;block.setAttribute('aria-label','Annotation: '+r.name);block.title=`${r.name}\n${clock(secs(r.start))} → ${clock(secs(r.end))}\n${isSpan(r)?'Click for optional text':'Click for Tags + Notes'}`;
+      const block=timelineElement('button','annotation-block'+(isSpan(r)?' take-block'+(r.recordType==='block'?' blocked-span':''):''));block.type='button';block.dataset.range=r.id;block.setAttribute('aria-label','Annotation: '+r.name);block.title=`${r.name}\n${clock(secs(r.start))} → ${clock(secs(r.end))}\n${r.recordType==='block'?'Click to select · Del to delete':isSpan(r)?'Click for optional text':'Click for Tags + Notes'}`;
       block.style.left=(secs(r.start)/a.duration*100)+'%';block.style.width=((secs(r.end)-secs(r.start))/a.duration*100)+'%';block.style.top=(compact?3.75+stack*27:5+stack*36)+'px';
       block.append(timelineElement('span','annotation-block-name',r.name));
-      if(isSpan(r)&&r.text?.trim())block.append(timelineElement('span','take-text-preview',r.text.trim().replace(/\s+/g,' ').slice(0,120)));
+      if(r.recordType==='take'&&r.text?.trim())block.append(timelineElement('span','take-text-preview',r.text.trim().replace(/\s+/g,' ').slice(0,120)));
       for(const edge of ['start','end']){const handle=timelineElement('span','annotation-trim '+edge);handle.dataset.edge=edge;block.append(handle);}
       block.onpointerdown=e=>beginTimelineGesture(e,lane,e.target.dataset.edge||'move',r);
       block.onclick=e=>{if(e.detail===0)openRangePopup(r).catch(timelineError);};lane.append(block);
