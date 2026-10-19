@@ -76,7 +76,8 @@ function at(plan, time) {
     const fadeIn = c.fadeIn ? clamp(local / c.fadeIn) : 1;
     const fadeOut = c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1;
     visual *= fadeIn * fadeOut;
-    for (const tr of c.transitions) if (time >= tr.start && time < tr.end) {
+    // Match the visibility tolerance so both sides of a cut agree at window edges.
+    for (const tr of c.transitions) if (time >= tr.start - 1e-8 && time < tr.end - 1e-8) {
       const p = clamp((time - tr.start) / tr.duration);
       transition={...tr,progress:p,time:time-tr.start};
       if(tr.audio==='cut')audio*=tr.side==='in'?(time>=tr.cut?1:0):(time<tr.cut?1:0);
