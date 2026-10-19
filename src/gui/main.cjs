@@ -250,6 +250,20 @@ app.whenReady().then(async () => {
     setImmediate(() => app.quit());
     return {path:destination};
   });
+  handle('open-project', async () => {
+    const selected = await dialog.showOpenDialog(window, {title:'Open project', buttonLabel:'Open', defaultPath:path.dirname(projectDir), properties:['openDirectory']});
+    if (selected.canceled || !selected.filePaths.length) return null;
+    const destination = path.resolve(selected.filePaths[0]);
+    try { await fs.access(path.join(destination, 'project.json')); }
+    catch { throw new Error('Choose a project folder containing project.json'); }
+    // Connect successfully before closing the current editor.
+    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], {windowsHide:true, timeout:30000});
+    const reply = JSON.parse(result.stdout.trim());
+    if (!reply.ok || !reply.result?.url) throw new Error(reply.error?.message || 'Could not open project');
+    app.relaunch({args:[__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])]});
+    setImmediate(() => app.quit());
+    return {path:destination};
+  });
   handle('collect', async revision => {
     const selected = await dialog.showSaveDialog(window, {title:'Collect project folder', buttonLabel:'Collect', defaultPath:path.join(path.dirname(projectDir), path.basename(projectDir)+'-collected')});
     if (selected.canceled) return null;
