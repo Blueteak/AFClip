@@ -162,6 +162,13 @@ vortex, page curl, zoom punch, hex flip), stacked effects, HTML overlays,
 kinetic type, a boss HUD and a 2x2 split-screen from clip transforms. Packages
 live in `/path/to/project/showcase/`; `--sync` reloads edited copies.
 
+`/path/to/project/logo/` holds the Sample logo PNGs (full, letters,
+ink) and two transparency-safe Canvas2D effects for image clips: `ink-reveal`
+(noisy radial spread with punch) and `gilded-reveal` (angled wipe, blur settle,
+albedo-tinted glint). The parts recompose the full logo at these offsets in its
+2000x686 canvas: letters scale 0.59 at (466, 146); ink scale 0.4135 at
+(353.5, -14.5). Grimoire title's `logoSpace` reserves room when `title` is empty.
+
 These are opt-in diagnostics. Performance records count completed asset renders
 as well as source-video presentation; they do not measure physical scanout.
 Temporal sampling, keyframes, nested-scene editing and overlapping transition

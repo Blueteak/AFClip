@@ -45,7 +45,7 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip checkpoints <project-dir>
   af-clip restore <project-dir> [checkpoint-id|latest] --confirm discard-later-edits
 
-Edits return changes, removed IDs, collection order and changed revisions. inspect returns full state.
+Edits return changes, removed IDs, reordered collections and changed revisions. inspect returns full state.
 --full includes complete edit snapshots and default-valued fields; --pretty indents JSON.
 Times accept decimal seconds or exact fractions, e.g. 1001/30000.
 Find reusable clips: af-lib search --q TEXT --kind video
