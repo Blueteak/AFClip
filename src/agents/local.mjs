@@ -19,7 +19,14 @@ export function writeJSON(file, value) {
   fs.writeFileSync(temp, JSON.stringify(value), {mode:0o600});
   fs.renameSync(temp, file);
 }
-export function settings() { return readJSON(path.join(root, 'settings.json'), {lastProvider:'codex', providers:{codex:{delivery:'steer'}, claude:{delivery:'steer'}}}); }
+export const defaultAccess = provider => provider === 'claude' ? 'bypassPermissions' : 'full';
+export function settings() {
+  const saved = readJSON(path.join(root, 'settings.json'), {lastProvider:'codex'});
+  return {...saved, providers:Object.fromEntries(['codex','claude'].map(id => {
+    const config = saved.providers?.[id] || {};
+    return [id, {delivery:'steer', ...config, access:config.access || defaultAccess(id)}];
+  }))};
+}
 export async function callEndpoint(ep, action, payload = {}) {
   const url = new URL(ep.url);
   if(url.hostname !== '127.0.0.1' || url.protocol !== 'http:') throw new Error('Invalid local agent endpoint');

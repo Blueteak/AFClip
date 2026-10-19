@@ -4,7 +4,8 @@ import http from 'node:http';
 import {randomUUID,randomBytes} from 'node:crypto';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {root,location,readJSON,writeJSON,settings,cliPath} from './local.mjs';
+import {root,location,readJSON,writeJSON,settings,cliPath,defaultAccess} from './local.mjs';
+import {chatContext} from './context.mjs';
 import {Codex,Claude,discover} from './providers.mjs';
 const exec=promisify(execFile);
 const loc=location(process.argv[2]);fs.mkdirSync(loc.dir,{recursive:true});
@@ -31,7 +32,7 @@ function message(c,id,role,text,delta=false){let m=c.messages.find(m=>m.id===id)
 async function cli(args){const r=await exec(process.env.AFCLIP_NODE_PATH||process.execPath,[cliPath,...args],{windowsHide:true,cwd:loc.project,maxBuffer:16*1024*1024,timeout:30000});const v=JSON.parse(r.stdout);if(!v.ok)throw new Error(v.error?.message||'CLI failed');return v.result;}
 function activeSummary(except){return conversations.filter(c=>c.id!==except).map(c=>({id:c.id,provider:c.provider,status:c.status,anchor:c.anchor,request:c.messages.findLast(m=>m.role==='user')?.text?.slice(0,400)}));}
 function instructions(c){return `You are working in AFClip on project ${JSON.stringify(loc.project)}. Perform project inspection and edits through the existing af-clip CLI, not direct project.json writes or a separate editing API. Invoke Node CLI with executable ${JSON.stringify(process.env.AFCLIP_NODE_PATH||process.execPath)} and script ${JSON.stringify(cliPath)}; arguments are COMMAND PROJECT_DIR. Run help COMMAND for focused help. af-lib is available through ${JSON.stringify(path.resolve(path.dirname(cliPath),'library/cli.ts'))}. Use coherent atomic apply batches and preserve revisions; on conflict reread/replan rather than overwrite. Manual edits and other agents can run concurrently. The controller creates a project checkpoint before each submitted turn; do not duplicate it. Ordinary undo is project-wide, not conversation-specific. Selection is context ONLY, never a restriction on the user's requested scope. Native provider rules, tools, permissions and project instructions still apply. Keep responses concise. Your AFClip conversation ID is ${c.id}. Read live GUI context and other discussions through: agent PROJECT_DIR context and agent PROJECT_DIR list. GUI context may be stale when the window is closed; captured context in the message remains authoritative for 'this'/'here'. Editing via CLI works while GUI is closed. Do not change AFClip agent settings or settle other conversations unless asked.`;}
-function prompt(c,m){const others=activeSummary(c.id);return `${m.text}\n\n<afclip-context>\n${JSON.stringify({conversationId:c.id,anchor:c.anchor,captured:m.context,otherDiscussions:others.slice(0,20),...(others.length>20?{moreDiscussions:others.length-20}:{})})}\n</afclip-context>`;}
+function prompt(c,m){const others=activeSummary(c.id);return `<afclip-instructions>\n${chatContext(c.anchor,m.context)}\n</afclip-instructions>\n\n${m.text}\n\n<afclip-context>\n${JSON.stringify({conversationId:c.id,anchor:c.anchor,captured:m.context,otherDiscussions:others.slice(0,20),...(others.length>20?{moreDiscussions:others.length-20}:{})})}\n</afclip-context>`;}
 async function keepEngine(rt){
   const ep=await cli(['endpoint',loc.project]);rt.subscription=new AbortController();
   const subscription=rt.subscription;
@@ -51,6 +52,7 @@ function requestUser(c,rt,details,signal){
 }
 async function ensureRuntime(c){
   let rt=runtime.get(c.id);if(rt?.adapter)return rt;
+  c.settings.access ||= defaultAccess(c.provider);
   rt={active:false,requests:new Map(),serial:Promise.resolve()};runtime.set(c.id,rt);
   const valid=()=>runtime.get(c.id)===rt;
   const hooks={

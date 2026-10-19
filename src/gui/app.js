@@ -3095,7 +3095,7 @@ function agentReveal(anchor) {
 }
 // Small, exact GUI state captured with every message. Times are project rationals { num, den } in seconds.
 function agentItemContext({ kind, id }) {
-  if (kind === 'clip') { const c = clipById(id); return c && { kind, id, name: clipName(c), trackId: c.trackId, start: c.start, duration: c.duration, mediaId: c.mediaId, ...(c.linkId ? { linkId: c.linkId } : {}) }; }
+  if (kind === 'clip') { const c = clipById(id); return c && { kind, id, name: clipName(c), mediaKind: mediaById(c.mediaId)?.kind, trackId: c.trackId, start: c.start, duration: c.duration, mediaId: c.mediaId, ...(c.linkId ? { linkId: c.linkId } : {}) }; }
   if (kind === 'transition') { const t = transitionById(id); return t && { kind, id, trackId: t.trackId, fromClipId: t.fromClipId, toClipId: t.toClipId, duration: t.duration, alignment: t.alignment }; }
   if (kind === 'marker') { const m = markerById(id); return m && { kind, id, name: m.name, time: m.time }; }
   if (kind === 'track') { const t = trackById(id); return t && { kind, id, name: t.name, index: tracks().indexOf(t), ...(t.folderId ? { folderId: t.folderId } : {}) }; }

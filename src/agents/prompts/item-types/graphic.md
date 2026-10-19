@@ -1,0 +1,1 @@
+Describe graphics in terms of appearance, movement, placement, edges, color, opacity and timing. For example: "The frost now creeps in unevenly with softer edges." Keep source code, shader math and rendering internals out of ordinary replies.

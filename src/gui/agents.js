@@ -289,18 +289,40 @@ window.AFClipAgents = host => {
     const box = pop.transcript;
     box.hidden = !(c.messages || []).length && c.status !== 'running';
     const atBottom = pop.stick || box.scrollHeight - box.scrollTop - box.clientHeight < 32;
-    box.replaceChildren(...[...(c.messages || []).map(m => message(m)), c.status === 'running' ? h('div', { class: 'agent-working' }, h('i'), h('i'), h('i')) : null].filter(Boolean));
+    const rows = [], turn = [];
+    const flush = () => {
+      if (!turn.length) return;
+      const latest = turn.findLast(m => m.role === 'assistant');
+      const activity = turn.filter(m => m.role === 'tool' || m.role === 'thinking' || (m.role === 'assistant' && m !== latest));
+      if (activity.length) {
+        const id = `activity:${turn[0].id}`, open = pop.expanded.has(id);
+        rows.push(h('div', { class: `agent-tool ${open ? 'open' : ''}` },
+          h('button', { class: 'agent-tool-line', 'aria-expanded': String(open), onclick: () => {
+            open ? pop.expanded.delete(id) : pop.expanded.add(id); renderPopup(c);
+          } }, icon('command', 'sm'), h('span', {}, 'Activity'), icon('chevron-down', 'sm agent-chevron')),
+          open ? h('div', { class: 'agent-tool-detail' }, activity.map(m => message(m))) : null));
+      }
+      for (const m of turn) if (m === latest || !activity.includes(m)) rows.push(message(m));
+      turn.length = 0;
+    };
+    for (const m of c.messages || []) {
+      if (m.role === 'user') { flush(); rows.push(message(m)); }
+      else turn.push(m);
+    }
+    flush();
+    if (c.status === 'running') rows.push(h('div', { class: 'agent-working' }, h('i'), h('i'), h('i')));
+    box.replaceChildren(...rows);
     if (atBottom) box.scrollTop = box.scrollHeight;
     pop.stick = false;
   }
   function message(m) {
     const images = (m.images || []).map(img => img.dataUrl ? h('img', { class: 'agent-msg-image', src: img.dataUrl, alt: img.name || '', tip: { title: img.name || 'Image' } }) : h('span', { class: 'agent-msg-file' }, icon('image', 'sm'), img.name || 'Image'));
     if (m.role === 'tool') {
-      const text = String(m.text || ''), [first, ...rest] = text.split('\n'), open = pop.expanded.has(m.id);
+      const text = String(m.text || ''), first = text.split('\n', 1)[0], open = pop.expanded.has(m.id);
       return h('div', { class: `agent-tool ${open ? 'open' : ''}` },
         h('button', { class: 'agent-tool-line', onclick: () => { open ? pop.expanded.delete(m.id) : pop.expanded.add(m.id); const c = conv(pop.id); if (c) renderPopup(c); } },
-          icon('command', 'sm'), h('span', {}, first || 'Tool'), rest.length ? icon('chevron-down', 'sm agent-chevron') : null),
-        open && rest.length ? h('pre', { class: 'agent-tool-detail' }, rest.join('\n')) : null);
+          icon('command', 'sm'), h('span', {}, first || 'Tool'), icon('chevron-down', 'sm agent-chevron')),
+        open ? h('pre', { class: 'agent-tool-detail' }, text) : null);
     }
     return h('div', { class: `agent-msg ${m.role} ${m.queued ? 'queued' : ''} ${m.cancelled ? 'cancelled' : ''}` },
       images.length ? h('div', { class: 'agent-msg-images' }, images) : null,
@@ -512,7 +534,7 @@ window.AFClipAgents = host => {
           host.field('Executable', exe, { tip: 'Optional path to the CLI. Blank uses the installed one.' }),
           host.field('Model', select([['', 'Default'], ...(p.models || []).map(m => [m.id, m.label || m.id])], mine.model || '', v => patch({ model: v, effort: '' })), { tip: 'Default uses the provider’s own default. Applies to new chats.' }),
           efforts.length ? host.field('Thinking', select([['', 'Default'], ...efforts.map(e => [e, e[0].toUpperCase() + e.slice(1)])], mine.effort || '', v => patch({ effort: v })), { tip: 'Reasoning effort for new chats.' }) : null,
-          (p.accessModes || []).length ? host.field('Access', select([['', 'Default'], ...p.accessModes.map(a => [a.id, a.label || a.id])], mine.access || '', v => patch({ access: v })), { tip: 'What the agent may do without asking. Applies to new chats.' }) : null,
+          (p.accessModes || []).length ? host.field('Access', select([['', 'Full access (default)'], ...p.accessModes.map(a => [a.id, a.label || a.id])], mine.access || '', v => patch({ access: v })), { tip: 'What the agent may do without asking. Applies to new chats.' }) : null,
           host.field('While busy', host.segmented([['steer', 'Steer', 'A new message redirects the running turn.'], ['queue', 'Queue', 'A new message waits for the running turn to finish.']], mine.delivery || 'steer', v => patch({ delivery: v })), { tip: 'Applies to the next message in every chat.' }));
       }
       body.replaceChildren(...rows.filter(Boolean));
