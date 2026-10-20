@@ -1,6 +1,8 @@
 // Runs inside the existing sandbox. Only the parent can enable editing.
 (() => {
   let fields = new Map(), overrides = {}, editing = null, enabled = false;
+  const selector = '[data-text], [data-afclip-text]';
+  const fieldId = el => el.getAttribute('data-text') ?? el.getAttribute('data-afclip-text');
   const send = data => parent.postMessage(data, '*');
   const valueOf = el => {
     const style = el.style.textTransform; el.style.textTransform = 'none';
@@ -33,8 +35,8 @@
     send({ type: 'afclip-text-end', field: id, value, cancel }); describe();
   }
   document.addEventListener('DOMContentLoaded', () => {
-    for (const el of document.querySelectorAll('[data-afclip-text]')) {
-      const id = el.getAttribute('data-afclip-text');
+    for (const el of document.querySelectorAll(selector)) {
+      const id = fieldId(el);
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id) || fields.has(id) || el.namespaceURI !== 'http://www.w3.org/1999/xhtml' || ['SCRIPT','STYLE','TEXTAREA','INPUT','CANVAS','SVG','TEMPLATE'].includes(el.tagName) || [...el.children].some(c => c.tagName !== 'BR')) {
         fields = new Map(); window.afclipTextError = 'Text fields need unique IDs and plain text'; return;
       }
@@ -67,11 +69,11 @@
     } else if (d?.type === 'afclip-text-finish') finish(d.cancel === true);
   }, true);
   document.addEventListener('pointerdown', event => {
-    const el = event.target.closest('[data-afclip-text]');
+    const el = event.target.closest(selector);
     if (editing && el === editing.el) return;
     finish();
-    if (enabled && el && fields.get(el.dataset.afclipText)?.el === el) {
-      event.preventDefault(); send({ type: 'afclip-text-request', field: el.dataset.afclipText });
+    if (enabled && el && fields.get(fieldId(el))?.el === el) {
+      event.preventDefault(); send({ type: 'afclip-text-request', field: fieldId(el) });
     }
   });
   document.addEventListener('focusout', () => { if (editing) finish(); });

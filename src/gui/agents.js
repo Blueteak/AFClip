@@ -184,7 +184,11 @@ window.AFClipAgents = host => {
     host.hideTip();
     const head = h('div', { class: 'popover-heading agent-head' });
     const error = h('div', { class: 'agent-error', hidden: true });
-    const transcript = h('div', { class: 'agent-transcript' });
+    const transcript = h('div', { class: 'agent-transcript', tabindex: '0', role: 'region', 'aria-label': 'Conversation' });
+    // Keep keyboard shortcuts in the chat after clicking or selecting a reply.
+    transcript.addEventListener('pointerdown', e => {
+      if (!e.target.closest('button, a, input, textarea, select, [contenteditable]')) transcript.focus({ preventScroll: true });
+    });
     const pending = h('div', { class: 'agent-pending' });
     const thumbs = h('div', { class: 'agent-thumbs', hidden: true });
     const textarea = h('textarea', { class: 'agent-input', rows: 1, spellcheck: 'true', 'aria-label': 'Message' });
@@ -214,6 +218,11 @@ window.AFClipAgents = host => {
     el.addEventListener('keydown', e => {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
       if ((e.ctrlKey || e.metaKey) && e.code === 'Space') return;
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'a' && e.target === transcript) {
+        e.preventDefault();
+        const range = document.createRange(); range.selectNodeContents(transcript);
+        const selection = getSelection(); selection.removeAllRanges(); selection.addRange(range);
+      }
       e.stopPropagation();
     });
     el.style.left = `${Math.max(10, innerWidth / 2 - 190)}px`; el.style.top = `${Math.max(10, innerHeight / 2 - 220)}px`;
