@@ -43,7 +43,7 @@ window.NativePreview = class NativePreview {
         entry.hits = hits; layer.append(hits);
       } else if (media.kind === 'image') {
         const img = new Image(); img.crossOrigin='anonymous'; img.src = media.url; entry.content = img; layer.append(img);
-        entry.loaded = img.decode(); entry.loaded.catch(this.onError);
+        entry.loaded = img.decode().then(() => this.fitMedia(entry, img)); entry.loaded.catch(this.onError);
       }
     }
   }
@@ -92,6 +92,21 @@ window.NativePreview = class NativePreview {
     const box = this.host.parentElement.getBoundingClientRect();
     this.stage.style.transform = `translate(-50%,-50%) scale(${Math.min(box.width / this.setup.width, box.height / this.setup.height)})`;
   }
+  fitMedia(entry, source, tr = entry.clip.transform || {}) {
+    if (!source) return;
+    const sw = source.videoWidth || source.naturalWidth || source.width;
+    const sh = source.videoHeight || source.naturalHeight || source.height;
+    if (!sw || !sh) return;
+    const w = this.setup.width, h = this.setup.height;
+    const scale = tr.fit === 'fill' ? Math.max(w / sw, h / sh) : Math.min(w / sw, h / sh);
+    // Chromium rounds the object-fit video rectangle before the clip transform.
+    // Scaling that rounded box makes a visible jump when a transition switches
+    // to AssetRuntime's fractional canvas geometry. Fit with a transform instead.
+    Object.assign(source.style, { width:sw+'px', height:sh+'px', left:'50%', top:'50%',
+      right:'auto', bottom:'auto', transform:`translate(-50%,-50%) scale(${scale})` });
+    // Match AssetRuntime's crop inside the clip box, before rotation/scale.
+    entry.layer.style.overflow = 'hidden';
+  }
   ensureVideo(entry) {
     if (entry.content) return entry.loaded;
     const video = document.createElement('video');
@@ -102,7 +117,7 @@ window.NativePreview = class NativePreview {
     entry.content = video; entry.layer.append(video);
     entry.loaded = new Promise((resolve, reject) => {
       entry.releaseVideo = resolve;
-      video.addEventListener('loadeddata', resolve, { once: true });
+      video.addEventListener('loadeddata', () => { this.fitMedia(entry, video); resolve(); }, { once: true });
       video.addEventListener('error', () => reject(new Error(`Cannot preview ${entry.clip.media.name || entry.clip.mediaId}: ${video.error?.message || 'unsupported video'}. Use software rendering for this source.`)), { once: true });
     });
     entry.loaded.catch(error => { if (!this.closed && entry.content === video && !entry.refining) this.onError(error); });
@@ -187,7 +202,7 @@ window.NativePreview = class NativePreview {
     if (entry.still.width !== cached.bitmap.width) entry.still.width = cached.bitmap.width;
     if (entry.still.height !== cached.bitmap.height) entry.still.height = cached.bitmap.height;
     entry.still.getContext('2d', { alpha:false }).drawImage(cached.bitmap, 0, 0);
-    entry.still.style.objectFit = entry.clip.transform?.fit === 'fill' ? 'cover' : 'contain';
+    this.fitMedia(entry, entry.still);
     entry.still.hidden = false;
     if (entry.content) entry.content.style.visibility = 'hidden';
     entry.presentedTime = pts;
@@ -318,7 +333,10 @@ window.NativePreview = class NativePreview {
       const tr = item.transform;
       entry.layer.style.zIndex = String(item.track * 10000 + i); entry.layer.style.opacity = String(item.opacity);
       entry.layer.style.transform = `translate(${tr.x || 0}px,${tr.y || 0}px) rotate(${tr.rotation || 0}deg) scale(${tr.scale || 1})`;
-      if (entry.content && item.kind !== 'graphic') entry.content.style.objectFit = tr.fit === 'fill' ? 'cover' : 'contain';
+      if (item.kind !== 'graphic') {
+        this.fitMedia(entry, entry.content, tr);
+        if (entry.still && !entry.still.hidden) this.fitMedia(entry, entry.still, tr);
+      }
     }
     return items;
   }
