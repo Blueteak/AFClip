@@ -6,6 +6,8 @@ window.AFClipAgents = host => {
   const { api, h, icon, kbd } = host;
   if (typeof api.agents !== 'function') return null;
   const call = (action, payload = {}) => api.agents(action, payload);
+  // Inline formatting only: preserve chat layout and never interpret model output as HTML.
+  const markdown = window.markdownit('zero').enable(['emphasis', 'backticks', 'escape', 'newline']);
 
   const PROVIDERS = { claude: { name: 'Claude', mark: 'agent-claude' }, codex: { name: 'Codex', mark: 'agent-codex' } };
   const STATUS = { running: 'Working', waiting: 'Needs input', interrupted: 'Interrupted', error: 'Error', idle: '' };
@@ -326,9 +328,11 @@ window.AFClipAgents = host => {
           icon('command', 'sm'), h('span', {}, first || 'Tool'), icon('chevron-down', 'sm agent-chevron')),
         open ? h('pre', { class: 'agent-tool-detail' }, text) : null);
     }
+    const text = m.text ? h('div', { class: 'agent-msg-text' }, m.text) : null;
+    if (text && m.role === 'assistant') text.innerHTML = markdown.renderInline(m.text);
     return h('div', { class: `agent-msg ${m.role} ${m.queued ? 'queued' : ''} ${m.cancelled ? 'cancelled' : ''}` },
       images.length ? h('div', { class: 'agent-msg-images' }, images) : null,
-      m.text ? h('div', { class: 'agent-msg-text' }, m.text) : null,
+      text,
       m.queued ? h('span', { class: 'agent-queued', tip: { title: 'Queued', desc: 'Sent when the current turn finishes.' } }, 'Queued') : null);
   }
 
