@@ -79,7 +79,7 @@ export class Generations {
     const settings=this.settings(c,job?.settings),len=clip?.duration||time(c.duration),start=clip?.start||time(c.start),trackId=clip?.trackId||c.trackId,n=seconds(len);
     assert(Number.isFinite(n)&&n>0,'Select a positive duration');
     if(settings.type==='sfx')assert(n>=0.5&&n<=30,'SFX requires 0.5 to 30 seconds');
-    if(settings.type==='music'&&!settings.addVideo)assert(n>=3&&n<=600,'Music requires 3 to 600 seconds');
+    if(settings.type==='music')assert(n>=3&&n<=600,'Music requires 3 to 600 seconds');
     assert(this.state.p.tracks.some((t:any)=>t.id===trackId)&&!trackLocked(this.state.p,trackId),'Choose an unlocked track');
     assert(cmp(start,ZERO)>=0,'Start must not be negative');
     for(const at of [start,len])assert((BigInt(at.num)*BigInt(this.state.p.fps.num))%(BigInt(at.den)*BigInt(this.state.p.fps.den))===0n,'Range must land on the project frame grid');
