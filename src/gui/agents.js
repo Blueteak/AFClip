@@ -503,10 +503,36 @@ window.AFClipAgents = host => {
     try { providers = await call('providers'); } catch (error) { providers = null; throw error; }
     return providers;
   }
-  async function openSettings() {
-    const body = h('div', { class: 'dialog-body agent-settings' }, h('div', { class: 'empty-note' }, 'Checking providers…'));
-    let flush = () => {};
-    host.dialog({ title: 'Agents', iconName: 'chat', body, buttons: [{ label: 'Done', kind: 'primary', keys: 'Enter', run: () => flush() }] });
+  // One AI dialog: provider settings and API keys. Each tab loads and fails on its own.
+  function openSettings(tab = store.aiTab || 'agents') {
+    const TABS = [['agents', 'Agents', 'Providers, models and access for new chats'], ['keys', 'API Keys', 'Keys for AI services, stored encrypted']];
+    const flushes = {}, opened = new Set();
+    const pages = { agents: h('div', { class: 'dialog-body agent-settings' }), keys: h('div', { class: 'dialog-body agent-settings' }) };
+    const strip = h('div', { class: 'panel-tabs ai-tabs', role: 'tablist' });
+    const body = h('div', { class: 'ai-settings' }, strip, pages.agents, pages.keys);
+    const show = id => {
+      tab = id; store.aiTab = id; saveStore();
+      strip.replaceChildren(...TABS.map(([t, label, desc]) => h('button', { class: `tab ${t === id ? 'active' : ''}`, role: 'tab', 'aria-selected': String(t === id),
+        onclick: () => t !== tab && show(t), tip: { title: label, desc, keys: 'Ctrl+Tab' } }, label)));
+      for (const [t, page] of Object.entries(pages)) page.hidden = t !== id;
+      // Keys revalidate on every visit; agents load once per dialog.
+      if (id === 'keys') renderKeys(pages.keys, flushes);
+      else if (!opened.has(id)) { opened.add(id); void renderAgents(pages.agents, flushes); }
+    };
+    host.dialog({ title: 'AI', iconName: 'chat', body, cls: 'ai-dialog',
+      buttons: [{ label: 'Done', kind: 'primary', keys: 'Enter', run: () => { for (const f of Object.values(flushes)) f(); } }],
+      onKey: e => {
+        if (e.key !== 'Tab' || !e.ctrlKey) return false;
+        e.preventDefault(); e.stopPropagation();
+        const i = TABS.findIndex(([t]) => t === tab);
+        show(TABS[(i + (e.shiftKey ? TABS.length - 1 : 1)) % TABS.length][0]);
+        return true;
+      } });
+    show(TABS.some(([t]) => t === tab) ? tab : 'agents');
+  }
+
+  async function renderAgents(body, flushes) {
+    body.replaceChildren(h('div', { class: 'empty-note' }, 'Checking providers…'));
     try {
       await Promise.all([loadProviders(), settings ? null : poll()]);
     } catch (error) { body.replaceChildren(h('div', { class: 'empty-note' }, host.explain(error))); return; }
@@ -520,6 +546,8 @@ window.AFClipAgents = host => {
       s.value = options.some(([v]) => v === value) ? value : '';
       return s;
     };
+    let flush = () => {};
+    flushes.agents = () => flush();
     const render = () => {
       flush = () => {};
       const all = settings?.providers || {};
@@ -556,6 +584,87 @@ window.AFClipAgents = host => {
       body.replaceChildren(...rows.filter(Boolean));
     };
     render();
+  }
+
+  // Keys never reach the renderer: a saved key shows as a masked placeholder and is only replaced once edited.
+  const KEY_PROVIDERS = [{ id: 'elevenlabs', name: 'ElevenLabs' }];
+  const MASK = '•'.repeat(24);
+  const keyCall = (action, payload = {}) => typeof api.apiKeys === 'function' ? api.apiKeys(action, payload) : Promise.reject(new Error('API keys unavailable'));
+  // Rows persist for the dialog so a pending save is never orphaned; each visit refetches status.
+  function renderKeys(body, flushes) {
+    if (!body.rows) {
+      body.rows = KEY_PROVIDERS.map(keyRow);
+      body.replaceChildren(...body.rows.map(r => r.el));
+      flushes.keys = () => { for (const r of body.rows) void r.commit(); };
+    }
+    const seq = body.getSeq = (body.getSeq || 0) + 1, marks = body.rows.map(r => r.mark());
+    keyCall('get').then(all => { if (seq === body.getSeq) body.rows.forEach((r, i) => r.loaded(!!all?.[r.id]?.configured, marks[i])); },
+      error => { if (seq === body.getSeq) for (const r of body.rows) r.failed(error); });
+  }
+  function keyRow({ id, name }) {
+    let configured = false, dirty = false, timer = null, saveSeq = 0, checkSeq = 0, chain = Promise.resolve();
+    const state = h('span', { class: 'api-key-state' });
+    const input = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', placeholder: 'Paste key', disabled: true, 'aria-label': `${name} API key` });
+    const clear = h('button', { class: 'icon-button small', hidden: true, onclick: () => { input.value = ''; dirty = true; commit(); input.focus(); },
+      tip: { title: 'Remove key', keys: 'Delete' } }, icon('trash', 'sm'));
+    const setState = (kind, title, desc) => {
+      state.className = `api-key-state ${kind}`;
+      state.replaceChildren(...({ valid: [icon('check', 'sm')], invalid: [icon('x', 'sm')], unknown: [icon('alert', 'sm')], checking: [h('i')] }[kind] || []));
+      state.tip = kind ? { title, desc: desc || null } : null;
+    };
+    const showSaved = () => {
+      input.placeholder = configured ? MASK : 'Paste key';
+      clear.hidden = !configured && !input.value;
+    };
+    const validate = async () => {
+      const seq = ++checkSeq;
+      if (!configured) { setState(''); return; }
+      setState('checking', 'Checking');
+      let res;
+      try { res = await keyCall('validate', { provider: id }); } catch (error) { res = { status: 'unknown', message: host.explain(error) }; }
+      if (seq !== checkSeq || dirty) return;
+      const s = res?.status, msg = res?.message || '';
+      if (s === 'valid') setState('valid', 'Valid', msg);
+      else if (s === 'invalid') setState('invalid', 'Invalid key', msg);
+      else if (s === 'empty') { configured = false; showSaved(); setState(''); }
+      else setState('unknown', 'Not verified', msg || 'Could not reach the service. The key is saved.');
+    };
+    const commit = async () => {
+      clearTimeout(timer); timer = null;
+      if (!dirty) return;
+      const sent = input.value, seq = ++saveSeq;
+      ++checkSeq;
+      setState('checking', 'Saving');
+      let res;
+      // Saves run in order so the last edit, including a clear, is what stays stored.
+      const run = () => keyCall('set', { provider: id, key: sent.trim() });
+      try { res = await (chain = chain.then(run, run)); } catch (error) {
+        if (seq === saveSeq) setState('unknown', 'Not saved', host.explain(error));
+        return;
+      }
+      if (seq !== saveSeq) return;
+      configured = !!res?.configured;
+      // Later typing stays dirty and gets its own save.
+      if (input.value === sent) dirty = false;
+      showSaved();
+      if (!dirty) void validate();
+    };
+    input.addEventListener('input', () => {
+      dirty = true; ++checkSeq; setState(''); showSaved();
+      clearTimeout(timer); timer = setTimeout(commit, 600);
+    });
+    input.addEventListener('blur', () => void commit());
+    input.addEventListener('keydown', e => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !input.value && configured && !dirty) { e.preventDefault(); dirty = true; void commit(); }
+    });
+    const el = host.field(name, h('div', { class: 'api-key-input' }, state, input, clear), { tip: 'Paste to save. Delete on an empty field removes the saved key.' });
+    return {
+      id, el, commit,
+      mark: () => saveSeq,
+      // A save started after the fetch knows better than the fetch.
+      loaded: (has, mark) => { input.disabled = false; if (dirty || mark !== saveSeq) return; configured = has; showSaved(); void validate(); },
+      failed: error => { input.disabled = false; setState('unknown', 'Status unknown', host.explain(error)); showSaved(); },
+    };
   }
 
   return {

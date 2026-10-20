@@ -312,6 +312,7 @@ app.whenReady().then(async () => {
   });
   handle('show-output', file => { if (typeof file !== 'string' || !outputs.has(path.resolve(file))) throw new Error('This file is not a render result'); shell.showItemInFolder(path.resolve(file)); });
   const agentClient = await import('../agents/local.mjs');
+  handle('api-keys', require('./api-keys.cjs'));
   handle('agents', async (action, payload) => {
     const result = await agentClient.agents(projectDir, action, payload);
     const imageRoot = path.resolve(agentClient.location(projectDir).dir, 'images') + path.sep;
