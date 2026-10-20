@@ -5,6 +5,11 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip inspect <project-dir> [--id ID | --collection NAME | --since REVISION]
   af-clip endpoint <project-dir>
   af-clip agent <project-dir> [list|context|providers|settings|create|send|read|respond|stop|settle] [ID] [--text TEXT | --file JSON] [--offset N --limit N]
+  af-clip generation-start <project-dir> [clip-id] --type music|sfx|speech --text TEXT [--file TEXT_FILE] [--track ID --start SEC --duration SEC] [--voice ID] [--add-video --refresh-video] [--wait]
+  af-clip generation-status <project-dir> [clip-id] [--offset N --limit N]
+  af-clip generation-voices <project-dir> [--next-page-token TOKEN]
+  af-clip generation-select <project-dir> <clip-id> <take-id>
+  af-clip generation-accept <project-dir> <clip-id> [--extend]
   af-clip import <project-dir> <source-file> [--kind video|audio|image|graphic]
   af-clip relink <project-dir> <media-id> <replacement-file> [--revision N]
   af-clip library-import <project-dir> <asset-or-range-id>
@@ -97,6 +102,7 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  const lines=usage.filter(line=>line.trim().split(' ')[1].split('|').includes(topic));
  if(!lines.length)throw new Error(`Unknown command: ${topic}`);
  let notes='';
+ if(topic.startsWith('generation-'))notes='Generation uses the ElevenLabs key saved in API settings, including headless CLI calls. New slots require --track, --start and --duration. Existing clip-id generates another take; unspecified settings are reused. One paid request per submission; no automatic retries. Music: 3-600 seconds, SFX: 0.5-30 seconds. Speech requires --voice and literal dialogue. --add-video is Music only; --add-video false clears it. First completed take enters the mix automatically; select switches the mix. Accept creates normal audio and removes alternatives, with session Undo. --extend permits overlong Speech only into empty space. --wait returns final status and exits nonzero on failure. Status defaults to 30 slots, max 100; voices returns up to 100 with nextPageToken.\n';
  if(topic==='agent')notes='Local agent conversations use installed Codex/Claude logins. context returns the last GUI snapshot (receivedAt) and active discussions, not a guaranteed live selection. list returns up to 50 discussion summaries (max 100); nextOffset continues. --full includes transcripts/settings. read ID returns 20 messages (max 100); nextOffset continues. Tool output is summarized to its command; --full retains complete diagnostics. create/send/settings/respond accept --file JSON. create: {provider:codex|claude,anchor:{kind,items:[{kind,id}],trackId?,time?:{num,den}},context:{}}. send: {id,text,context?,images?:[{dataUrl,name}]}. respond: {id,requestId,answer}. settings: {providers:{codex|claude:{executable?,model?,effort?,access?,delivery:steer|queue}}}. Model/thinking/access are copied into new chats; delivery is read for each message. stop interrupts; settle requires idle/stopped and deletes AFClip image copies. All editing still uses the ordinary CLI.\n';
  if(topic==='apply')notes=section('Batch:', 'Folders contain')+section('Apply supports','The engine keeps');
  if(topic.startsWith('source-'))notes=section('source-inspect returns','Graphics import');

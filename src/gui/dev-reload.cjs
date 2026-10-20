@@ -22,7 +22,7 @@ module.exports = function watchRenderer(window, beforeReload = () => {}, options
     }
   }
   const files = options.files || [
-    ...['app.js','playback.js','native-preview.js','source-preview.js','audio-waveform.js','agents.js','styles.css','index.html'].map(name => path.join(__dirname,name)),
+    ...['app.js','playback.js','native-preview.js','source-preview.js','audio-waveform.js','agents.js','generation.js','styles.css','index.html'].map(name => path.join(__dirname,name)),
     path.join(__dirname,'../render/timeline.cjs'),path.join(__dirname,'../render/asset-runtime.js'),path.join(__dirname,'../shared/asset.cjs'),
   ];
   const directories = new Map();

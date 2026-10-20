@@ -42,7 +42,7 @@ export class LibraryLink {
     this.state.requireUnlocked();const next=structuredClone(this.state.p);let added=0,relocated=0,updated=0;
     const skipped:any[]=[];
     try{for(const m of next.media){
-      if(!['video','audio'].includes(m.kind))continue;
+      if(!['video','audio'].includes(m.kind)||m.metadata.generationId)continue;
       const link=m.metadata.library;
       if(!link){const linked=await this.register({...m,path:path.resolve(this.state.dir,m.path)});m.metadata=linked.metadata;m.revision++;added++;continue;}
       // The catalog owns location recovery. Never adopt a different source version,

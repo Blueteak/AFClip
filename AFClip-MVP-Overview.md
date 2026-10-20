@@ -173,9 +173,13 @@ Humans and agents can render and inspect a composited single frame or short sect
 - Custom transitions, pitch-preserving audio stretching, frame blending and generated intermediate frames.
 - Nested track folders, group effects, audio buses and ripple trimming.
 - Embedded code editing, rich-text formatting controls and visual animation authoring. Direct plain-text field editing is in MVP.
-- Recording, built-in media generation, multicam editing and nested timelines.
+- Recording, multicam editing and nested timelines.
 - Additional export delivery formats.
 
 ## MVP acceptance
 
 Make one complete game trailer through an agent rough cut, manual refinement, another agent revision and final export. Include a headless CLI session, music, supplied sound effects, an animated graphic, fades and a dissolve. The finished workflow must demonstrate that either human or agent can take over the same project without losing timing, organization or edit intent.
+
+## Sound generation
+
+With an ElevenLabs key, hold G and drag an empty track range to describe Music, SFX or Speech. Speech adds a voice selector; Music can use a low-resolution video snapshot. Shared CLI operations own generation and credentials. Background placeholders reserve the range and retain results for review. The selected take plays and exports in context. Acceptance creates ordinary audio; alternatives survive only for session Undo. Interrupted requests require explicit retry.

@@ -66,3 +66,11 @@ module.exports = async (action, payload = {}) => {
     return { status: 'unknown', message: 'Could not reach ElevenLabs. Check your connection and try again.' };
   }
 };
+
+// Used only by the headless API worker. Never expose this through renderer IPC.
+module.exports.savedKey = () => {
+  const encrypted = read().elevenlabs;
+  if (!encrypted) throw new Error('No ElevenLabs key configured. Save one in API settings.');
+  if (!encryptionAvailable()) throw new Error('OS credential encryption is unavailable.');
+  return safeStorage.decryptString(Buffer.from(encrypted, 'base64'));
+};
