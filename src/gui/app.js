@@ -2828,6 +2828,10 @@ $('ruler').addEventListener('contextmenu', e => {
 });
 $('ruler').tip = { title: 'Time ruler', hint: [{ keys: '#Drag', text: 'scrub' }, { keys: 'M', text: 'add marker' }, { keys: ['I', 'O'], text: 'mark range' }, { keys: ['=', '-'], text: 'zoom' }, { keys: '\\', text: 'fit' }] };
 $('mini-ruler').tip = { title: 'Sequence overview', hint: [{ keys: '#Click', text: 'jump' }, { keys: '#Drag', text: 'scrub' }] };
+$('tl-scroll').addEventListener('contextmenu', e => {
+  if (e.defaultPrevented || e.target.closest('.track, .ruler-row')) return;
+  timelineContextMenu(e, [{ action: 'addTrack' }]);
+});
 $('tl-scroll').addEventListener('wheel', e => {
   if (!e.ctrlKey) return;
   e.preventDefault();
