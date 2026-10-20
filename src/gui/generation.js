@@ -39,6 +39,8 @@ window.AFClipGeneration = host => {
     if (on) host.flashHint([{ keys: ['G', '#Drag'], text: 'generate sound on an empty track' }], 2500);
   }
   document.addEventListener('keydown', e => {
+    // The held key keeps repeating after the popup takes focus; swallow it until keyup.
+    if (e.code === 'KeyG' && armed) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (e.code === 'KeyG' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && !typing(e.target) && !host.blocked()) { setArmed(true); e.preventDefault(); }
   }, true);
   document.addEventListener('keyup', e => { if (e.code === 'KeyG') setArmed(false); }, true);
@@ -47,6 +49,8 @@ window.AFClipGeneration = host => {
   // ------------------------------------------------------------ Range drag
   // Called from the lane pointerdown. Returns true when the gesture is ours.
   function begin(e, lane) {
+    const handle = e.target.closest('.gen-ghost.held .handle');
+    if (handle && pop?.draft) { beginResize(e, handle.classList.contains('l') ? 'l' : 'r'); return true; }
     if (!armed || !lane?.dataset.track) return false;
     const trackId = lane.dataset.track;
     e.preventDefault();
@@ -65,7 +69,35 @@ window.AFClipGeneration = host => {
     host.hintItems([{ keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
     return true;
   }
+  // Draft edges move within the gap on their own track. The popup stays open; Escape restores the range.
+  function beginResize(e, edge) {
+    e.preventDefault();
+    if (!host.editable()) return;
+    const dr = pop.draft, gap = room(dr.trackId, dr.s) || dr.gap;
+    const d = { type: 'generate', resize: edge, s0: dr.s, e0: dr.e, gap, targets: host.snapTargets() };
+    pop.resize = d;
+    host.startDrag(d);
+    host.hintItems([{ keys: 'Alt', text: 'bypass snapping' }, { keys: 'Escape', text: 'cancel' }]);
+  }
+  function resizeMove(e, d) {
+    if (!pop?.draft || pop.resize !== d) return;
+    const dr = pop.draft;
+    let f = host.laneFrame(e.clientX);
+    f += host.snapFrame([f], d.targets, e);
+    if (d.resize === 'l') dr.s = f = Math.max(d.gap.lo, Math.min(dr.e - 1, f));
+    else dr.e = f = Math.min(d.gap.hi, Math.max(dr.s + 1, f));
+    dr.gap = d.gap;
+    if (pop.ghost) paintGhost(pop.ghost, dr.s, dr.e);
+    render();
+    host.readout(`${host.tc(dr.s)}   ${host.shortTc(dr.e - dr.s)}`, f === d.gap.hi || f === d.gap.lo && d.gap.lo > 0 ? 'Limited by neighbouring clip' : '');
+  }
+  function dragCancel(d) {
+    if (!d.resize || !pop?.draft || pop.resize !== d) return;
+    pop.resize = null; pop.draft.s = d.s0; pop.draft.e = d.e0;
+    render();
+  }
   function dragMove(e, d) {
+    if (d.resize) { resizeMove(e, d); return; }
     let f = host.laneFrame(e.clientX);
     f += host.snapFrame([f], d.targets, e);
     f = Math.max(d.gap.lo, Math.min(d.gap.hi, f));
@@ -75,6 +107,7 @@ window.AFClipGeneration = host => {
     host.readout(`${host.tc(d.s)}   ${host.shortTc(d.e - d.s)}`, f === d.gap.hi || f === d.gap.lo && d.gap.lo > 0 ? 'Limited by neighbouring clip' : '');
   }
   async function dragEnd(d) {
+    if (d.resize) { if (pop?.resize === d) { pop.resize = null; render(); } return; }
     let { s, e } = d;
     // A click without a drag asks for a default length that fits the gap.
     if (e <= s) e = Math.min(d.gap.hi, s + Math.round(5 * fpsNow()));
@@ -91,8 +124,6 @@ window.AFClipGeneration = host => {
   function paintGhost(el, s, e) { el.style.left = `${host.frameX(s)}px`; el.style.width = `${Math.max(2, host.frameX(e - s))}px`; }
 
   // ------------------------------------------------------------ Popup
-  // The draft is bounded by its gap only. Type limits are reported, never applied silently.
-  function draftRange() { const d = pop.draft; return { len: d.e - d.s, max: d.gap.hi - d.s }; }
   function openDraft(draft) {
     build({ draft, type: store.type in TYPES ? store.type : 'sfx', text: '', voiceId: store.voiceId, addVideo: false, refreshVideo: false });
     render(); host.redraw();
@@ -120,7 +151,7 @@ window.AFClipGeneration = host => {
     const note = h('div', { class: 'agent-error', hidden: true });
     const options = h('div', { class: 'gen-options' });
     const takes = h('div', { class: 'gen-takes', tabindex: '0', role: 'listbox', 'aria-label': 'Takes', hidden: true });
-    const textarea = h('textarea', { class: 'agent-input', rows: 1, spellcheck: 'true' });
+    const textarea = h('textarea', { class: 'agent-input', rows: 3, spellcheck: 'true' });
     const send = h('button', { class: 'icon-button agent-send', onclick: () => generate() }, icon('send'));
     const label = h('div', { class: 'gen-label' });
     const composer = h('div', { class: 'agent-composer' }, label, h('div', { class: 'agent-input-row' }, textarea, send));
@@ -196,14 +227,18 @@ window.AFClipGeneration = host => {
   }
   function renderHead(v) {
     const st = v.job?.status || 'draft';
-    once('head', [pop.type, st, v.job?.phase, v.job?.takes?.length], () => {
+    const len = v.e - v.s;
+    once('head', [pop.type, st, v.job?.phase, v.job?.takes?.length, len], () => {
       const seg = h('select', { class: 'gen-type', 'aria-label': 'Type', onchange: e => setType(e.target.value) }, Object.entries(TYPES).map(([id, t]) => h('option', { value: id }, t.label)));
       seg.value = pop.type;
       seg.tip = { title: TYPES[pop.type].label, desc: TYPE_TIPS[pop.type] };
       const status = st === 'generating' ? h('span', { class: 'agent-status running' }, phaseLabel(v.job))
         : st === 'failed' ? h('span', { class: 'agent-status error' }, 'Failed')
         : st === 'ready' ? h('span', { class: 'agent-status' }, `${v.job.takes?.length || 0} take${v.job.takes?.length === 1 ? '' : 's'}`) : null;
-      pop.head.replaceChildren(...[h('span', { class: 'gen-types' }, seg), h('span', { class: 'grow' }), status,
+      // Draft length changes by dragging the range edges; a submitted job keeps its length.
+      const dur = h('span', { class: 'field-static gen-len' }, host.shortTc(len));
+      dur.tip = { title: pop.type === 'speech' ? 'Window' : 'Duration', desc: v.job ? 'Fixed for every take of this generation.' : 'Drag the range edges to change.' };
+      pop.head.replaceChildren(...[h('span', { class: 'gen-types' }, seg), h('span', { class: 'grow' }), status, dur,
         h('button', { class: 'icon-button small', onclick: () => close(), tip: { title: 'Close', keys: 'Escape', desc: v.job ? 'Generation keeps running.' : 'Discards the range.' } }, icon('x'))].filter(Boolean));
     });
   }
@@ -219,25 +254,18 @@ window.AFClipGeneration = host => {
     });
   }
   function renderOptions(v) {
-    const len = v.e - v.s, covered = videoCovered(v.s, v.e), r = pop.draft ? draftRange() : null;
-    const snap = !!v.job?.snapshot;
-    once('options', [pop.type, pop.voiceId, pop.addVideo, pop.refreshVideo, len, r?.max, covered, snap, !!voices, voicesError, !!voicesLoading, !!pop.draft], () => {
+    const covered = videoCovered(v.s, v.e), snap = !!v.job?.snapshot;
+    once('options', [pop.type, pop.voiceId, pop.addVideo, pop.refreshVideo, covered, snap, !!voices, voicesError, !!voicesLoading], () => {
       if (pop.options.contains(document.activeElement) && document.activeElement.matches('input, select')) { pop.sig.options = ''; return; }
-      const rows = [];
-      if (pop.type === 'speech') rows.push(host.field('Voice', voicePicker(), { tip: 'ElevenLabs voice. Remembered for the next generation.' }));
-      if (pop.draft) {
-        const input = host.timeInput(len, f => { pop.draft.e = pop.draft.s + f; pop.sig.options = ''; host.redraw(); render(); },
-          { min: 1, max: Number.isFinite(r.max) ? Math.max(1, r.max) : undefined });
-        rows.push(host.field(pop.type === 'speech' ? 'Window' : 'Duration', input, { tip: pop.type === 'speech' ? 'Intended window for the line. Speech takes the time it needs.' : 'Requested length, bounded by the gap.' }));
-      } else rows.push(host.field(pop.type === 'speech' ? 'Window' : 'Duration', h('span', { class: 'field-static' }, host.shortTc(len)), { tip: 'Fixed for every take of this generation.' }));
       // A saved snapshot stays usable after the clip moves; new captures need video under the range.
       const music = pop.type === 'music', ok = music && (covered || snap);
       const video = h('label', { class: `gen-check ${ok ? '' : 'disabled'}` }, h('input', { type: 'checkbox', checked: ok && pop.addVideo, disabled: !ok, onchange: e => { pop.addVideo = e.target.checked; render(); } }), 'Add video');
       video.tip = { title: 'Add video', desc: !music ? 'Music only.' : !ok ? 'Needs video under the whole range.' : 'Sends a silent low-resolution snapshot of the timeline under the range as a reference.' };
       const refresh = snap && ok && pop.addVideo ? h('label', { class: `gen-check ${covered ? '' : 'disabled'}` }, h('input', { type: 'checkbox', checked: covered && pop.refreshVideo, disabled: !covered, onchange: e => { pop.refreshVideo = e.target.checked; render(); } }), 'Refresh snapshot') : null;
       if (refresh) refresh.tip = { title: 'Refresh snapshot', desc: covered ? 'Capture the timeline again. Off reuses the earlier snapshot.' : 'Needs video under the whole range. The earlier snapshot is reused.' };
-      rows.push(h('div', { class: 'gen-checks' }, video, refresh));
-      pop.options.replaceChildren(...rows);
+      let voice = null;
+      if (pop.type === 'speech') { voice = voicePicker(); voice.tip = { title: 'Voice', desc: 'ElevenLabs voice. Remembered for the next generation.' }; }
+      pop.options.replaceChildren(h('div', { class: 'gen-checks' }, video, refresh, voice));
     });
   }
   function voicePicker() {
@@ -389,7 +417,7 @@ window.AFClipGeneration = host => {
     if (pop?.draft) {
       const lane = document.querySelector(`.lane[data-track="${CSS.escape(pop.draft.trackId)}"]`);
       if (!lane || !host.trackById(pop.draft.trackId)) { close(); return; }
-      pop.ghost ||= h('div', { class: 'gen-ghost held' });
+      pop.ghost ||= h('div', { class: 'gen-ghost held' }, h('div', { class: 'handle l' }), h('div', { class: 'handle r' }));
       lane.append(pop.ghost);
       paintGhost(pop.ghost, pop.draft.s, pop.draft.e);
     }
@@ -397,6 +425,7 @@ window.AFClipGeneration = host => {
   }
   // Escape from the timeline closes the popup unless it would clear a selection first.
   document.addEventListener('keydown', e => {
+    if (pop?.resize && e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); host.cancelDrag(); host.say('Drag cancelled'); return; }
     if (!pop || e.key !== 'Escape' || host.blocked() || pop.el.contains(document.activeElement)) return;
     if (host.hasSelection()) return;
     e.preventDefault(); e.stopImmediatePropagation(); close();
@@ -434,7 +463,7 @@ window.AFClipGeneration = host => {
   const tip = c => { const job = jobOf(c); return job && { status: job.status, takes: job.takes?.length || 0, error: job.error?.message }; };
 
   return {
-    armed: () => armed, begin, dragMove, dragEnd, open, close, redrawn, changed, decorate, tip,
+    armed: () => armed, begin, dragMove, dragEnd, dragCancel, open, close, redrawn, changed, decorate, tip,
     pending: c => !!c?.generationId,
     holdsReload: () => !!pop,
     isOpen: () => !!pop,

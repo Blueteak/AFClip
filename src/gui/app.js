@@ -2718,7 +2718,9 @@ function marqueeDrag(e) {
 function onDragCancel() {
   const d = drag; if (!d) return;
   if (d.type === 'move') d.els.forEach(el => { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); });
-  endDrag(); drawTimeline();
+  endDrag();
+  if (d.type === 'generate') generation.dragCancel(d);
+  drawTimeline();
   if (d.type === 'scrub') playback.seek(secs(fromF(Math.min(playF, lastFrame()))), false);
 }
 function onDragUp(e) {
@@ -3237,7 +3239,7 @@ generation = window.AFClipGeneration?.({
   api, h, icon, kbd, field, segmented, timeInput, toast, say, explain, hideTip, flashHint, hintItems, readout,
   blocked: () => !!modal || !!openMenuState, snapshot: () => snapshot, hasSelection, editable, clips, clipsOn, clipById, trackById, clipName, clipVisual, disabledTrack, blockReason,
   fps, fromF, toF, startF, endF, secs, tc, shortTc, frameX, laneFrame, snapFrame, snapTargets, startDrag, perform, select, togglePlay,
-  redraw: () => drawTimeline(), openSettings: tab => agents?.openSettings(tab),
+  cancelDrag: onDragCancel, redraw: () => drawTimeline(), openSettings: tab => agents?.openSettings(tab),
   deleteClip: id => { select([id]); deleteSelection(); },
 }) || null;
 refresh().then(async () => {
