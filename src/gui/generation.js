@@ -11,7 +11,7 @@ window.AFClipGeneration = host => {
   })();
   const saveStore = () => localStorage.setItem('afclip.generation', JSON.stringify(store));
 
-  let armed = false, pop = null, voices = null, voicesLoading = null, voicesError = null, frame = 0;
+  let armed = false, pop = null, voices = null, voicesLoading = null, voicesError = null, frame = 0, sample = null;
   const PHASES = { request: 'Generating', video: 'Preparing video' };
   const phaseLabel = job => PHASES[job?.phase] || 'Generating';
   const statuses = new Map();
@@ -141,11 +141,13 @@ window.AFClipGeneration = host => {
   function close() {
     if (!pop) return;
     const wasDraft = !!pop.draft;
+    stopSample();
     pop.el.remove(); pop = null;
     if (wasDraft) host.redraw();
   }
   function build(state) {
     if (pop) pop.el.remove();
+    stopSample();
     host.hideTip();
     const head = h('div', { class: 'popover-heading agent-head gen-head' });
     const note = h('div', { class: 'agent-error', hidden: true });
@@ -264,12 +266,13 @@ window.AFClipGeneration = host => {
       const refresh = snap && ok && pop.addVideo ? h('label', { class: `gen-check ${covered ? '' : 'disabled'}` }, h('input', { type: 'checkbox', checked: covered && pop.refreshVideo, disabled: !covered, onchange: e => { pop.refreshVideo = e.target.checked; render(); } }), 'Refresh snapshot') : null;
       if (refresh) refresh.tip = { title: 'Refresh snapshot', desc: covered ? 'Capture the timeline again. Off reuses the earlier snapshot.' : 'Needs video under the whole range. The earlier snapshot is reused.' };
       let voice = null;
-      if (pop.type === 'speech') { voice = voicePicker(); voice.tip = { title: 'Voice', desc: 'ElevenLabs voice. Remembered for the next generation.' }; }
+      if (pop.type === 'speech') voice = voicePicker();
       pop.options.replaceChildren(h('div', { class: 'gen-checks' }, video, refresh, voice));
     });
   }
   function voicePicker() {
-    const s = h('select', { onchange: () => { pop.voiceId = s.value; store.voiceId = s.value; saveStore(); render(); } });
+    const s = h('select', { onchange: () => { pop.voiceId = s.value; store.voiceId = s.value; saveStore(); stopSample(); paintSample(); render(); } });
+    s.tip = { title: 'Voice', desc: 'ElevenLabs voice. Remembered for the next generation.' };
     if (!voices) {
       s.append(h('option', { value: '' }, voicesError ? 'Voices unavailable' : 'Loading voices…'));
       s.disabled = true;
@@ -281,7 +284,35 @@ window.AFClipGeneration = host => {
     if (pop.voiceId && !voices.some(x => x.id === pop.voiceId)) s.append(h('option', { value: pop.voiceId }, 'Saved voice'));
     if (!pop.voiceId && voices[0]) { pop.voiceId = voices[0].id; }
     s.value = pop.voiceId || '';
-    return s;
+    pop.sampleButton = h('button', { class: 'icon-button small', onclick: toggleSample });
+    paintSample();
+    return h('span', { class: 'gen-voice' }, s, pop.sampleButton);
+  }
+  // Plays the voice's stored ElevenLabs sample. Never synthesizes speech.
+  const sampleUrl = () => voices?.find(x => x.id === pop?.voiceId)?.previewUrl || '';
+  function paintSample() {
+    const b = pop?.sampleButton; if (!b) return;
+    const on = !!sample, url = sampleUrl();
+    b.disabled = !on && !url;
+    b.replaceChildren(icon(on ? 'stop' : 'volume', 'sm'));
+    b.setAttribute('aria-label', on ? 'Stop sample' : 'Play sample');
+    b.tip = { title: on ? 'Stop sample' : 'Play sample', desc: url ? 'Stored ElevenLabs sample. No credits used.' : 'No sample for this voice.' };
+  }
+  function stopSample() {
+    const a = sample; if (!a) return;
+    sample = null;
+    a.onended = a.onerror = null; a.pause(); a.removeAttribute('src'); a.load();
+    paintSample();
+  }
+  function toggleSample() {
+    if (sample) { stopSample(); return; }
+    const url = sampleUrl(); if (!url) return;
+    const a = sample = new Audio(url);
+    const fail = () => { if (sample !== a) return; stopSample(); host.say('Voice sample unavailable', 'error'); };
+    a.onended = () => { if (sample === a) stopSample(); };
+    a.onerror = fail;
+    a.play().catch(error => { if (error?.name !== 'AbortError') fail(); });
+    paintSample();
   }
   // Loads every page once. A failure stays shown until Retry or the popup reopens.
   function loadVoices() {
@@ -341,6 +372,7 @@ window.AFClipGeneration = host => {
   }
   function setType(type) {
     if (pop.type === type) return;
+    stopSample();
     pop.type = type; store.type = type; saveStore();
     if (type !== 'music') pop.addVideo = false;
     render();
