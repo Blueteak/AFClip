@@ -4,6 +4,9 @@ window.AssetRuntime = class AssetRuntime {
   constructor(stage, setup, raster) {
     this.stage=stage; this.setup=setup; this.raster=raster; this.entries=new Map(); this.pending=new Map(); this.serial=0; this.closed=false;this.epoch=0;
     this.width=setup.compositionWidth||setup.width; this.height=setup.compositionHeight||setup.height;
+    // Keep native preview clips on the same pixel grid across transition edges.
+    // Direct video/CSS and iframe surfaces can snap differently at monitor scale.
+    this.compositedClips=new Set();
     this.stats={frames:0,totalMs:0,maxMs:0,skipped:0,samples:[]};
     this.receive=e=>{
       const d=e.data,p=this.pending.get(d?.requestId);
@@ -81,12 +84,15 @@ window.AssetRuntime = class AssetRuntime {
     for(const effect of item.effects||[])image=await this.render('effect:'+item.clipId+':'+effect.id,effect,[image],{time:item.sourceTime,progress:item.progress,duration:item.duration},true);
     return image;
   }
+  needsComposition(item){return !!item&&(!!item.effects?.length||this.compositedClips.has(item.clipId));}
   async compose(items,entries,epoch=this.epoch){
     const started=performance.now();
     const transitions=new Map(),effectItems=[];
-    for(const item of items){if(item.kind==='audio')continue;if(item.transition){const tr=item.transition;if(!transitions.has(tr.id))transitions.set(tr.id,{tr,items:[]});transitions.get(tr.id).items.push(item);}else if(item.effects?.length)effectItems.push(item);}
+    for(const item of items){if(item.kind==='audio')continue;if(item.transition){const tr=item.transition;if(!transitions.has(tr.id))transitions.set(tr.id,{tr,items:[]});transitions.get(tr.id).items.push(item);}else if(this.needsComposition(item))effectItems.push(item);}
     for(const item of effectItems){
-      const entry=entries.get(item.clipId),image=await this.input(item,entry);
+      const entry=entries.get(item.clipId);
+      if(this.compositedClips.has(item.clipId)&&!entry.still?.width&&(!entry.content||(item.kind==='video'&&entry.content.readyState<2)))continue;
+      const image=await this.input(item,entry);
       if(this.closed||epoch!==this.epoch){image?.close();return;}
       if(!entry.effectOutput){entry.effectOutput=document.createElement('canvas');this.stage.append(entry.effectOutput);Object.assign(entry.effectOutput.style,{position:'absolute',inset:'0',width:'100%',height:'100%'});}
       const out=entry.effectOutput;if(out.width!==this.width)out.width=this.width;if(out.height!==this.height)out.height=this.height;const ctx=out.getContext('2d');ctx.clearRect(0,0,this.width,this.height);ctx.drawImage(image,0,0);image.close();out.hidden=false;out.style.zIndex=entry.layer.style.zIndex;entry.layer.style.visibility='hidden';
@@ -95,11 +101,12 @@ window.AssetRuntime = class AssetRuntime {
       const a=pair.find(i=>i.clipId===tr.fromClipId),b=pair.find(i=>i.clipId===tr.toClipId);
       if(!a||!b)throw new Error(`Transition ${tr.id} needs two visual inputs`);
       const images=await Promise.all([a,b].map(i=>this.input(i,entries.get(i.clipId))));
-      const image=await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration},!!this.setup.exactFrames);
+      const bitmapOutput=!!(this.setup.exactFrames||this.compositedClips.has(a.clipId)||this.compositedClips.has(b.clipId));
+      const image=await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration},bitmapOutput);
       if(this.closed||epoch!==this.epoch){image?.close();return;}
       const entry=this.entries.get('transition:'+tr.id);
       let output=entry.iframe;
-      if(this.setup.exactFrames){
+      if(bitmapOutput){
         // An iframe acknowledgement does not fence its compositor paint. Exact
         // export uses the acknowledged bitmap in the same document as its token.
         if(!entry.output){entry.output=document.createElement('canvas');this.stage.append(entry.output);Object.assign(entry.output.style,{position:'absolute',inset:'0',width:'100%',height:'100%'});}
@@ -116,6 +123,10 @@ window.AssetRuntime = class AssetRuntime {
     const ms=performance.now()-started;this.stats.frames++;this.stats.totalMs+=ms;this.stats.maxMs=Math.max(ms,this.stats.maxMs);
   }
   reset(entries,items,seeking=false){
+    if(this.setup.compositeTransitions&&this.compositionPlan!==this.setup.plan){
+      this.compositionPlan=this.setup.plan;
+      this.compositedClips=new Set((this.compositionPlan?.clips||[]).filter(c=>c.transitions?.length&&['video','image'].includes(c.media.kind)).map(c=>c.id));
+    }
     const signature=items.filter(i=>i.kind!=='audio').map(i=>i.clipId+':'+(i.transition?.id||'')).join('|');if(seeking||signature!==this.signature){this.epoch++;this.signature=signature;}
     const active=new Map(items.map(i=>[i.clipId,i])),transitions=new Set(items.filter(i=>i.transition).map(i=>'transition:'+i.transition.id));
     this.transitionFallbacks??=new Map();
@@ -136,17 +147,17 @@ window.AssetRuntime = class AssetRuntime {
         // expose the other source while waiting for the first asset frame.
         const key='transition:'+item.transition.id,transitionEntry=this.entries.get(key),ready=transitionEntry?.output?!transitionEntry.output.hidden:transitionEntry?.iframe.style.visibility==='visible';
         const fallback=id===this.transitionFallbacks.get(key)&&!ready;
-        const keepEffect=fallback&&item.effects?.length&&entry.effectOutput&&!entry.effectOutput.hidden;
-        entry.layer.style.visibility=fallback&&!keepEffect?'':'hidden';
+        const keepEffect=fallback&&this.needsComposition(item)&&entry.effectOutput&&!entry.effectOutput.hidden;
+        entry.layer.style.visibility=fallback&&!keepEffect&&!this.needsComposition(item)?'':'hidden';
         if(entry.effectOutput)entry.effectOutput.hidden=!keepEffect;
       }else{
         // An effect can make an opaque source fully transparent. Never expose
         // that source while its first processed frame is still in flight.
-        entry.layer.style.visibility=item?.effects?.length?'hidden':'';
+        entry.layer.style.visibility=this.needsComposition(item)?'hidden':'';
         // Retain a completed frame during scrubbing, but never resurrect it on
         // re-entry or at the start of a reveal that should begin transparent.
         // The unprocessed source stays hidden until compose produces output.
-        if(entry.effectOutput&&(!item?.effects?.length||!this.previousItems?.has(id)||(seeking&&item.progress<=0)))entry.effectOutput.hidden=true;
+        if(entry.effectOutput&&(!this.needsComposition(item)||!this.previousItems?.has(id)||(seeking&&item.progress<=0)))entry.effectOutput.hidden=true;
       }
     }
     this.previousItems=active;
