@@ -19,7 +19,8 @@ changed generation records; ordinary unchanged jobs are omitted. `--full` keeps
 complete snapshots. `generation-status` returns 30 slots by default, max 100, with
 `nextOffset`; a clip ID focuses one job and retains every take's exact duration,
 settings and actionable IDs. `generation-voices` returns up to 100 voices with
-`nextPageToken`. `generation-start --wait` emits only final job status.
+`nextPageToken`; `--full` adds each voice's `previewUrl`. `generation-start --wait`
+emits only final job status.
 Measured with `tiktoken` / `o200k_base`: two-take SFX status 351 tokens, 22-voice
 list 629 tokens, focused generation-start help 238 tokens.
 

@@ -35,7 +35,7 @@ app.whenReady().then(async () => {
   }
   if (config.action==='voices') {
     const data=await response.json();
-    return {voices:data.voices.map(v=>({id:v.voice_id,name:v.name})),...(data.has_more?{nextPageToken:data.next_page_token}:{})};
+    return {voices:data.voices.map(v=>({id:v.voice_id,name:v.name,...(v.preview_url?{previewUrl:v.preview_url}:{})})),...(data.has_more?{nextPageToken:data.next_page_token}:{})};
   }
   const bytes=Buffer.from(await response.arrayBuffer());
   if(!bytes.length)throw new Error('ElevenLabs returned empty audio');
