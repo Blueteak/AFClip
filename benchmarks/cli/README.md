@@ -14,6 +14,15 @@ project state, and command output contracts are unchanged.
 
 ## Output tokens
 
+`generation-start/select/accept` follow the edit-delta contract. Deltas include only
+changed generation records; ordinary unchanged jobs are omitted. `--full` keeps
+complete snapshots. `generation-status` returns 30 slots by default, max 100, with
+`nextOffset`; a clip ID focuses one job and retains every take's exact duration,
+settings and actionable IDs. `generation-voices` returns up to 100 voices with
+`nextPageToken`. `generation-start --wait` emits only final job status.
+Measured with `tiktoken` / `o200k_base`: two-take SFX status 351 tokens, 22-voice
+list 629 tokens, focused generation-start help 238 tokens.
+
 `agent providers` includes Codex's resolved `defaultModel` and per-model
 `serviceTiers` with provider-reported IDs, labels and descriptions. These let
 clients enable Fast/Ultrafast only when the signed-in account's catalog offers
@@ -38,7 +47,7 @@ Default output omits these known values:
 - Completed library response envelope: `status:"complete"`. Pending and failed states remain.
 - Project inspection: `renderLock:null`.
 - Clips: volume 1, mute false, speed 1/1, sourceIn/fadeIn/fadeOut 0/1,
-  null linkId, empty effects/volumePoints/text, and default transform components
+  null linkId/generationId, empty effects/volumePoints/text, and default transform components
   x/y/rotation 0, scale/opacity 1, fit `fit`.
 - Tracks and folders: disabled/locked/collapsed false and null folderId.
 - Library assets and ranges: deleted/purged false, empty notes/tags/takes/blocks/

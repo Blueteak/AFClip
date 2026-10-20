@@ -3,6 +3,7 @@
 export function projectChanges(before:any,after:any):any {
  if(!after?.project||!after.revisions)return after;
  const {project,revisions,...rest}=after;
+ if(rest.generations){const old=new Map((before.generations||[]).map((j:any)=>[j.id,JSON.stringify(j)]));rest.generations=rest.generations.filter((j:any)=>old.get(j.id)!==JSON.stringify(j));if(!rest.generations.length)delete rest.generations;}
  const changes:any={},removed:any={},order:any={};
  const collections=new Set(['media','tracks','clips','transitions','markers','folders']);
  const same=(a:any,b:any)=>JSON.stringify(a)===JSON.stringify(b);
@@ -82,7 +83,7 @@ export function compactResult(value:any):any {
  if(value.trackId&&value.mediaId){
   omit('volume',1);omit('mute',false);omit('speed',{num:1,den:1});
   for(const key of ['sourceIn','fadeIn','fadeOut'])omit(key,{num:0,den:1});
-  omit('linkId',null);empty('effects','volumePoints','text');
+  omit('linkId',null);omit('generationId',null);empty('effects','volumePoints','text');
   if(value.transform){
    out.transform={...value.transform};
    for(const [key,defaultValue] of Object.entries({x:0,y:0,rotation:0,scale:1,opacity:1,fit:'fit'}))

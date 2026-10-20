@@ -68,6 +68,14 @@ export async function collectProject(state:ProjectState, command:any) {
         if(media.metadata.format)media.metadata.format.filename=relative;
       }
     }
+    for(const id of new Set(project.clips.map(c=>c.generationId).filter(Boolean))){
+      const source=path.join(state.dir,'.afclip','generation',id),target=path.join(destination,'.afclip','generation',id);
+      await fs.cp(source,target,{recursive:true,errorOnExist:true,force:false});
+      const job=JSON.parse(await fs.readFile(path.join(target,'job.json'),'utf8'));
+      for(const media of job.media){const copied=project.media.find(m=>m.id===media.id);if(copied)media.path=copied.path;}
+      if(job.status==='generating'){job.status='failed';job.error={code:'GENERATION_INTERRUPTED',message:'Collection does not repeat in-flight API requests. Retry explicitly.'};}
+      atomicJSON(path.join(target,'job.json'),job);
+    }
     validateProject(project);
     atomicJSON(path.join(destination,'project.json'),project);
     completed=true;

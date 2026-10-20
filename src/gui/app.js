@@ -143,7 +143,7 @@ let selection = new Set(), selTransition = null, selPoint = null, selMarker = nu
 let drag = null, deferredDraw = false, editingTrack = null, firstLoad = true, connected = false;
 let shown = null, frameJobId = null, frameQueued = false, frameTimer = null, exportJobId = null, exportProgress = 0, exportMessage = '', monitorView = 'frame';
 const frameFor = new Map(), seenJobs = new Set(), jobModes = new Map();
-let agents = null;
+let agents = null, generation = null;
 const HEAD_W = 176;
 const playback = new window.TimelinePlayback(api, {
   time: time => {
@@ -531,7 +531,7 @@ function openShortcuts() {
   groups.find(g => g.name === 'Timeline').rows.push(['Back / forward 5 frames', ['Shift+Left', 'Shift+Right']], ['Nudge 5 frames', ['Alt+Shift+Left', 'Alt+Shift+Right']]);
   groups.push({ name: 'Mouse', rows: [
     ['Move clips', ['#Drag']], ['Trim', ['#Drag edge']], ['Change speed (stretch)', ['Shift', '#Drag edge']], ['Bypass snapping', ['Alt', '#Drag']],
-    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Right-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['Select tracks', ['#Click header']], ['Reorder tracks and folders', ['#Drag header']], ['More actions', ['#Right-click']],
+    ['Add to selection', ['Ctrl', '#Click']], ['Add volume point', ['Ctrl', '#Click volume line']], ['Remove volume point', ['#Click point', 'Delete']], ['Box select', ['#Drag empty track']], ['Generate sound', ['G', '#Drag empty track']], ['Move marker', ['#Drag marker']], ['Edit marker', ['#Right-click marker']], ['Zoom timeline', ['Ctrl', '#Wheel']], ['Rename track', ['#Double-click name']], ['Select tracks', ['#Click header']], ['Reorder tracks and folders', ['#Drag header']], ['More actions', ['#Right-click']],
   ], joined: true });
   const grid = h('div', { class: 'shortcut-grid' }, groups.filter(g => g.rows.length).map(g => h('div', { class: 'shortcut-group' }, h('h3', {}, g.name),
     g.rows.map(([label, keys]) => h('div', { class: 'shortcut-row' }, h('span', {}, label),
@@ -724,7 +724,7 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function splitAt(ids, f, fallback) {
   return edit(() => {
-    const under = c => startF(c) < f && f < endF(c);
+    const under = c => startF(c) < f && f < endF(c) && !generation?.pending(c);
     let targets = withLinked(ids.map(clipById).filter(c => c && under(c))).filter(under);
     if (!targets.length && fallback) targets = clips().filter(c => under(c) && !lockedIn(withLinked([c])));
     if (!targets.length) return refuse('No clip under the playhead to split');
@@ -886,7 +886,7 @@ function deleteSelection() {
 }
 
 function copySelection() {
-  const list = selectedClips(); if (!list.length) return;
+  const list = selectedClips().filter(c => !generation?.pending(c)); if (!list.length) return refuse('Accept a generated take before copying it');
   clipboard = { base: Math.min(...list.map(startF)), clips: list.map(c => ({ ...strip(c), offset: startF(c) })) };
   say(`Copied ${plural(list.length, 'clip')}`); syncChrome();
 }
@@ -1020,7 +1020,7 @@ function addDissolve() {
   edit(() => {
     const cuts = [];
     for (const a of clips()) for (const b of clipsOn(a.trackId)) {
-      if (a.id === b.id || secs(endOf(a)) !== secs(b.start)) continue;
+      if (a.id === b.id || secs(endOf(a)) !== secs(b.start) || generation?.pending(a) || generation?.pending(b)) continue;
       if (scope && !scope.has(a.id) && !scope.has(b.id)) continue;
       if (transitions().some(t => t.fromClipId === a.id && t.toClipId === b.id) || blockReason(a.trackId)) continue;
       cuts.push({ a, b, f: startF(b) });
@@ -1404,6 +1404,7 @@ function draw() {
   document.title = `${p.name} · AFClip`;
   drawMedia(); syncSource(); drawInspector(); drawMonitor(); syncChrome();
   if (drag || editingTrack) deferredDraw = true; else drawTimeline();
+  generation?.changed();
   if (!$('history-panel').closest('.tab-page').hidden) drawHistory();
   if (firstLoad) { firstLoad = false; api.ready(); }
 }
@@ -1435,9 +1436,11 @@ function mediaLibraryId(m) {
   return libraryMedia[m.id]?.importId || (link?.temporary ? link.assetId : link?.rangeId || link?.assetId);
 }
 const mediaNameCollator = new Intl.Collator(undefined, { numeric: true });
+// Generation previews are engine-owned playback sources, not bin assets, until a take is accepted.
+const binMedia = () => (project()?.media || []).filter(m => !m.metadata?.generationId);
 function filteredMedia() {
   const query = $('search').value.trim().toLowerCase();
-  return (project()?.media || []).filter(m => {
+  return binMedia().filter(m => {
     const data = libraryMedia[m.id];
     return [mediaName(m), m.path, mediaLibraryId(m), m.metadata?.library?.assetId, kindLabel(m.kind), data?.assetName, data?.notes, data?.parentNotes, mediaFolder(m), ...(data?.tags || [])].join('\n').toLowerCase().includes(query);
   }).sort((a, b) => mediaNameCollator.compare(mediaFolder(a), mediaFolder(b)) || mediaNameCollator.compare(mediaName(a), mediaName(b)) || a.id.localeCompare(b.id));
@@ -1503,8 +1506,8 @@ const thumbObserver = new IntersectionObserver(items => {
 }, { root: $('media-list'), rootMargin: '120px 0px' });
 
 function drawMedia() {
-  const list = $('media-list'), media = project().media, query = $('search').value.trim().toLowerCase();
-  const key = JSON.stringify(media.map(m => [m.id, m.metadata?.library]));
+  const list = $('media-list'), media = binMedia(), query = $('search').value.trim().toLowerCase();
+  const key = JSON.stringify(project().media.map(m => [m.id, m.metadata?.library]));
   if (key !== libraryMediaKey && !libraryLoading) void refreshLibraryMedia();
   const usage = new Map(); for (const c of clips()) usage.set(c.mediaId, (usage.get(c.mediaId) || 0) + 1);
   for(const tr of transitions())usage.set(tr.assetId,(usage.get(tr.assetId)||0)+1);
@@ -1891,27 +1894,28 @@ function drawClipInspector(box, c) {
   box.append(h('div', { class: 'insp-head' }, icon(kindIcon(kind)), name), h('div', { class: 'insp-source', tip: { title: mediaName(m), desc: peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”. Moves, trims and splits act on both.` : null, meta: m?.metadata?.authoringPath || m?.path } }, `${mediaName(m)} · track “${trackById(c.trackId)?.name}”`, peers.length ? h('span', { class: 'insp-link' }, icon('link', 'sm'), 'Linked') : null));
   if (locked && editable()) box.append(h('div', { class: 'insp-note warn' }, `${trackById(c.trackId)?.locked ? 'This track' : 'This track’s folder'} is locked. Unlock it in the track header to edit.`));
 
-  const timingLocked = locked || !!lockedIn(peers);
+  const pending = !!generation?.pending(c), timingLocked = locked || !!lockedIn(peers);
+  if (pending) box.append(h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', onclick: () => generation.open(c.id), tip: { title: 'Takes', desc: 'Generate more takes, pick one, or accept it.' } }, icon('audio', 'sm'), 'Takes')));
   const maxDur = sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.sourceIn)) / speed * fps() + 1e-6) : undefined;
   const timing = h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Timing'),
     field('Start', timeInput(startF(c), f => putClip({ start: fromF(f) }, `Start ${tc(f)}`), { disabled: timingLocked }), { tip: 'Where the clip begins on the timeline.' }),
-    field('Duration', timeInput(durF, f => { const d = fromF(f); putClip(fresh => ({ duration: d, ...fadeClamp(fresh, d) }), `Duration ${shortTc(f)}`); }, { min: 1, max: maxDur, disabled: timingLocked }), { tip: 'Length on the timeline. Speed stays the same, so this trims or extends the source.' }),
-    ...(m?.kind === 'image' ? [] : [field('Source in', timeInput(toF(c.sourceIn), f => putClip({ sourceIn: fromF(f) }, `Source in ${tc(f)}`), { disabled: timingLocked, max: sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.duration) * speed) * fps() + 1e-6) : undefined }), { tip: 'The first source frame used, measured in the source media.' }),
+    field('Duration', timeInput(durF, f => { const d = fromF(f); putClip(fresh => ({ duration: d, ...fadeClamp(fresh, d) }), `Duration ${shortTc(f)}`); }, { min: 1, max: maxDur, disabled: timingLocked || pending }), { tip: 'Length on the timeline. Speed stays the same, so this trims or extends the source.' }),
+    ...(m?.kind === 'image' ? [] : [field('Source in', timeInput(toF(c.sourceIn), f => putClip({ sourceIn: fromF(f) }, `Source in ${tc(f)}`), { disabled: timingLocked || pending, max: sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.duration) * speed) * fps() + 1e-6) : undefined }), { tip: 'The first source frame used, measured in the source media.' }),
       field('Speed', plainNumber(speed * 100, 1, v => {
         const next = frac(Math.round(v * 10), 1000), dur = Math.max(1, Math.floor(durF * speed / secs(next) + 1e-6));
         putClip(fresh => ({ speed: next, duration: fromF(dur), ...fadeClamp(fresh, fromF(dur)) }), `Speed ${pct(secs(next))}`);
-      }, { min: 1, max: 1600, step: 1, big: 10, disabled: timingLocked }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
+      }, { min: 1, max: 1600, step: 1, big: 10, disabled: timingLocked || pending }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
   box.append(timing);
 
   if (clipHasAudio(c)) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Audio', h('span', { class: 'tab-spacer' }),
       h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))),
     field('Volume', numberInput({ value: c.volume <= 0 ? -60 : Math.max(-60, 20 * Math.log10(c.volume)), format: v => v <= -60 ? '-∞' : v.toFixed(1), parse: t => /^-?\s*(inf|∞)/i.test(String(t).trim()) ? -60 : Number.isFinite(Number(t)) && String(t).trim() !== '' ? Number(t) : null, step: .5, big: 3, min: -60, max: 24, disabled: locked,
       onCommit: db => putClip({ volume: db <= -60 ? 0 : Math.min(16, 10 ** (db / 20)) }, `Volume ${db <= -60 ? '-∞' : db.toFixed(1)} dB`) }), { unit: 'dB', tip: '0 dB is the source level. Type -inf to silence.' }),
-    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked }), { tip: 'Ramps picture and sound up from silence/black at the clip start.' }),
-    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked }), { tip: 'Ramps down to silence/black at the clip end.' })));
+    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps picture and sound up from silence/black at the clip start.' }),
+    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps down to silence/black at the clip end.' })));
   else if (kind !== 'audio') box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Fades'),
-    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked })),
-    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked }))));
+    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending })),
+    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }))));
 
   if (m?.kind === 'graphic') {
     const section = h('div', {class:'insp-section'}, h('div', {class:'section-title'}, 'Text'));
@@ -2076,7 +2080,7 @@ function drawSequenceInspector(box, p) {
       field('Frame rate', rateSelect, { tip: 'Changing it keeps every cut at the same time in seconds. Later edits snap to the new frame grid.' }),
       field('Duration', h('span', { class: 'numeric', style: { font: '11.5px var(--mono)', color: 'var(--text-2)' } }, tc(timelineEndF())))),
     h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Contents'),
-      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${folders().length ? `${plural(folders().length, 'folder')} · ` : ''}${p.clips.length} clips · ${p.transitions.length} dissolves · ${markers().length} markers · ${p.media.length} media`)),
+      h('div', { class: 'insp-note', style: { marginTop: 0 } }, `${p.tracks.length} tracks · ${folders().length ? `${plural(folders().length, 'folder')} · ` : ''}${p.clips.length} clips · ${p.transitions.length} dissolves · ${markers().length} markers · ${binMedia().length} media`)),
     h('div', { class: 'insp-note' }, 'Select a clip to edit its timing, audio and framing.'));
 }
 
@@ -2149,7 +2153,7 @@ function drawTimeline() {
   }
   if (!p.tracks.length) host.append(h('div', { class: 'tl-empty-note' }, 'Drag media here from the bin, or double-click it to add it at the playhead.'));
   $('tl-empty').style.width = `${HEAD_W + width}px`;
-  drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover(); agents?.reposition();
+  drawMarkerLine(); drawPlayhead(); pinLabels(); positionMarkerPopover(); agents?.reposition(); generation?.redrawn();
 }
 // Keep clip names readable when a clip starts left of the visible area.
 function pinLabels() {
@@ -2174,7 +2178,7 @@ function trackRow(t, width, f = folderOf(t)) {
     h('i', { class: 'track-resize', onpointerdown: e => beginTrackResize(e, t.id), tip: { title: 'Track height', hint: [{ keys: '#Drag', text: 'resize' }, { keys: '#Double-click', text: 'reset' }] } }));
   head.onpointerdown = e => headDown(e, { track: t.id });
   const lane = h('div', { class: `lane ${tool === 'razor' ? 'razor' : ''}`, style: { width: `${width}px` }, dataset: { track: t.id } });
-  lane.tip = { title: 'Track', hint: tool === 'razor' ? [{ text: 'Click a clip to split it' }] : [{ keys: '#Click', text: 'move playhead' }, { keys: '#Drag', text: 'box select' }, { keys: '#Right-click', text: 'paste / add track' }] };
+  lane.tip = { title: 'Track', hint: tool === 'razor' ? [{ text: 'Click a clip to split it' }] : [{ keys: '#Click', text: 'move playhead' }, { keys: '#Drag', text: 'box select' }, { keys: ['G', '#Drag'], text: 'generate sound' }, { keys: '#Right-click', text: 'paste / add track' }] };
   lane.oncontextmenu = e => {
     if (e.target.closest('.clip, .xfade')) return;
     const gap = gapAt(t.id, laneFrame(e.clientX)), revision = project().revision;
@@ -2230,7 +2234,7 @@ function folderRow(f, width) {
   return h('div', { class: `track folder-row ${f.collapsed ? 'collapsed' : ''} ${f.disabled ? 'disabled' : ''} ${f.locked ? 'locked' : ''} ${selFolder === f.id ? 'selected' : ''}`, dataset: { folder: f.id } }, head, lane);
 }
 function clipBlock(c, t) {
-  const locked = lockedTrack(t.id);
+  const locked = lockedTrack(t.id), pending = !!generation?.pending(c);
   const m = mediaById(c.mediaId), left = secs(c.start) * pps, width = Math.max(2, secs(c.duration) * pps), speed = secs(c.speed);
   const kind = clipKind(c), audible = clipHasAudio(c), peers = linkedPeers(c), peerSelected = peers.some(o => selection.has(o.id));
   const badges = [];
@@ -2242,11 +2246,12 @@ function clipBlock(c, t) {
     !audible && width > 70 ? h('span', { class: 'clip-meta', hidden: rowHeight(t.id) < 44 }, shortTc(endF(c) - startF(c))) : null,
     !audible && secs(c.fadeIn) > 0 ? h('i', { class: 'fade in', style: { width: `${secs(c.fadeIn) * pps}px` } }) : null,
     !audible && secs(c.fadeOut) > 0 ? h('i', { class: 'fade out', style: { width: `${secs(c.fadeOut) * pps}px` } }) : null,
-    locked ? null : h('i', { class: 'handle l' }), locked ? null : h('i', { class: 'handle r' }));
+    locked || pending ? null : h('i', { class: 'handle l' }), locked || pending ? null : h('i', { class: 'handle r' }));
   if (audible) addAudioControls(el, c, t);
+  if (pending) generation.decorate(el, c);
   el.tip = () => ({ title: clipName(c), follow: true, desc: `${kindLabel(kind)} · ${mediaName(m)}`,
     meta: [`Start ${tc(startF(c))}   End ${tc(endF(c))}`, `Duration ${tc(endF(c) - startF(c))}   Source in ${tc(toF(c.sourceIn))}`, [Math.abs(speed - 1) > 1e-9 ? `Speed ${pct(speed)}` : null, audible ? `Volume ${toDb(c.volume)} dB${c.mute ? ' (muted)' : ''}` : null, c.volumePoints?.length ? plural(c.volumePoints.length, 'volume point') : null].filter(Boolean).join('   '), peers.length ? `Linked to “${peers.map(clipName).join('”, “')}”` : null].filter(Boolean).join('\n'),
-    hint: locked ? [{ text: blockReason(t.id) }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
+    hint: locked ? [{ text: blockReason(t.id) }] : pending ? [{ keys: '#Click', text: 'takes' }, { keys: '#Drag', text: 'move' }, { keys: 'Delete', text: 'remove' }] : tool === 'razor' ? [{ keys: '#Click', text: 'split here' }, { keys: 'V', text: 'selection tool' }] : [{ keys: '#Drag', text: 'move' }, { keys: '#Drag edge', text: 'trim' }, { keys: ['Shift', '#+ edge'], text: 'stretch speed' }, { keys: 'Alt', text: 'no snap' }, { keys: 'Ctrl+K', text: 'split' },
       ...(audible ? [{ keys: ['Ctrl', '#+ line'], text: 'volume point' }] : [])] });
   el.oncontextmenu = e => { if (!selection.has(c.id)) select([c.id]); timelineContextMenu(e, [{ action: 'split' }, { action: 'dissolve' }, '-', { action: 'mute' }, { action: 'fill' }, '-', peers.length ? { action: 'unlink' } : { action: 'detachAudio' }, '-', { action: 'copy' }, { action: 'paste' }, { action: 'delete' }]); };
   return el;
@@ -2560,14 +2565,18 @@ $('tracks').addEventListener('pointerdown', e => {
   if (e.button !== 0) return;
   const lane = e.target.closest('.lane'); if (!lane) return;
   const xf = e.target.closest('.xfade'), clipEl = e.target.closest('.clip'), handle = e.target.closest('.handle');
+  // Holding G only starts generation ranges; clips and dissolves stay untouched.
+  if (generation?.armed() && (xf || clipEl)) { e.preventDefault(); return; }
   if (xf) { selectTransition(xf.dataset.id); return; }
   if (clipEl) {
     const c = clipById(clipEl.dataset.id); if (!c) return;
+    if (tool === 'razor' && generation?.pending(c)) { refuse('Accept a take before splitting'); return; }
     if (tool === 'razor') { const f = laneFrame(e.clientX), d = Math.abs(f - playF) <= 8 / pps * fps() && prefs.snap && !e.altKey ? playF - f : 0; splitAt([c.id], f + d); return; }
     const audio = e.target.closest('[data-audio]'), field = audio?.dataset.audio;
     if (audio) {
       e.preventDefault();
       const addPoint = (e.ctrlKey || e.metaKey) && field === 'volume';
+      if (generation?.pending(c) && (field !== 'volume' || addPoint)) { refuse('Accept a take before editing fades or volume points'); return; }
       if (!editable()) return;
       if (blockReason(c.trackId)) { if (addPoint) refuse(blockReason(c.trackId)); return; }
       select([c.id]);
@@ -2583,6 +2592,7 @@ $('tracks').addEventListener('pointerdown', e => {
     else beginMove(e, c);
     return;
   }
+  if (generation?.begin(e, lane)) return;
   startDrag({ type: 'marquee', x0: e.clientX, y0: e.clientY, moved: false, additive: e.shiftKey || e.ctrlKey, base: new Set(selection) });
 });
 // Rows are measured from the DOM because folder headers sit between tracks and are not drop targets.
@@ -2612,6 +2622,7 @@ function beginTrim(e, c, edge) {
 function onDragMove(e) {
   if (!drag) return;
   if (drag.type === 'audio') { audioDrag(e); return; }
+  if (drag.type === 'generate') { generation.dragMove(e, drag); return; }
   if (drag.type === 'reorder') reorderDrag(e); else if (drag.type === 'marker') markerDrag(e); else if (drag.type === 'move') moveDrag(e); else if (drag.type === 'trim') trimDrag(e); else if (drag.type === 'marquee') marqueeDrag(e); else if (drag.type === 'scrub') seek(drag.frameAt(e.clientX));
   else if (drag.type === 'trackSize') {
     drag.h = Math.round(Math.max(TRACK_MIN_H, Math.min(TRACK_MAX_H, drag.h0 + e.clientY - drag.y0)));
@@ -2644,7 +2655,7 @@ function moveDrag(e) {
     }
   }
   d.dF = dF; d.dTrack = dTrack; d.res = moveOps(d.list, dF, dTrack);
-  if (contact != null && !d.res.error && pushed > 8) {
+  if (contact != null && !d.res.error && pushed > 8 && !generation?.pending(d.primary) && !generation?.pending(neighbour)) {
     const moved = { ...d.primary, start: fromF(startF(d.primary)+dF) };
     const a = right ? moved : neighbour, b = right ? neighbour : moved;
     const existing = transitions().find(t => t.fromClipId === a.id && t.toClipId === b.id);
@@ -2712,6 +2723,7 @@ function onDragCancel() {
 }
 function onDragUp(e) {
   const d = drag; if (!d) return;
+  if (d.type === 'generate') { endDrag(); generation.dragEnd(d); return; }
   if (d.type === 'audio') {
     if (d.field === 'point' && d.changes) selPoint = { clipId: d.c.id, time: d.cur.time };
     endDrag(); drawTimeline();
@@ -2754,6 +2766,7 @@ function onDragUp(e) {
     for (const el of d.els) { el.style.transform = ''; el.classList.remove('dragging', 'invalid'); }
     const moved = d.dF || d.dTrack;
     endDrag();
+    if (!moved && !d.crossfade && d.list.length === 1 && generation?.pending(d.primary)) { generation.open(d.primary.id); return; }
     if (d.crossfade) {
       edit(() => ({ ops: d.res.ops, pre: d.crossfade.pre, message: `Crossfade ${shortTc(d.crossfade.frames)}${d.crossfade.limited ? ' · limited by source handles' : ''}` }));
     } else if (moved) { if (d.res?.error) say(d.res.error, 'warn'); else commitMove(d.list.map(c => c.id), d.dF, d.dTrack); }
@@ -3195,7 +3208,7 @@ function agentContext(anchor) {
 // ---------------------------------------------------------------- Events and startup
 window.addEventListener('beforeunload', () => source.clear());
 window.afclipPrepareReload = () => {
-  if (graphicTextEdit || !connected || drag || modal || markerPop || agents?.holdsReload() || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
+  if (graphicTextEdit || !connected || drag || modal || markerPop || agents?.holdsReload() || generation?.holdsReload() || editingTrack || editsInFlight || playback.wantsPlay || playback.busy || frameJobId || source.running ||
       document.activeElement?.matches('input,textarea,select,[contenteditable="true"]') || document.querySelector(':active')) return false;
   rememberMarks(); clearTimeout(rememberMarks.t); savePrefs();
   return true;
@@ -3219,6 +3232,13 @@ agents = window.AFClipAgents?.({
   api, h, icon, kbd, dialog, closeModal, field, segmented, toast, say, report, explain, hideTip, openMenu,
   blocked: () => !!modal || !!openMenuState, pointer: () => pointer, project, hasSelection,
   target: agentTarget, anchor: agentAnchor, label: agentItemLabel, locate: agentLocate, context: agentContext, highlight: agentHighlight, reveal: agentReveal,
+}) || null;
+generation = window.AFClipGeneration?.({
+  api, h, icon, kbd, field, segmented, timeInput, toast, say, explain, hideTip, flashHint, hintItems, readout,
+  blocked: () => !!modal || !!openMenuState, snapshot: () => snapshot, hasSelection, editable, clips, clipsOn, clipById, trackById, clipName, clipVisual, disabledTrack, blockReason,
+  fps, fromF, toF, startF, endF, secs, tc, shortTc, frameX, laneFrame, snapFrame, snapTargets, startDrag, perform, select, togglePlay,
+  redraw: () => drawTimeline(), openSettings: tab => agents?.openSettings(tab),
+  deleteClip: id => { select([id]); deleteSelection(); },
 }) || null;
 refresh().then(async () => {
   say('Connected to project');
