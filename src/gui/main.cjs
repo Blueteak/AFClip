@@ -277,6 +277,18 @@ app.whenReady().then(async () => {
     if (selected.canceled) return null;
     return request('/command', {command:'relink', id, revision, path:selected.filePaths[0]});
   });
+  handle('import-images', async paths => {
+    if (!Array.isArray(paths) || !paths.length || paths.some(file => typeof file !== 'string' || !path.isAbsolute(file) || !['.png', '.jpg', '.jpeg', '.webp', '.bmp'].includes(path.extname(file).toLowerCase()))) {
+      throw new Error('Drop PNG, JPG, WebP or BMP image files');
+    }
+    const imported = [];
+    try {
+      for (const file of paths) imported.push(await request('/command', { command: 'import', path: file }));
+    } catch (error) {
+      throw new Error(`Imported ${imported.length} of ${paths.length} images. ${error.message}`);
+    }
+    return imported;
+  });
   handle('import', async kind => {
     const graphic = kind === 'graphic';
     const selected = graphic

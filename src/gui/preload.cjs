@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('afclip', Object.freeze({
   rasterAsset: data => ipcRenderer.invoke('afclip:asset-raster',data),
   previewOpen: mode => ipcRenderer.invoke('afclip:preview-open', mode),
@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   openProject: () => ipcRenderer.invoke('afclip:open-project'),
   relinkMedia: (id, revision) => ipcRenderer.invoke('afclip:relink', id, revision),
   importMedia: kind => ipcRenderer.invoke('afclip:import', kind),
+  importImages: files => ipcRenderer.invoke('afclip:import-images', files.map(file => webUtils.getPathForFile(file))),
   library: (id, folder) => ipcRenderer.invoke('afclip:library', id, folder),
   editLibrary: id => ipcRenderer.invoke('afclip:edit-library', id),
   libraryMedia: () => ipcRenderer.invoke('afclip:library-media'),

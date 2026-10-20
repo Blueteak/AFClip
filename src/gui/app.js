@@ -2853,6 +2853,22 @@ $('tl-scroll').addEventListener('wheel', e => {
   zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2, e.clientX - $('tl-scroll').getBoundingClientRect().left - HEAD_W);
 }, { passive: false });
 
+// File paths come from Electron's File bridge, not drag payload text.
+const mediaDropZone = document.querySelector('.bin [data-page="media"]');
+mediaDropZone.addEventListener('dragover', e => {
+  if (e.dataTransfer.types.includes('application/x-afclip-library') || !e.dataTransfer.types.includes('Files')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = editable() ? 'copy' : 'none';
+});
+mediaDropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.types.includes('application/x-afclip-library') || !e.dataTransfer.types.includes('Files')) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (!editable()) return;
+  const files = [...e.dataTransfer.files];
+  perform(() => api.importImages(files), result => `Imported ${plural(result.length, 'image')}`);
+});
+
 // Structured library drops resolve IDs through the service, never trust a dragged path.
 document.addEventListener('dragover', e => {if(e.dataTransfer.types.includes('application/x-afclip-library')&&editable()){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
 document.addEventListener('drop', async e => {
