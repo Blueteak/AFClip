@@ -263,11 +263,11 @@ Checkpoints persist across restarts and retain the latest five. They copy projec
 
 ## Editable graphic text
 
-Mark static plain-text elements in `index.html` with unique field IDs:
+Mark static plain-text elements in `index.html` with unique field IDs. Existing `data-afclip-text` markers remain supported; `data-text` takes precedence if both are present:
 
 ```html
-<h1 data-afclip-text="headline">Sample</h1>
-<p data-afclip-text="subtitle">GAMEPLAY</p>
+<h1 data-text="headline">Sample</h1>
+<p data-text="subtitle">GAMEPLAY</p>
 ```
 
 In native preview, click a visible field to select its text and pause playback. Click again to place the caret, double-click to select a word, or drag to highlight a range. Type or paste plain text; Enter inserts a line break. Click outside or press Ctrl/Cmd+Enter to commit, or Escape to cancel. Each committed session is one project undo step. The inspector also exposes fields, including empty or currently hidden fields, and Reset controls. Software preview uses the inspector for text editing.

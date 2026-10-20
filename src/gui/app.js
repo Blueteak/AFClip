@@ -3002,6 +3002,8 @@ document.addEventListener('keydown', e => {
   if (modal) return;
   if (openMenuState) { menuKey(e); return; }
   const combo = comboOf(e);
+  // Native text copy takes priority over copying timeline clips.
+  if (combo === 'Ctrl+C' && !getSelection().isCollapsed) return;
   const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
   if (typing) {
     if (combo === 'Escape') e.target.blur();
