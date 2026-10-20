@@ -336,7 +336,7 @@ action('rippleDelete', { menu: 'Edit', group: 2, label: 'Ripple delete In/Out ra
 action('selectAll', { menu: 'Edit', group: 3, label: 'Select all clips', keys: ['Ctrl+A'], enabled: () => clips().length > 0, run: () => select(clips().filter(c => !hiddenTrack(c.trackId)).map(c => c.id)) });
 action('deselect', { menu: 'Edit', group: 3, label: 'Deselect all', keys: ['Ctrl+Shift+A'], enabled: hasSelection, run: () => select([]) });
 action('agentChat', { menu: 'Edit', group: 'agents', label: 'Agent chat', icon: 'chat', keys: ['A'], desc: 'Open or start an agent chat on the hovered timeline item, track or time. Elsewhere it uses the selection, or the project.', enabled: () => !!project() && !!agents?.available(), run: () => agents.openTarget() });
-action('agentSettings', { menu: 'Edit', group: 'agents', label: 'Agent settings…', icon: 'sliders', desc: 'Provider, model, thinking, access and steering for new agent chats.', enabled: () => !!agents?.available(), run: () => agents.openSettings() });
+action('agentSettings', { menu: 'Edit', group: 'agents', label: 'AI settings…', icon: 'sliders', desc: 'Agent providers, models, access and generative AI service API keys.', enabled: () => !!agents?.available(), run: () => agents.openSettings() });
 
 action('split', { menu: 'Clip', group: 1, label: 'Split at playhead', icon: 'scissors', keys: ['Ctrl+K'], desc: 'Cut the selected clips (or every unlocked clip) under the playhead.', enabled: editable, run: splitAtPlayhead });
 action('dissolve', { menu: 'Clip', group: 1, label: 'Add dissolve', icon: 'dissolve', keys: ['Ctrl+D'], desc: 'Cross-dissolve at the cut nearest the playhead, centered, 1 second or as long as the footage allows.', enabled: editable, run: addDissolve });

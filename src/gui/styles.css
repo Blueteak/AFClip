@@ -750,4 +750,15 @@ kbd, .kbd {
 .agent-provider-state { font-size: 11px; font-weight: 500; }
 .agent-provider-state.ok { color: var(--ok); }
 .agent-provider-state.warn { color: var(--warn); }
+.ai-settings { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.ai-tabs { margin: 2px 14px 4px; padding: 0; }
+.ai-tabs .tab:first-child { padding-left: 0; }
+.ai-tabs .tab:first-child.active::after { left: 0; }
+.api-key-input { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; }
+.api-key-input input { flex: 1; min-width: 0; }
+.api-key-state { width: 14px; height: 14px; flex: none; display: inline-grid; place-items: center; }
+.api-key-state.valid { color: var(--ok); }
+.api-key-state.invalid { color: var(--danger); }
+.api-key-state.unknown { color: var(--warn); }
+.api-key-state.checking i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-3); animation: wf-pulse 1s ease-in-out infinite; }
 .agent-msg.cancelled { opacity: .45; text-decoration: line-through; }
