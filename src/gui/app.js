@@ -1798,27 +1798,33 @@ function drawPlayhead() {
 
 // ---------------------------------------------------------------- Inspector
 let inspectorKey = '';
-function numberInput({ value, format, parse, step = 1, big = 10, min = -Infinity, max = Infinity, onCommit, disabled, tip }) {
+function numberInput({ value, format, parse, step = 1, big = 10, min = -Infinity, max = Infinity, onCommit, onPreview, disabled, tip }) {
   let current = value;
   const input = h('input', { class: 'numeric', value: format(value), disabled, spellcheck: 'false', tip });
-  const set = v => { current = Math.max(min, Math.min(max, v)); input.value = format(current); };
+  const set = v => { current = Math.max(min, Math.min(max, v)); input.value = format(current); onPreview?.(current); };
   const commit = () => {
     const parsed = parse(input.value, value);
-    if (parsed == null || !Number.isFinite(parsed)) { input.classList.add('invalid'); setTimeout(() => input.classList.remove('invalid'), 900); input.value = format(value); current = value; return; }
+    if (parsed == null || !Number.isFinite(parsed)) { input.classList.add('invalid'); setTimeout(() => input.classList.remove('invalid'), 900); input.value = format(value); current = value; onPreview?.(); return; }
     const v = Math.max(min, Math.min(max, parsed));
     input.value = format(v);
     if (v !== value) { value = v; onCommit(v); }
+    else onPreview?.();
   };
   input.onfocus = () => setTimeout(() => input.select(), 0);
+  input.oninput = () => {
+    const parsed = parse(input.value, value);
+    if (parsed != null && Number.isFinite(parsed)) onPreview?.(Math.max(min, Math.min(max, parsed)));
+  };
   input.onkeydown = e => {
-    if (e.key === 'Enter') { e.preventDefault(); commit(); input.blur(); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); input.value = format(value); current = value; input.blur(); }
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); set(value); input.blur(); }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); const base = parse(input.value, value) ?? current; set(base + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? big : step)); }
   };
   input.onblur = commit;
   input.scrub = (dx, mods, start) => set(start + Math.round(dx / (mods.alt ? 8 : 2)) * (mods.shift ? big : step));
   input.scrubStart = () => parse(input.value, value) ?? value;
   input.scrubEnd = commit;
+  input.scrubCancel = () => { input.value = format(value); current = value; onPreview?.(); };
   return input;
 }
 function field(label, control, { tip, unit } = {}) {
@@ -1826,17 +1832,19 @@ function field(label, control, { tip, unit } = {}) {
   if (control?.scrub && !control.disabled) {
     lab.tip = { title: label, desc: tip, hint: [{ keys: '#Drag', text: 'to scrub' }, { keys: 'Shift', text: 'faster' }, { keys: 'Alt', text: 'finer' }, { keys: ['Up', 'Down'], text: 'step' }] };
     lab.onpointerdown = e => {
-      e.preventDefault(); const x0 = e.clientX, start = control.scrubStart(); let moved = false;
+      if (e.button !== 0) return;
+      e.preventDefault(); control.focus(); const x0 = e.clientX, start = control.scrubStart(); let moved = false;
       lab.setPointerCapture(e.pointerId);
       lab.onpointermove = ev => { if (Math.abs(ev.clientX - x0) > 2) moved = true; if (moved) control.scrub(ev.clientX - x0, { shift: ev.shiftKey, alt: ev.altKey }, start); };
-      lab.onpointerup = () => { lab.onpointermove = lab.onpointerup = null; if (moved) control.scrubEnd(); else control.focus(); };
+      lab.onpointerup = () => { lab.onpointermove = lab.onpointerup = lab.onpointercancel = null; if (moved) control.scrubEnd(); else control.focus(); };
+      lab.onpointercancel = () => { lab.onpointermove = lab.onpointerup = lab.onpointercancel = null; control.scrubCancel(); };
     };
   } else if (tip) lab.tip = { title: label, desc: tip };
   return h('div', { class: 'field' }, lab, h('div', { class: 'field-value' }, control, unit ? h('span', { class: 'unit' }, unit) : null));
 }
 const timeInput = (frames, onCommit, opts = {}) => numberInput({ value: frames, format: tc, parse: (t, base) => parseTime(t, base), step: 1, big: nominal(), min: opts.min ?? 0, max: opts.max, onCommit, disabled: opts.disabled,
   tip: { title: 'Timecode', desc: 'Type timecode (00:00:02:15), seconds (2.5), frames (75f) or a relative change (+12 / -12 frames).' } });
-const plainNumber = (value, decimals, onCommit, opts = {}) => numberInput({ value, format: v => v.toFixed(decimals), parse: t => { const v = Number(String(t).replace(/[^\d.+-]/g, '')); return String(t).trim() === '' ? null : v; }, step: opts.step ?? 1, big: opts.big ?? 10, min: opts.min, max: opts.max, onCommit, disabled: opts.disabled });
+const plainNumber = (value, decimals, onCommit, opts = {}) => numberInput({ value, format: v => v.toFixed(decimals), parse: t => { const v = Number(String(t).replace(/[^\d.+-]/g, '')); return String(t).trim() === '' ? null : v; }, step: opts.step ?? 1, big: opts.big ?? 10, min: opts.min, max: opts.max, onCommit, onPreview: opts.onPreview, disabled: opts.disabled });
 function segmented(options, value, onPick, disabled) {
   return h('div', { class: 'segmented' }, options.map(([v, label, tip]) => h('button', { class: v === value ? 'on' : '', disabled, tip: tip ? { title: label, desc: tip } : null, onclick: () => v !== value && onPick(v) }, label)));
 }
@@ -1942,12 +1950,18 @@ function drawClipInspector(box, c) {
     }).catch(error => { if (section.isConnected) section.append(h('p',{},explain(error))); });
   }
   if (clipVisual(c)) {
-    const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message);
+    const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message)
+      .finally(() => playback.previewTransform(c.id, k, undefined, v));
+    const live = (key, factor = 1) => v => {
+      clearTimeout(frameTimer);
+      playback.previewTransform(c.id, key, v === undefined ? undefined : v * factor);
+    };
     box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Transform'),
-      field('Position', h('div', { class: 'field-pair' }, plainNumber(t.x ?? 0, 0, v => setT('x', v, `X ${v}`), { disabled: locked }), plainNumber(t.y ?? 0, 0, v => setT('y', v, `Y ${v}`), { disabled: locked })), { tip: 'Offset in pixels from the centered layout, X then Y.' }),
-      field('Scale', plainNumber((t.scale ?? 1) * 100, 1, v => setT('scale', v / 100, `Scale ${v}%`), { min: 1, max: 1000, disabled: locked }), { unit: '%' }),
-      field('Rotation', plainNumber(t.rotation ?? 0, 1, v => setT('rotation', v, `Rotation ${v}°`), { step: 1, big: 15, disabled: locked }), { unit: '°' }),
-      field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked }), { unit: '%' }),
+      field('Position X', plainNumber(t.x ?? 0, 0, v => setT('x', v, `X ${v}`), { disabled: locked, onPreview: live('x') }), { tip: 'Horizontal offset in pixels from the centered layout.' }),
+      field('Position Y', plainNumber(t.y ?? 0, 0, v => setT('y', v, `Y ${v}`), { disabled: locked, onPreview: live('y') }), { tip: 'Vertical offset in pixels from the centered layout.' }),
+      field('Scale', plainNumber((t.scale ?? 1) * 100, 1, v => setT('scale', v / 100, `Scale ${v}%`), { min: 1, max: 1000, disabled: locked, onPreview: live('scale', .01) }), { unit: '%' }),
+      field('Rotation', plainNumber(t.rotation ?? 0, 1, v => setT('rotation', v, `Rotation ${v}°`), { step: 1, big: 15, disabled: locked, onPreview: live('rotation') }), { unit: '°' }),
+      field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked, onPreview: live('opacity', .01) }), { unit: '%' }),
       field('Framing', segmented([['fit', 'Fit', 'Show the whole picture, letterboxing if needed.'], ['fill', 'Fill', 'Cover the frame and crop the excess.']], t.fit || 'fit', v => setT('fit', v, v === 'fill' ? 'Fill frame' : 'Fit frame'), locked), { tip: 'Shift+F toggles.' })));
   }
   if(clipVisual(c))drawEffectsInspector(box,c,locked);

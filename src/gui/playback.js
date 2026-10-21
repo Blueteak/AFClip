@@ -115,6 +115,33 @@ class TimelinePlayback {
     this.notify();
   }
   notify() { this.callbacks.state?.(this); }
+  async previewTransform(clipId, key, value, expected) {
+    this.transformDrafts ||= new Map();
+    const draft = this.transformDrafts.get(clipId) || {};
+    if (expected !== undefined && draft[key] !== expected && draft[key] !== undefined) return;
+    if (value === undefined) delete draft[key]; else draft[key] = value;
+    if (Object.keys(draft).length) this.transformDrafts.set(clipId, draft);
+    else this.transformDrafts.delete(clipId);
+    const version = this.transformPreviewVersion = (this.transformPreviewVersion || 0) + 1;
+    this.pause(false);
+    try {
+      await this.ensure();
+      if (version !== this.transformPreviewVersion || !this.native) return;
+      const project = this.native.setup.project;
+      // Preview a draft through the normal compositor; only the final value is
+      // sent to the engine, keeping each gesture a single undoable edit.
+      this.native.setup.plan = window.AFClipTimeline.compile({ ...project,
+        clips: project.clips.map(c => this.transformDrafts.has(c.id)
+          ? { ...c, transform: { ...c.transform, ...this.transformDrafts.get(c.id) } } : c),
+      });
+      for (const clip of this.native.setup.plan.clips) {
+        const entry = this.native.entries.get(clip.id);
+        if (entry) entry.clip = clip;
+      }
+      this.picture = null;
+      this.previewPicture();
+    } catch (error) { if (version === this.transformPreviewVersion) this.fail(error); }
+  }
   async ensure() {
     if (this.ready) return;
     if (this.opening) return this.opening;
