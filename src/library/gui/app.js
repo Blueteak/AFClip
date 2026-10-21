@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id), params=new URLSearchParams(location.search),readonly=params.get('mode')==='afclip';
-const state={overview:null,items:[],selected:null,selectedIds:new Set(),selectionAnchor:null,selectionGeneration:0,folder:params.get('folder')||'',collection:'',deleted:false,kind:'',nextOffset:null,complete:true,searching:false,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
+const state={overview:null,items:[],selected:null,selectedIds:new Set(),selectionAnchor:null,selectionGeneration:0,folder:params.get('folder')||'',collection:'',deleted:false,kind:'video',nextOffset:null,complete:true,searching:false,dirty:false,tags:new Set(),generation:0,previewGeneration:0};
 let requestsInFlight=0,reloadReady=false;
 function setBrowserView(mode){
   $('assets').classList.toggle('asset-list',mode==='list');$('thumb-size').hidden=mode==='list';
@@ -31,15 +31,20 @@ click('toggle-sidebar',()=>{layout.sidebar=!layout.sidebar;applyLayout();});
 $('thumb-size').oninput=()=>{layout.thumb=Number($('thumb-size').value);applyLayout();};
 $('assets').addEventListener('wheel',e=>{if(!e.ctrlKey||$('assets').classList.contains('asset-list'))return;e.preventDefault();layout.thumb=Math.max(90,Math.min(280,layout.thumb-Math.sign(e.deltaY)*12));applyLayout();},{passive:false});
 applyLayout(false);
+try{if(localStorage.getItem('afclip-library-kind')==='audio')state.kind='audio';}catch{}
+function drawKind(){for(const kind of ['video','audio'])$('kind-'+kind).setAttribute('aria-pressed',state.kind===kind);}
+async function setKind(kind){if(kind===state.kind||!await abandon())return;state.kind=kind;if(state.folder&&state.folder!=='inbox'&&!count(c=>c.folder===state.folder))state.folder='';try{localStorage.setItem('afclip-library-kind',kind);}catch{}state.items=[];$('assets').scrollTop=0;drawKind();drawNavigation();await search();}
+for(const kind of ['video','audio'])click('kind-'+kind,()=>setKind(kind));
+drawKind();
 let filtersOpen=false;try{filtersOpen=localStorage.getItem('afclip-library-filters')==='open';}catch{}
 function drawFilters(){
-  const active=[$('kind').value!==state.kind?'kind':'',$('tag-filter').value?'tag-filter':'',$('min-duration').value!==''?'min-duration':'',$('max-duration').value!==''?'max-duration':''].filter(Boolean);
-  for(const id of ['kind','tag-filter','min-duration','max-duration'])$(id).classList.toggle('active-filter',active.includes(id));
+  const active=[$('tag-filter').value?'tag-filter':'',$('min-duration').value!==''?'min-duration':'',$('max-duration').value!==''?'max-duration':''].filter(Boolean);
+  for(const id of ['tag-filter','min-duration','max-duration'])$(id).classList.toggle('active-filter',active.includes(id));
   $('filter-count').hidden=!active.length;$('filter-count').textContent=active.length;$('clear-filters').hidden=!active.length;
   $('filter-bar').hidden=!filtersOpen;$('filter-toggle').setAttribute('aria-pressed',filtersOpen);
 }
 click('filter-toggle',()=>{filtersOpen=!filtersOpen;try{localStorage.setItem('afclip-library-filters',filtersOpen?'open':'closed');}catch{}drawFilters();});
-click('clear-filters',()=>{$('kind').value=state.kind;for(const id of ['tag-filter','min-duration','max-duration'])$(id).value='';drawFilters();return search();});
+click('clear-filters',()=>{for(const id of ['tag-filter','min-duration','max-duration'])$(id).value='';drawFilters();return search();});
 
 let native=null,audio=null,wave=null,playing=false,time=0,markIn=0,markOut=0,preview=null,tick=0,baseTime=0,baseClock=0,eventTimer;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -51,19 +56,17 @@ async function api(command,fields={}){requestsInFlight++;try{const response=awai
 async function act(work,message){try{const result=await work();if(message)say(message);await refresh();return result;}catch(e){say(e.message,true);throw e;}}
 function click(id,fn){$(id).onclick=()=>Promise.resolve().then(fn).catch(e=>say(e.message,true));}
 function nav(label,icon,selected,fn,count){const b=document.createElement('button');b.className='nav-item'+(selected?' active':'');b.title=label;b.innerHTML=`<span class="nav-icon">${icon}</span><span class="nav-label">${esc(label)}</span>${count!==undefined?`<span class="count">${count}</span>`:''}`;b.onclick=()=>Promise.resolve(fn()).catch(e=>say(e.message,true));return b;}
-function count(filter){return state.overview.counts.filter(filter).reduce((n,c)=>n+Number(c.count),0);}
-async function view(folder='',kind='',collection='',deleted=false){if(!await abandon())return;Object.assign(state,{folder,kind,collection,deleted,items:[]});$('kind').value=kind;$('assets').scrollTop=0;await refresh();}
+function count(filter){return state.overview.counts.filter(c=>c.kind===state.kind&&filter(c)).reduce((n,c)=>n+Number(c.count),0);}
+async function view(folder='',collection='',deleted=false){if(!await abandon())return;Object.assign(state,{folder,collection,deleted,items:[]});$('assets').scrollTop=0;await refresh();}
 const collapsedFolders=new Set();try{for(const id of JSON.parse(localStorage.getItem('afclip-library-collapsed'))||[])collapsedFolders.add(id);}catch{}
 function drawNavigation(){const o=state.overview;$('navigation').replaceChildren(
-  nav('All assets','▦',!state.folder&&!state.kind&&!state.collection&&!state.deleted,()=>view(),count(c=>c.folder!=='inbox')),
-  nav('Video','▻',state.kind==='video'&&!state.folder,()=>view('','video'),count(c=>c.kind==='video'&&c.folder!=='inbox')),
-  nav('Audio & SFX','♫',state.kind==='audio'&&!state.folder,()=>view('','audio'),count(c=>c.kind==='audio'&&c.folder!=='inbox')),
+  nav(state.kind==='audio'?'All audio':'All video','▦',!state.folder&&!state.collection&&!state.deleted,()=>view(),count(c=>c.folder!=='inbox')),
   nav('Inbox','⇣',state.folder==='inbox',()=>view('inbox'),count(c=>c.folder==='inbox')),
-  nav('Trash','⌫',state.deleted,()=>view('','','',true)));
-  $('folders').replaceChildren();const tree=(parent,depth)=>{for(const f of o.folders.filter(f=>f.parent===parent)){const b=nav(f.name,'▱',state.folder===f.id,()=>view(f.id),count(c=>c.folder===f.id));b.style.paddingLeft=(2+depth*12)+'px';
+  nav('Trash','⌫',state.deleted,()=>view('','',true)));
+  $('folders').replaceChildren();const tree=(parent,depth)=>{for(const f of o.folders.filter(f=>f.parent===parent)){const n=count(c=>c.folder===f.id),b=nav(f.name,'▱',state.folder===f.id,()=>view(f.id),n);b.classList.toggle('empty',!n);b.style.paddingLeft=(2+depth*12)+'px';
     const parentOf=o.folders.some(c=>c.parent===f.id),closed=collapsedFolders.has(f.id),toggle=document.createElement('span');toggle.className='folder-toggle'+(parentOf?'':' leaf')+(closed?' closed':'');toggle.innerHTML='<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';b.prepend(toggle);
     toggle.onclick=e=>{e.stopPropagation();if(closed)collapsedFolders.delete(f.id);else collapsedFolders.add(f.id);try{localStorage.setItem('afclip-library-collapsed',JSON.stringify([...collapsedFolders]));}catch{}drawNavigation();};b.oncontextmenu=e=>{e.preventDefault();folderManager(f);};b.ondragover=e=>{e.preventDefault();b.classList.add('drop-target');};b.ondragleave=()=>b.classList.remove('drop-target');b.ondrop=e=>{e.preventDefault();b.classList.remove('drop-target');dropFiles(e,f.id);};$('folders').append(b);if(!closed)tree(f.id,depth+1);}};tree(null,0);
-  $('collections').replaceChildren(...o.collections.map(c=>{const b=nav(c.name,'◇',state.collection===c.id,()=>view('','',c.id),c.members.length);b.oncontextmenu=e=>{e.preventDefault();collectionManager(c);};return b;}));
+  $('collections').replaceChildren(...o.collections.map(c=>{const b=nav(c.name,'◇',state.collection===c.id,()=>view('',c.id));b.oncontextmenu=e=>{e.preventDefault();collectionManager(c);};return b;}));
   const selected=$('tag-filter').value;$('tag-filter').innerHTML='<option value="">Any tag</option>'+o.tags.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');$('tag-filter').value=selected;drawFilters();
   $('undo').disabled=!o.history.some(h=>!h.undone);$('redo').disabled=!o.history.some(h=>h.undone);
   $('job-count').textContent=o.jobs.filter(j=>['queued','running'].includes(j.status)).length||'';
@@ -111,14 +114,14 @@ async function search(mode='reset',want=0){
   if(mode==='more'&&(state.searching||state.complete))return;
   const generation=++state.generation;state.searching=true;
   try{
-    const query={groupByAsset:true,q:$('search').value,folder:state.folder,kind:$('kind').value,collection:state.collection,deleted:state.deleted};for(const [id,key]of [['min-duration','minDuration'],['max-duration','maxDuration']])if($(id).value!=='')query[key]=Number($(id).value);if($('tag-filter').value)query.tag=$('tag-filter').value;
+    const query={groupByAsset:true,q:$('search').value,folder:state.folder,kind:state.kind,collection:state.collection,deleted:state.deleted};for(const [id,key]of [['min-duration','minDuration'],['max-duration','maxDuration']])if($(id).value!=='')query[key]=Number($(id).value);if($('tag-filter').value)query.tag=$('tag-filter').value;
     const previous=mode==='more'?state.items:[],target=mode==='more'?previous.length+PAGE:Math.max(PAGE,want,mode==='keep'?state.items.length:0);
     let items=previous,offset=mode==='more'?state.nextOffset:0,elapsed=0,r;
     do{r=await api('search',{...query,offset,limit:Math.min(200,target-items.length)});if(generation!==state.generation)return;items=items.concat(r.items);elapsed+=r.elapsedMs;offset=r.nextOffset;}while(!r.complete&&items.length<target);
     state.items=items;state.nextOffset=offset;state.complete=r.complete;
     if(mode!=='more'){const visible=new Set(items.map(item=>item.id));state.selectedIds=new Set([...state.selectedIds].filter(id=>visible.has(id)));if(!visible.has(state.selectionAnchor))state.selectionAnchor=null;}
     const folder=state.overview.folders.find(f=>f.id===state.folder);
-    $('view-title').textContent=state.deleted?'Trash':state.folder==='inbox'?'Inbox':folder?folderPath(folder):state.overview.collections.find(c=>c.id===state.collection)?.name||($('kind').value==='audio'?'Audio & SFX':$('kind').value==='video'?'Video':'All assets');
+    $('view-title').textContent=state.deleted?'Trash':state.folder==='inbox'?'Inbox':folder?folderPath(folder):state.overview.collections.find(c=>c.id===state.collection)?.name||(state.kind==='audio'?'All audio':'All video');
     $('view-title').title=$('view-title').textContent;
     $('result-count').textContent=`${items.length}${r.complete?'':'+'}`;$('result-count').title=`${items.length} clips${r.complete?'':' loaded · scroll for more'} · ${elapsed.toFixed(1)} ms`;
     hideClipInfo();
@@ -224,10 +227,10 @@ click('history',historyDialog);
 async function historyDialog(){const history=await api('history'),points=await api('checkpoints');dialog('Library history',`<p>Shared by the GUI and CLI. Original media is outside undo.</p><label>Checkpoint name<input id="checkpoint-name"></label><button type="button" id="checkpoint-save">Create checkpoint</button>${points.map(p=>`<div class="manager-row"><span class="flex">${esc(p.name)}<small>${esc(p.time)}</small></span><button type="button" data-restore="${p.id}">Restore</button></div>`).join('')}<div class="section-label">RECENT OPERATIONS</div>${history.map(h=>`<div class="manager-row"><span class="flex">${esc(h.label)}${h.undone?' · undone':''}<small>${h.author} · ${new Date(h.time).toLocaleString()} · #${h.seq}</small></span></div>`).join('')}`,null);click('checkpoint-save',async()=>{await api('checkpoint',{name:$('checkpoint-name').value});historyDialog();});$('dialog-content').querySelectorAll('[data-restore]').forEach(b=>b.onclick=async()=>{if(confirm('Restore checkpoint and discard later library changes?')){await api('checkpoint-restore',{id:b.dataset.restore,confirm:'discard-later-edits'});closeDialog();state.dirty=false;await refresh();}});}
 click('cache-manager',async()=>{const c=await api('cache');dialog('Cache & preparation',`<p>${(c.bytes/1024**2).toFixed(1)} MB of disposable artifacts. Active preview readers are protected. Annotations and identities are stored separately.</p><label>Disk budget, MB<input id="cache-budget" type="number" min="0" value="${Math.round(c.budget/1024**2)}"></label><button type="button" id="cache-clear">Clear eligible artifacts</button><button type="button" id="rescan">Rescan source availability</button>`,()=>api('cache-budget',{bytes:Math.round(Number($('cache-budget').value)*1024**2)}));click('cache-clear',async()=>{const r=await api('cache-clear');say(`Cleared ${(r.removedBytes/1024**2).toFixed(1)} MB${r.protected?' · active readers protected':''}`);});click('rescan',()=>act(()=>api('rescan'),'Source availability rescanned'));});
 for(const direction of ['undo','redo'])click(direction,async()=>{if(!await abandon())return;state.dirty=false;await act(()=>api(direction),direction==='undo'?'Undid library operation':'Redid library operation');});
-for(const id of ['search','kind','tag-filter','min-duration','max-duration'])$(id).addEventListener(id==='search'?'input':'change',()=>{drawFilters();clearTimeout(eventTimer);eventTimer=setTimeout(()=>search().catch(e=>say(e.message,true)),0);});
+for(const id of ['search','tag-filter','min-duration','max-duration'])$(id).addEventListener(id==='search'?'input':'change',()=>{drawFilters();clearTimeout(eventTimer);eventTimer=setTimeout(()=>search().catch(e=>say(e.message,true)),0);});
 click('insert',async()=>{if(!window.libraryNative)throw new Error('Open the library browser from AFClip');const a=state.selected;let selection;if(state.temporarySelection){selection={revision:a.revision,sourceId:a.sourceId};if(a.kind==='audio'){const rate=Number(a.source.metadata.streams.find(s=>s.codec_type==='audio').sample_rate);Object.assign(selection,{startSample:Math.round(markIn*rate),endSample:Math.round(markOut*rate)});}else{const frames=await api('frames',{id:a.id}),pts=frames.ticks.map(t=>t*frames.timeBase.num/frames.timeBase.den),nearest=t=>{const i=pts.findIndex(p=>p>=t-0.000001);return i<0?pts.length:i;};Object.assign(selection,{startFrame:nearest(markIn),endFrame:nearest(markOut)});}}await window.libraryNative.insert({id:state.insertRange?.id||a.id,selection});say('Added to AFClip project bin');});
 click('edit-library',()=>window.libraryNative?.edit(state.selected.id));
-document.addEventListener('keydown',e=>{const typing=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName);if((e.ctrlKey||e.metaKey)&&!e.altKey&&!$('dialog').open){const key=e.key.toLowerCase();if(key==='f'){e.preventDefault();if(e.shiftKey)$('filter-toggle').click();else{$('search').focus();$('search').select();}return;}if(key==='b'&&!e.shiftKey){e.preventDefault();$('toggle-sidebar').click();return;}}if(e.key==='Escape'&&e.target.id==='search'){if($('search').value){$('search').value='';$('search').dispatchEvent(new Event('input'));}$('search').blur();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();if($('dialog').open){if(submitDialog&&!readonly)$('dialog-form').requestSubmit();return;}return;}if(typing||$('dialog').open)return;if(e.code==='Space'){e.preventDefault();play().catch(e=>say(e.message,true));}if(e.key.toLowerCase()==='i'){markIn=time;state.insertRange=null;state.temporarySelection=true;showMarks();}if(e.key.toLowerCase()==='o'){markOut=time;state.insertRange=null;state.temporarySelection=true;showMarks();}if(wave&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const zoom={'=':1.6,'+':1.6,'-':1/1.6,'\\':0}[e.key];if(zoom!=null){e.preventDefault();zoom?wave.zoomBy(zoom):wave.fit();}}if(!readonly&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();$(e.shiftKey?'redo':'undo').click();}});
+document.addEventListener('keydown',e=>{const typing=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName);if((e.ctrlKey||e.metaKey)&&!e.altKey&&!$('dialog').open){const key=e.key.toLowerCase();if(key==='f'){e.preventDefault();if(e.shiftKey)$('filter-toggle').click();else{$('search').focus();$('search').select();}return;}if(key==='b'&&!e.shiftKey){e.preventDefault();$('toggle-sidebar').click();return;}if(key==='1'||key==='2'){e.preventDefault();setKind(key==='1'?'video':'audio').catch(e=>say(e.message,true));return;}}if(e.key==='Escape'&&e.target.id==='search'){if($('search').value){$('search').value='';$('search').dispatchEvent(new Event('input'));}$('search').blur();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();if($('dialog').open){if(submitDialog&&!readonly)$('dialog-form').requestSubmit();return;}return;}if(typing||$('dialog').open)return;if(e.code==='Space'){e.preventDefault();play().catch(e=>say(e.message,true));}if(e.key.toLowerCase()==='i'){markIn=time;state.insertRange=null;state.temporarySelection=true;showMarks();}if(e.key.toLowerCase()==='o'){markOut=time;state.insertRange=null;state.temporarySelection=true;showMarks();}if(wave&&!e.ctrlKey&&!e.metaKey&&!e.altKey){const zoom={'=':1.6,'+':1.6,'-':1/1.6,'\\':0}[e.key];if(zoom!=null){e.preventDefault();zoom?wave.zoomBy(zoom):wave.fit();}}if(!readonly&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();$(e.shiftKey?'redo':'undo').click();}});
 window.addEventListener('beforeunload',e=>{if(state.dirty||window.hasAnnotationDrafts?.()){e.preventDefault();e.returnValue='';}});
 const events=new EventSource('/v1/events');let refreshTimer;events.onmessage=()=>{if(!refreshTimer)refreshTimer=setTimeout(()=>{refreshTimer=null;refresh().catch(e=>say(e.message,true));},150);};events.onerror=()=>{$('connection').textContent='Reconnecting…';};events.onopen=()=>{$('connection').textContent='Local catalog · connected';};
 $('insert').hidden=!readonly&&params.get('mode')!=='project';$('edit-library').hidden=!readonly;
@@ -239,15 +242,15 @@ window.afclipPrepareReload=()=>{
     document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')||document.querySelector(':active'))return false;
   sessionStorage.setItem(reloadKey,JSON.stringify({folder:state.folder,kind:state.kind,collection:state.collection,deleted:state.deleted,loaded:state.items.length,
     selected:state.insertRange?.id||state.selected?.id,selectedIds:[...state.selectedIds],selectionAnchor:state.selectionAnchor,time,markIn,markOut,temporarySelection:state.temporarySelection,
-    fields:Object.fromEntries(['search','kind','tag-filter','min-duration','max-duration','author'].map(id=>[id,$(id).value])),scroll:$('assets').scrollTop}));
+    fields:Object.fromEntries(['search','tag-filter','min-duration','max-duration','author'].map(id=>[id,$(id).value])),scroll:$('assets').scrollTop}));
   return true;
 };
 (async()=>{
   let saved=null;if(params.get('dev')){try{saved=JSON.parse(sessionStorage.getItem(reloadKey));}catch{}sessionStorage.removeItem(reloadKey);document.title='AFClip Content Library · Dev';}
-  if(saved){for(const key of ['folder','kind','collection','deleted'])state[key]=saved[key];for(const [id,value]of Object.entries(saved.fields))if(id!=='tag-filter')$(id).value=value;}
+  if(saved){for(const key of ['folder','kind','collection','deleted'])state[key]=saved[key];for(const [id,value]of Object.entries(saved.fields))if(id!=='tag-filter'&&$(id))$(id).value=value;if(!['video','audio'].includes(state.kind))state.kind='video';drawKind();}
   await refresh();
   if(saved){$('tag-filter').value=saved.fields['tag-filter'];drawFilters();await search('reset',saved.loaded);}
-  const id=saved?.selected||params.get('asset');if(id){await select(id);if(saved){await seek(saved.time);markIn=Math.min(saved.markIn,state.selected.duration);markOut=Math.min(saved.markOut,state.selected.duration);state.temporarySelection=saved.temporarySelection;showMarks();}}
+  const id=saved?.selected||params.get('asset');if(id){await select(id);if(state.selected&&state.selected.kind!==state.kind)await setKind(state.selected.kind);if(saved){await seek(saved.time);markIn=Math.min(saved.markIn,state.selected.duration);markOut=Math.min(saved.markOut,state.selected.duration);state.temporarySelection=saved.temporarySelection;showMarks();}}
   if(saved){const visible=new Set(state.items.map(item=>item.id));state.selectedIds=new Set((saved.selectedIds||[saved.selected]).filter(id=>visible.has(id)));state.selectionAnchor=visible.has(saved.selectionAnchor)?saved.selectionAnchor:null;drawClipSelection();$('assets').scrollTop=saved.scroll;}
   reloadReady=true;say(params.get('dev')?'Library ready · live GUI reload enabled':'Library ready');
 })().catch(e=>{reloadReady=true;say(e.message,true);});
