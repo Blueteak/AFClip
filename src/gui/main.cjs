@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } = require('electron');
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -76,6 +76,36 @@ function checkSender(event) {
 
 function handle(name, fn) {
   ipcMain.handle(`afclip:${name}`, async (event, ...values) => { checkSender(event); return fn(...values); });
+}
+
+async function switchProject(destination) {
+  const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+  const child = spawn(process.execPath, [__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])], {
+    detached: true, windowsHide: false, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env,
+  });
+  await new Promise((resolve, reject) => {
+    const finish = error => {
+      clearTimeout(timer);
+      child.removeListener('error', onError);
+      child.removeListener('exit', onExit);
+      child.removeListener('message', onMessage);
+      if (child.connected) child.disconnect();
+      if (error) { child.kill(); reject(error); }
+      else { child.unref(); resolve(); }
+    };
+    const onError = error => finish(error);
+    const onExit = code => finish(new Error(`Project window exited before opening (${code})`));
+    const onMessage = message => {
+      if (message?.type === 'project-ready') finish();
+      else if (message?.type === 'project-error') finish(new Error(message.message));
+    };
+    const timer = setTimeout(() => finish(new Error('Timed out opening the project window')), 60000);
+    child.once('error', onError);
+    child.once('exit', onExit);
+    child.on('message', onMessage);
+  });
+  setImmediate(() => app.quit());
+  return {path:destination};
 }
 
 async function watchEvents() {
@@ -246,9 +276,7 @@ app.whenReady().then(async () => {
     const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'create', destination], {windowsHide:true, timeout:30000});
     const reply = JSON.parse(result.stdout.trim());
     if (!reply.ok) throw new Error(reply.error?.message || 'Could not create project');
-    app.relaunch({args:[__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])]});
-    setImmediate(() => app.quit());
-    return {path:destination};
+    return switchProject(destination);
   });
   handle('open-project', async () => {
     const selected = await dialog.showOpenDialog(window, {title:'Open project', buttonLabel:'Open', defaultPath:path.dirname(projectDir), properties:['openDirectory']});
@@ -260,9 +288,7 @@ app.whenReady().then(async () => {
     const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], {windowsHide:true, timeout:30000});
     const reply = JSON.parse(result.stdout.trim());
     if (!reply.ok || !reply.result?.url) throw new Error(reply.error?.message || 'Could not open project');
-    app.relaunch({args:[__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])]});
-    setImmediate(() => app.quit());
-    return {path:destination};
+    return switchProject(destination);
   });
   handle('collect', async revision => {
     const selected = await dialog.showSaveDialog(window, {title:'Collect project folder', buttonLabel:'Collect', defaultPath:path.join(path.dirname(projectDir), path.basename(projectDir)+'-collected')});
@@ -341,12 +367,20 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
+  if (process.connected) process.send({type:'project-ready'});
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
     previewGeneration++; previewSession.close(); raster.close(); previewFiles.clear(); previewGraphics.graphics = {};
   });
   watchEvents();
   if (option('--capture')) captureTimer = setTimeout(() => capture().catch(console.error), 45000);
-}).catch(error => { console.error(error.stack || error.message); if (!args.includes('--quit-after-capture')) dialog.showErrorBox('AFClip could not open the project', error.message); app.exit(1); });
+}).catch(error => {
+  console.error(error.stack || error.message);
+  if (process.connected) process.send({type:'project-error', message:error.message}, () => app.exit(1));
+  else {
+    if (!args.includes('--quit-after-capture')) dialog.showErrorBox('AFClip could not open the project', error.message);
+    app.exit(1);
+  }
+});
 
 app.on('window-all-closed', () => { previewSession?.close(); streamController?.abort(); app.exit(0); });
 app.on('before-quit', () => { previewSession?.close(); streamController?.abort(); clearTimeout(captureTimer); });
