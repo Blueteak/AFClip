@@ -166,10 +166,11 @@ window.AFClipGeneration = host => {
     textarea.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); generate(); } };
     takes.onkeydown = e => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); stepTake(e.key === 'ArrowDown' ? 1 : -1); }
-      else if (e.key === 'Enter') { e.preventDefault(); accept(); }
       else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); remove(); }
     };
     el.addEventListener('keydown', e => {
+      // Only the description submits on Enter; suppress native button activation elsewhere.
+      if (e.key === 'Enter' && e.target !== textarea) e.preventDefault();
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
       if ((e.ctrlKey || e.metaKey) && e.code === 'Space') { e.preventDefault(); e.stopPropagation(); host.togglePlay(); return; }
       e.stopPropagation();
@@ -339,7 +340,7 @@ window.AFClipGeneration = host => {
         const b = h('button', { class: `annotation-item gen-take ${on ? 'selected' : ''}`, role: 'option', 'aria-selected': String(on), tabindex: '-1', onclick: () => { pickTake(t); pop.takes.focus(); } },
           h('span', { class: `swatch ${t.type}` }), h('span', { class: 'label' }, `${i + 1} · ${(t.text || '').replace(/\s+/g, ' ')}`),
           h('span', { class: `when ${over ? 'over' : ''}` }, t.duration ? host.shortTc(host.toF(t.duration)) : ''));
-        b.tip = { title: `Take ${i + 1} · ${TYPES[t.type]?.label || t.type}`, desc: t.text, meta: over ? 'Longer than the clip' : null, hint: [{ keys: ['Up', 'Down'], text: 'select and hear' }, { keys: 'Enter', text: 'accept' }] };
+        b.tip = { title: `Take ${i + 1} · ${TYPES[t.type]?.label || t.type}`, desc: t.text, meta: over ? 'Longer than the clip' : null, hint: [{ keys: ['Up', 'Down'], text: 'select and hear' }] };
         return b;
       });
       if (busy) rows.push(h('div', { class: 'annotation-item gen-take pending' }, h('span', { class: 'swatch' }), h('span', { class: 'label' }, phaseLabel(v.job)), h('span', { class: 'agent-working' }, h('i'), h('i'), h('i'))));
@@ -365,7 +366,7 @@ window.AFClipGeneration = host => {
     once('actions', [plan, v.job.takes?.length], () => {
       pop.actions.hidden = false;
       const ok = !plan.why;
-      const b = h('button', { class: 'btn primary', disabled: !ok, onclick: () => accept() }, icon('check', 'sm'), plan.extend ? 'Accept and extend' : 'Accept', kbd('Enter'));
+      const b = h('button', { class: 'btn primary', disabled: !ok, onclick: () => accept() }, icon('check', 'sm'), plan.extend ? 'Accept and extend' : 'Accept');
       b.tip = { title: 'Accept take', desc: plan.why || (plan.extend ? 'Extends the clip to fit the line. Other takes are discarded.' : 'Becomes a normal clip. Other takes are discarded.') };
       pop.actions.replaceChildren(h('button', { class: 'popover-delete', onclick: () => remove(), tip: { title: 'Delete clip', desc: 'Undo restores it.', keys: 'Delete' } }, 'Delete', kbd('Delete')), h('span', { class: 'grow' }), b);
     });
