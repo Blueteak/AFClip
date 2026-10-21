@@ -31,7 +31,7 @@ window.AssetRuntime = class AssetRuntime {
   content(id,mediaId,iframe,loaded,item){
     const key='content:'+id;
     if(!this.entries.has(key))this.entries.set(key,{iframe,loaded,asset:this.setup.graphics[mediaId]});
-    return this.render(key,{assetId:mediaId,params:item.params,seed:item.seed},[],{time:item.sourceTime,progress:item.progress||0,duration:item.duration||0});
+    return this.render(key,{assetId:mediaId,params:item.params,seed:item.seed},[],{time:item.sourceTime,progress:item.progress||0,duration:item.duration||0,text:item.text});
   }
   async render(id, instance, inputs, context, bitmap=false) {
     const began=performance.now();const entry=this.entry(id,instance.assetId);await entry.loaded;

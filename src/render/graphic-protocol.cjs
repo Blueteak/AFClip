@@ -11,7 +11,7 @@ module.exports = function registerGraphics(protocol, config) {
       const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.json': 'application/json' }[path.extname(file).toLowerCase()] || 'application/octet-stream';
       let body = fs.readFileSync(file);
       if (path.extname(file).toLowerCase() === '.html') {
-        const html = body.toString('utf8'), script = `<script>${graphic.asset ? assetBridge : bridge}</script>`;
+        const html = body.toString('utf8'), script = `<script>${bridge}</script>${graphic.asset ? `<script>${assetBridge}</script>` : ''}`;
         body = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, match => match + script) : html + script;
       }
       return new Response(body, { headers: { 'Content-Type': mime, 'Access-Control-Allow-Origin': '*', 'Content-Security-Policy': "default-src 'none'; script-src afclip-graphic: 'unsafe-inline'; style-src afclip-graphic: 'unsafe-inline'; img-src afclip-graphic: data: blob:; font-src afclip-graphic:; connect-src afclip-graphic:; media-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none';" } });
