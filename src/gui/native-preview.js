@@ -278,7 +278,7 @@ window.NativePreview = class NativePreview {
     const version = entry.graphicVersion;
     entry.graphicBusy = entry.loaded.then(() => {
       if (this.closed) return;
-      if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
+      if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,text:entry.clip.text || {},params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
       return new Promise((resolve, reject) => {
       if (this.closed) return resolve();
       const id = ++this.requestId;
