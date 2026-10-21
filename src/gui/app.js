@@ -1827,7 +1827,7 @@ function numberInput({ value, format, parse, step = 1, big = 10, min = -Infinity
   input.scrubCancel = () => { input.value = format(value); current = value; onPreview?.(); };
   return input;
 }
-function field(label, control, { tip, unit } = {}) {
+function fieldLabel(label, control, tip) {
   const lab = h('span', { class: `field-label ${control?.scrub ? 'scrub' : ''}` }, label);
   if (control?.scrub && !control.disabled) {
     lab.tip = { title: label, desc: tip, hint: [{ keys: '#Drag', text: 'to scrub' }, { keys: 'Shift', text: 'faster' }, { keys: 'Alt', text: 'finer' }, { keys: ['Up', 'Down'], text: 'step' }] };
@@ -1840,6 +1840,10 @@ function field(label, control, { tip, unit } = {}) {
       lab.onpointercancel = () => { lab.onpointermove = lab.onpointerup = lab.onpointercancel = null; control.scrubCancel(); };
     };
   } else if (tip) lab.tip = { title: label, desc: tip };
+  return lab;
+}
+function field(label, control, { tip, unit } = {}) {
+  const lab = fieldLabel(label, control, tip);
   return h('div', { class: 'field' }, lab, h('div', { class: 'field-value' }, control, unit ? h('span', { class: 'unit' }, unit) : null));
 }
 const timeInput = (frames, onCommit, opts = {}) => numberInput({ value: frames, format: tc, parse: (t, base) => parseTime(t, base), step: 1, big: nominal(), min: opts.min ?? 0, max: opts.max, onCommit, disabled: opts.disabled,
@@ -1956,9 +1960,15 @@ function drawClipInspector(box, c) {
       clearTimeout(frameTimer);
       playback.previewTransform(c.id, key, v === undefined ? undefined : v * factor);
     };
+    const position = (key, label, tip) => {
+      const input = plainNumber(t[key] ?? 0, 0, v => setT(key, v, `${label} ${v}`), { disabled: locked, onPreview: live(key) });
+      input.setAttribute('aria-label', `Position ${label}`);
+      return h('div', { class: 'field-value' }, fieldLabel(label, input, tip), input);
+    };
     box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Transform'),
-      field('Position X', plainNumber(t.x ?? 0, 0, v => setT('x', v, `X ${v}`), { disabled: locked, onPreview: live('x') }), { tip: 'Horizontal offset in pixels from the centered layout.' }),
-      field('Position Y', plainNumber(t.y ?? 0, 0, v => setT('y', v, `Y ${v}`), { disabled: locked, onPreview: live('y') }), { tip: 'Vertical offset in pixels from the centered layout.' }),
+      field('Position', h('div', { class: 'field-pair' },
+        position('x', 'X', 'Horizontal offset in pixels from the centered layout.'),
+        position('y', 'Y', 'Vertical offset in pixels from the centered layout.'))),
       field('Scale', plainNumber((t.scale ?? 1) * 100, 1, v => setT('scale', v / 100, `Scale ${v}%`), { min: 1, max: 1000, disabled: locked, onPreview: live('scale', .01) }), { unit: '%' }),
       field('Rotation', plainNumber(t.rotation ?? 0, 1, v => setT('rotation', v, `Rotation ${v}°`), { step: 1, big: 15, disabled: locked, onPreview: live('rotation') }), { unit: '°' }),
       field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked, onPreview: live('opacity', .01) }), { unit: '%' }),
