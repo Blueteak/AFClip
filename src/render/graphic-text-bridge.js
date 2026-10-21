@@ -47,6 +47,13 @@
     // Render functions may replace field contents. Reapply before the next paint.
     new MutationObserver(() => { apply(); }).observe(document.body, { childList: true, characterData: true, subtree: true });
   });
+  // HTML assets apply per-clip text before each render.
+  window.AFClipApplyText = text => {
+    overrides = text || {};
+    const missing = Object.keys(overrides).filter(id => !fields.has(id) || !fields.get(id).el.isConnected);
+    if (window.afclipTextError || missing.length) throw new Error(window.afclipTextError || `Missing text field: ${missing.join(', ')}`);
+    apply();
+  };
   addEventListener('message', event => {
     if (event.source !== parent) return;
     const d = event.data;
