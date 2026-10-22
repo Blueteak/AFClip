@@ -1,4 +1,22 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+let startupFinished = false;
+// Install before page scripts execute so syntax/load errors cannot leave the
+// static "Connecting" placeholder looking like an engine connection problem.
+window.addEventListener('error', event => {
+  if (startupFinished) return;
+  const script = event.target?.tagName === 'SCRIPT' ? event.target.src : null;
+  if (!event.message && !script) return;
+  const message = event.message || `Could not load ${script}`;
+  const show = () => {
+    document.documentElement.dataset.afclipStartupError = 'true';
+    const status = document.getElementById('status');
+    if (status) status.textContent = `Editor startup failed: ${message}`;
+    const dot = document.getElementById('connection-dot');
+    if (dot) dot.className = 'dot error';
+  };
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', show, { once: true });
+  else show();
+}, true);
 contextBridge.exposeInMainWorld('afclip', Object.freeze({
   rasterAsset: data => ipcRenderer.invoke('afclip:asset-raster',data),
   previewOpen: mode => ipcRenderer.invoke('afclip:preview-open', mode),
@@ -25,7 +43,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   render: options => ipcRenderer.invoke('afclip:render', options),
   mediaUrl: file => ipcRenderer.invoke('afclip:media-url', file),
   showOutput: file => ipcRenderer.invoke('afclip:show-output', file),
-  ready: () => ipcRenderer.invoke('afclip:ready'),
+  ready: () => { startupFinished = true; return ipcRenderer.invoke('afclip:ready'); },
   agents: (action, payload = {}) => ipcRenderer.invoke('afclip:agents', action, payload),
   apiKeys: (action, payload = {}) => ipcRenderer.invoke('afclip:api-keys', action, payload),
   onEvent: listener => { const receive = (_event, value) => listener(value); ipcRenderer.on('afclip:event', receive); return () => ipcRenderer.removeListener('afclip:event', receive); },

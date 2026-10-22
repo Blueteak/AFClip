@@ -1,5 +1,7 @@
 // Development-only renderer reload. The project engine keeps owning edits/history.
 const { watch } = require('node:fs');
+const { readFile } = require('node:fs/promises');
+const { Script } = require('node:vm');
 const path = require('node:path');
 
 module.exports = function watchRenderer(window, beforeReload = () => {}, options = {}) {
@@ -11,7 +13,12 @@ module.exports = function watchRenderer(window, beforeReload = () => {}, options
     if (!window.isEnabled() || window.webContents.isLoading()) return schedule();
     const version = dirty;
     try {
-      if (!await window.webContents.executeJavaScript('window.afclipPrepareReload?.() === true')) return schedule();
+      // A save can expose an incomplete script. Keep the working renderer until
+      // every script parses, and allow a failed startup to recover on the next save.
+      for (const file of files) {
+        if (/\.(?:js|cjs)$/.test(file)) new Script(await readFile(file, 'utf8'), { filename: file });
+      }
+      if (!await window.webContents.executeJavaScript('document.documentElement.dataset.afclipStartupError === "true" || window.afclipPrepareReload?.() === true')) return schedule();
       if (closed) return;
       beforeReload();
       dirty = dirty === version ? 0 : dirty;
