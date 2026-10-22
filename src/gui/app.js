@@ -616,7 +616,19 @@ function edit(build, message, extra = {}) {
 }
 const put = (collection, value) => ({ op: 'put', collection, value });
 const remove = (collection, id) => ({ op: 'remove', collection, id });
-const history = direction => perform(() => api.command({ command: direction }), direction === 'undo' ? 'Undid the last edit' : 'Redid the edit');
+const history = async direction => {
+  const input = document.activeElement;
+  // A numeric draft is not a history entry. Drop it before undoing the project
+  // so its preview and a later blur cannot overwrite the restored value.
+  if ($('inspector').contains(input) && input.scrubCancel) {
+    const { selectionStart, selectionEnd, selectionDirection } = input;
+    input.scrubCancel();
+    input.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+  }
+  const result = await perform(() => api.command({ command: direction }), direction === 'undo' ? 'Undid the last edit' : 'Redid the edit');
+  drawInspector(true);
+  return result;
+};
 const importMedia = kind => perform(() => api.importMedia(kind), result => result ? `Imported ${result.length} item${result.length === 1 ? '' : 's'}` : 'Import cancelled');
 
 // ---------------------------------------------------------------- Selection and navigation
@@ -1884,7 +1896,7 @@ function segmented(options, value, onPick, disabled) {
 }
 function chip(id, label, cls = '') { const a = actions[id]; return h('button', { class: `chip-button ${cls}`, dataset: { action: id }, disabled: !can(id), onclick: () => run(id), tip: { action: id } }, a.icon ? icon(a.icon, 'sm') : null, label || a.label, kbd(a.keys[0])); }
 
-function drawInspector() {
+function drawInspector(force = false) {
   const p = project(); if (!p) return;
   const box = $('inspector');
   if (monitorView === 'source' && source.media) {
@@ -1897,7 +1909,10 @@ function drawInspector() {
   const layout = () => `${p.revision}`;
   const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}:${mediaById(list[0].mediaId)?.revision}:${inspectorTab}` : list.length ? `m:${list.map(c => c.id).join()}`
     : fo ? `f:${fo.id}:${layout()}` : heads.length ? `r:${heads.map(t => t.id).join()}:${layout()}` : `p:${p.revision}`;
-  if (box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join()) return;
+  const focused = box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join() ? document.activeElement : null;
+  if (focused && !force) return;
+  const fieldName = input => input.closest('.field')?.querySelector('.field-label')?.textContent;
+  const restore = focused ? { index: [...box.querySelectorAll('input')].indexOf(focused), name: fieldName(focused), start: focused.selectionStart, end: focused.selectionEnd, direction: focused.selectionDirection } : null;
   inspectorKey = key;
   const scroll = box.scrollTop;
   box.replaceChildren();
@@ -1915,6 +1930,17 @@ function drawInspector() {
   else if (heads.length) drawTracksInspector(box, heads);
   else drawSequenceInspector(box, p);
   box.scrollTop = scroll;
+  if (restore) {
+    const input = box.querySelectorAll('input')[restore.index];
+    if (input && !input.disabled && fieldName(input) === restore.name) {
+      input.focus({ preventScroll: true });
+      // Numeric focus selects the field on the next tick. Restore the caret
+      // afterwards so repeated undo/redo leaves the editing position intact.
+      setTimeout(() => {
+        if (document.activeElement === input && restore.start != null) input.setSelectionRange(restore.start, restore.end, restore.direction);
+      }, 0);
+    }
+  }
 }
 // Clip inspector section whose collapsed state persists per title. `extras` sit in the header after the toggle.
 function collapsibleSection(title, extras = [], ...children) {
@@ -3389,6 +3415,12 @@ document.addEventListener('keydown', e => {
   if (combo === 'Ctrl+C' && !getSelection().isCollapsed) return;
   const typing = e.target.closest?.('input, textarea, select, [contenteditable]');
   if (typing) {
+    const historyAction = keymap.get(combo);
+    if ($('inspector').contains(typing) && typing.matches('input.numeric') && ['undo', 'redo'].includes(historyAction)) {
+      e.preventDefault();
+      run(historyAction, 'key');
+      return;
+    }
     if (combo === 'Escape') e.target.blur();
     if (!['Ctrl+Space', 'Ctrl+M', 'Ctrl+S', 'Ctrl+Shift+S', 'Ctrl+I'].includes(combo)) return;
   }
