@@ -116,6 +116,31 @@ class TimelinePlayback {
     this.notify();
   }
   notify() { this.callbacks.state?.(this); }
+  async previewParams(target, params, expected) {
+    if (expected && this.paramDraft !== expected) return;
+    this.paramDraft = params === undefined ? null : { ...target, params: structuredClone(params) };
+    const draft = this.paramDraft;
+    const version = this.paramPreviewVersion = (this.paramPreviewVersion || 0) + 1;
+    this.pause(false);
+    try {
+      await this.ensure();
+      if (version !== this.paramPreviewVersion || !this.native) return;
+      const project = this.native.setup.project;
+      const preview = !draft ? project : { ...project,
+        clips: project.clips.map(c => c.id !== draft.id || draft.kind === 'transition' ? c
+          : draft.kind === 'effect' ? { ...c, effects: c.effects.map(e => e.id === draft.effect ? { ...e, params: draft.params } : e) }
+          : { ...c, params: draft.params }),
+        transitions: project.transitions.map(t => draft.kind === 'transition' && t.id === draft.id ? { ...t, params: draft.params } : t),
+      };
+      this.native.setup.plan = window.AFClipTimeline.compile(preview);
+      for (const clip of this.native.setup.plan.clips) {
+        const entry = this.native.entries.get(clip.id);
+        if (entry) entry.clip = clip;
+      }
+      this.picture = null;
+      this.previewPicture();
+    } catch (error) { if (version === this.paramPreviewVersion) this.fail(error); }
+  }
   async previewTransform(clipId, key, value, expected) {
     this.transformDrafts ||= new Map();
     const draft = this.transformDrafts.get(clipId) || {};

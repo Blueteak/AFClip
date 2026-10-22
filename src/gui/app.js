@@ -1865,7 +1865,7 @@ function field(label, control, { tip, unit } = {}) {
   const lab = fieldLabel(label, control, tip);
   return h('div', { class: 'field' }, lab, h('div', { class: 'field-value' }, control, unit ? h('span', { class: 'unit' }, unit) : null));
 }
-const timeInput = (frames, onCommit, opts = {}) => numberInput({ value: frames, format: tc, parse: (t, base) => parseTime(t, base), step: 1, big: nominal(), min: opts.min ?? 0, max: opts.max, onCommit, disabled: opts.disabled,
+const timeInput = (frames, onCommit, opts = {}) => numberInput({ value: frames, format: tc, parse: (t, base) => parseTime(t, base), step: 1, big: nominal(), min: opts.min ?? 0, max: opts.max, onCommit, onPreview: opts.onPreview, disabled: opts.disabled,
   tip: { title: 'Timecode', desc: 'Type timecode (00:00:02:15), seconds (2.5), frames (75f) or a relative change (+12 / -12 frames).' } });
 const plainNumber = (value, decimals, onCommit, opts = {}) => numberInput({ value, format: v => v.toFixed(decimals), parse: t => { const v = Number(String(t).replace(/[^\d.+-]/g, '')); return String(t).trim() === '' ? null : v; }, step: opts.step ?? 1, big: opts.big ?? 10, min: opts.min, max: opts.max, onCommit, onPreview: opts.onPreview, disabled: opts.disabled });
 function segmented(options, value, onPick, disabled) {
@@ -2059,16 +2059,18 @@ function paramTarget(kind, owner, instance = owner) {
   }
   const localF = x => transition ? secs(x) * secs(owner.duration) * fps() : (secs(x) - secs(owner.sourceIn)) / secs(owner.speed) * fps();
   // Edits apply to the instance as it is when their turn in the queue comes.
-  const write = (change, message) => edit(() => {
+  const target = { kind, id: owner.id, effect: kind === 'effect' ? instance.id : undefined };
+  const preview = change => { clearTimeout(frameTimer); playback.previewParams(target, change ? change({ ...(instance.params || {}) }) : undefined); };
+  const write = (change, message) => { const draft = playback.paramDraft; return edit(() => {
     const fresh = transition ? transitionById(owner.id) : clipById(owner.id); if (!fresh) return null;
     if (kind === 'effect') {
       if (!fresh.effects?.some(e => e.id === instance.id)) return null;
       return [put('clips', { id: fresh.id, effects: fresh.effects.map(e => e.id === instance.id ? { ...e, params: change({ ...(e.params || {}) }) } : e) })];
     }
     return [put(transition ? 'transitions' : 'clips', { id: fresh.id, params: change({ ...(fresh.params || {}) }) })];
-  }, message);
+  }, message).finally(() => { if (draft) playback.previewParams(target, undefined, draft); }); };
   return { kind, key: `${kind}:${owner.id}:${kind === 'effect' ? instance.id : ''}`, owner, instance, media: m, fields: paramFields(m), s0, durF, toX, xs, localF,
-    span: [secs(spanT[0]), secs(spanT[1])], spanT, playLocal: () => Math.max(0, Math.min(durF, playF - s0)), write };
+    span: [secs(spanT[0]), secs(spanT[1])], spanT, playLocal: () => Math.max(0, Math.min(durF, playF - s0)), write, preview };
 }
 const activeCurve = (f, v) => PS.animatable(f) && !!PS.curve(f, v);
 // Stored points for editing. An unedited default curve binds to the instance span.
@@ -2095,29 +2097,31 @@ function toggleAnimation(t, f, cur) {
   return { curve: [{ t: t.toX(Math.round(t.playLocal())), v: now }] };
 }
 const setParam = (params, id, value) => { if (value === undefined) delete params[id]; else params[id] = value; return params; };
-function colorInput(value, disabled, commit) {
+function colorInput(value, disabled, commit, preview) {
   const swatch = h('input', { type: 'color', class: 'param-swatch', value: value.slice(0, 7), disabled, 'aria-label': 'Color' });
   const hex = h('input', { value, disabled, spellcheck: 'false', class: 'numeric', 'aria-label': 'Hex color', tip: { title: 'Hex color', desc: '#rrggbb, or #rrggbbaa with alpha.' } });
   swatch.onchange = () => commit(swatch.value + (hex.value.length > 7 ? hex.value.slice(7) : ''));
-  hex.onkeydown = e => { if (e.key === 'Enter') hex.blur(); if (e.key === 'Escape') { hex.value = value; hex.blur(); } };
+  swatch.oninput = () => preview?.(swatch.value + (hex.value.length > 7 ? hex.value.slice(7) : ''));
+  hex.oninput = () => { const v = hex.value.trim(); if (/^#[\da-f]{6}([\da-f]{2})?$/i.test(v)) preview?.(v); };
+  hex.onkeydown = e => { if (e.key === 'Enter') hex.blur(); if (e.key === 'Escape') { hex.value = value; preview?.(); hex.blur(); } };
   hex.onchange = () => {
     const v = hex.value.trim().toLowerCase().replace(/^([^#])/, '#$1');
-    if (/^#[\da-f]{6}([\da-f]{2})?$/.test(v)) commit(v); else { hex.classList.add('invalid'); setTimeout(() => hex.classList.remove('invalid'), 900); hex.value = value; }
+    if (/^#[\da-f]{6}([\da-f]{2})?$/.test(v)) commit(v); else { hex.classList.add('invalid'); setTimeout(() => hex.classList.remove('invalid'), 900); hex.value = value; preview?.(); }
   };
   const wrap = h('div', { class: 'param-color' }, swatch, hex);
   wrap.show = v => { if (document.activeElement !== hex) { hex.value = v; swatch.value = v.slice(0, 7); } };
   return wrap;
 }
-function numberControl(f, value, disabled, commit) {
+function numberControl(f, value, disabled, commit, preview) {
   const decimals = f.integer ? 0 : f.step ? Math.min(4, Math.max(0, Math.ceil(-Math.log10(f.step) - 1e-9))) : 2;
   const step = f.step || (f.integer ? 1 : .1);
   const done = v => commit(f.integer ? Math.round(v) : v);
-  const input = plainNumber(value, decimals, done, { min: f.min, max: f.max, step, big: step * 10, disabled });
+  const input = plainNumber(value, decimals, done, { min: f.min, max: f.max, step, big: step * 10, disabled, onPreview: v => preview?.(v === undefined ? undefined : f.integer ? Math.round(v) : v) });
   input.show = v => { if (document.activeElement !== input) input.setBase(v); };
   const lo = f.softMin ?? f.min, hi = f.softMax ?? f.max;
   if (!f.slider || !Number.isFinite(lo) || !Number.isFinite(hi)) return { control: input, scrub: input };
   const range = h('input', { type: 'range', class: 'param-slider', min: lo, max: hi, step: f.step || (f.integer ? 1 : 'any'), value, disabled, 'aria-label': f.label });
-  range.oninput = () => { input.value = Number(range.value).toFixed(decimals); };
+  range.oninput = () => { input.value = Number(range.value).toFixed(decimals); preview?.(Number(range.value)); };
   range.onchange = () => done(Number(range.value));
   const wrap = h('div', { class: 'param-slider-wrap' }, range, input);
   wrap.show = v => { input.show(v); if (document.activeElement !== range) range.value = v; };
@@ -2129,11 +2133,12 @@ function drawParams(box, t, locked) {
     const v = params[id], animated = activeCurve(f, v), label = f.label || id, curveKey = `${t.key}:${id}`;
     const at = () => animated ? PS.evaluate(f, v, t.xs(t.playLocal()), t.span) : PS.evaluate(f, v, 0, t.span);
     const commit = value => t.write(p => setParam(p, id, withValue(t, f, p[id], value)), `${label} ${animated ? 'keyed' : 'set'}`);
+    const preview = value => t.preview(value === undefined ? null : p => setParam(p, id, withValue(t, f, p[id], value)));
     let control, scrub;
-    if (f.type === 'number') ({ control, scrub } = numberControl(f, at(), locked, commit));
+    if (f.type === 'number') ({ control, scrub } = numberControl(f, at(), locked, commit, preview));
     else if (f.type === 'boolean') control = segmented([[false, 'Off'], [true, 'On']], at(), commit, locked);
     else if (f.type === 'choice') { control = h('select', { disabled: locked, 'aria-label': label }, ...f.choices.map(c => h('option', { value: c, selected: c === at() }, c))); control.onchange = () => commit(control.value); }
-    else if (f.type === 'color') control = colorInput(at(), locked, commit);
+    else if (f.type === 'color') control = colorInput(at(), locked, commit, preview);
     else control = textParam(t, id, f, at(), locked);
     const buttons = [];
     if (PS.animatable(f)) {
@@ -2145,7 +2150,7 @@ function drawParams(box, t, locked) {
       if (animated) {
         buttons.push(h('button', { class: `icon-button small ${openCurves.has(curveKey) ? 'on' : ''}`, tip: { title: openCurves.has(curveKey) ? 'Hide curve' : 'Edit curve' },
           onclick: () => { openCurves.has(curveKey) ? openCurves.delete(curveKey) : openCurves.add(curveKey); inspectorKey = ''; drawInspector(); } }, icon('curve')));
-        curveViews.add({ el: key, sync: () => { key.classList.toggle('at', keyed()); control.show?.(at()); } });
+        curveViews.add({ el: key, sync: () => { key.classList.toggle('at', keyed()); if (!playback.paramDraft) control.show?.(at()); } });
       }
     }
     const row = h('div', { class: `field param-row ${f.type === 'text' ? 'text' : ''}` }, fieldLabel(label, scrub), h('div', { class: 'field-value' }, control, f.unit ? h('span', { class: 'unit' }, f.unit) : null, ...buttons));
@@ -2161,13 +2166,14 @@ function drawParams(box, t, locked) {
 function textParam(t, id, f, value, locked) {
   const input = h('textarea', { rows: 2, value, disabled: locked, 'aria-label': f.label || id });
   const html = t.kind === 'clip' && t.media.metadata.textFields?.some(x => x.id === id) && t.media.metadata.asset?.parameters?.[id]?.default === undefined;
-  input.onkeydown = e => { if (e.key === 'Escape') { input.value = value; input.blur(); } };
-  if (!html) { input.onchange = () => t.write(p => setParam(p, id, input.value === f.default ? undefined : input.value), `${f.label || id} set`); return input; }
+  input.oninput = () => t.preview(p => setParam(p, id, input.value));
+  input.onkeydown = e => { if (e.key === 'Escape') { input.value = value; t.preview(); input.blur(); } };
+  if (!html) { input.onblur = () => { if (input.value === value) t.preview(); }; input.onchange = () => t.write(p => setParam(p, id, input.value === f.default ? undefined : input.value), `${f.label || id} set`); return input; }
   input.onfocus = () => { clearTimeout(frameTimer); playback.pause(false); graphicTextEdit = { inspector: true, clipId: t.owner.id, field: id, revision: t.owner.revision, mediaRevision: t.media.revision, predecessor: textCommit }; };
   input.onblur = () => {
     const edit = graphicTextEdit, next = input.value; graphicTextEdit = null;
-    if (next !== value) commitGraphicText(edit, next);
-    else if (playback.revision !== project().revision && !textCommit) { draw(); requestFrame(0); }
+    if (next !== value) { const draft = playback.paramDraft; commitGraphicText(edit, next).finally(() => { if (draft) playback.previewParams({}, undefined, draft); }); }
+    else { t.preview(); if (playback.revision !== project().revision && !textCommit) { draw(); requestFrame(0); } }
   };
   return input;
 }
@@ -2189,6 +2195,7 @@ function curveEditor(t, id, f, v, locked) {
   const fromPointer = e => { const r = area.getBoundingClientRect(); return { lf: (e.clientX - r.left) / r.width * t.durF, value: lo + (1 - (e.clientY - r.top) / r.height) * (hi - lo) }; };
   // Dragged values keep about four significant digits of the visible range.
   const clampValue = value => { value = Math.max(f.min ?? -Infinity, Math.min(f.max ?? Infinity, value)); return f.integer ? Math.round(value) : +value.toFixed(Math.max(0, Math.min(6, 3 - Math.floor(Math.log10(hi - lo))))); };
+  const previewCurve = () => t.preview(p => setParam(p, id, { curve: pts }));
   const save = (message, pick = sel >= 0 ? pts[sel]?.t : null) => { curvePick = pick ? { key, t: pick } : null; const curve = pts.map(p => ({ ...p })); t.write(p => setParam(p, id, curve.length ? { curve } : undefined), message); };
   if (!color) {
     const vals = pts.map(p => p.v), soft = [f.softMin ?? f.min, f.softMax ?? f.max];
@@ -2227,15 +2234,22 @@ function curveEditor(t, id, f, v, locked) {
     guides.setAttribute('d', lines);
     sync(); drawFields();
   }
+  function previewPoint(change) {
+    if (!change) return t.preview();
+    const curve = pts.map(p => ({ ...p })); Object.assign(curve[sel], change);
+    sortPoints(curve);
+    if (curve.some((p, i) => i && sameTime(p.t, curve[i - 1].t))) return;
+    t.preview(p => setParam(p, id, { curve }));
+  }
   function drawFields() {
     const p = pts[sel];
     if (!p) { fields.replaceChildren(); return; }
     const name = PS.easeName(p.ease), custom = Array.isArray(name);
     const ease = h('select', { disabled: locked, 'aria-label': 'Ease' }, ...EASE_OPTIONS.map(([value, label]) => h('option', { value, selected: value === name }, label)), custom ? h('option', { value: 'custom', selected: true }, 'Custom') : null);
     ease.onchange = () => { if (ease.value === 'custom') return; const next = PS.ease(ease.value); if (next === undefined) delete p.ease; else p.ease = next; save('Curve ease'); };
-    const value = color ? colorInput(p.v, locked, c => { p.v = c; save('Curve point value'); })
-      : numberControl({ ...f, slider: false }, p.v, locked, n => { p.v = clampValue(n); save('Curve point value'); }).control;
-    fields.replaceChildren(field('Time', timeInput(Math.round(t.localF(p.t)), lf => movePoint(lf), { min: -Infinity, disabled: locked }), { tip: 'From the visible start.' }),
+    const value = color ? colorInput(p.v, locked, c => { p.v = c; save('Curve point value'); }, c => previewPoint(c === undefined ? null : { v: c }))
+      : numberControl({ ...f, slider: false }, p.v, locked, n => { p.v = clampValue(n); save('Curve point value'); }, n => previewPoint(n === undefined ? null : { v: clampValue(n) })).control;
+    fields.replaceChildren(field('Time', timeInput(Math.round(t.localF(p.t)), lf => movePoint(lf), { min: -Infinity, disabled: locked, onPreview: lf => previewPoint(lf === undefined ? null : { t: t.toX(Math.round(lf)) }) }), { tip: 'From the visible start.' }),
       field('Value', value), field('Ease', ease, { tip: 'Shape of the segment after this point.' }));
   }
   function movePoint(lf) {
@@ -2250,7 +2264,7 @@ function curveEditor(t, id, f, v, locked) {
     let moved = false, onMove = null, onUp = null;
     if (handle && !locked) {
       const a = pts[+handle.dataset.segment], b = pts[+handle.dataset.segment + 1], k = +handle.dataset.handle, la = t.localF(a.t), lb = t.localF(b.t);
-      onMove = ev => { const at = fromPointer(ev); moved = true; a.ease = [...a.ease]; a.ease[k * 2] = Math.max(0, Math.min(1, (at.lf - la) / (lb - la))); if (b.v !== a.v) a.ease[k * 2 + 1] = Math.max(-10, Math.min(10, (at.value - a.v) / (b.v - a.v))); paint(); };
+      onMove = ev => { const at = fromPointer(ev); moved = true; a.ease = [...a.ease]; a.ease[k * 2] = Math.max(0, Math.min(1, (at.lf - la) / (lb - la))); if (b.v !== a.v) a.ease[k * 2 + 1] = Math.max(-10, Math.min(10, (at.value - a.v) / (b.v - a.v))); paint(); previewCurve(); };
       onUp = () => moved && save('Curve handle moved');
     } else if (point) {
       sel = +point.dataset.index; const p = pts[sel], prev = pts[sel - 1], next = pts[sel + 1], f0 = t.localF(p.t), v0 = p.v;
@@ -2263,7 +2277,7 @@ function curveEditor(t, id, f, v, locked) {
         if (prev) lf = Math.max(lf, Math.floor(t.localF(prev.t) + 1e-6) + 1);
         if (next) lf = Math.min(lf, Math.ceil(t.localF(next.t) - 1e-6) - 1);
         p.t = t.toX(lf); if (!color) p.v = clampValue(ev.shiftKey ? v0 : v0 + at.value - start.value);
-        paint(); readout(tc(t.s0 + lf), color ? '' : `${+p.v.toFixed(3)}${f.unit || ''}`);
+        paint(); previewCurve(); readout(tc(t.s0 + lf), color ? '' : `${+p.v.toFixed(3)}${f.unit || ''}`);
       };
       onUp = () => { $('drag-readout').hidden = true; if (moved) save('Curve point moved'); else { const lf = Math.round(t.localF(p.t)); if (lf >= 0 && lf < t.durF) seek(t.s0 + lf); } };
     } else if ((e.ctrlKey || e.metaKey || e.detail > 1) && !locked) {
@@ -2279,7 +2293,7 @@ function curveEditor(t, id, f, v, locked) {
     }
     editor.setPointerCapture(e.pointerId);
     editor.onpointermove = ev => onMove?.(ev);
-    editor.onpointerup = editor.onpointercancel = ev => { editor.onpointermove = editor.onpointerup = editor.onpointercancel = null; if (ev.type === 'pointerup') onUp?.(); else { $('drag-readout').hidden = true; inspectorKey = ''; drawInspector(); } };
+    editor.onpointerup = editor.onpointercancel = ev => { editor.onpointermove = editor.onpointerup = editor.onpointercancel = null; if (ev.type === 'pointerup') onUp?.(); else { t.preview(); $('drag-readout').hidden = true; inspectorKey = ''; drawInspector(); } };
   };
   editor.onkeydown = e => {
     if (e.target !== editor) return;
