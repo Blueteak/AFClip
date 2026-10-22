@@ -1679,7 +1679,7 @@ function drawSourceInspector(box) {
     h('div', { class: 'insp-source', tip: { title: mediaName(m), meta: path } }, basename(path) || kindLabel(kind)));
   if (source.status === 'loading') { box.append(h('div', { class: 'insp-note' }, 'Loading source…')); return; }
   if (source.status === 'error') {
-    box.append(h('div', { class: 'insp-note warn' }, source.error),
+    box.append(h('div', { class: 'insp-note warn' }, String(source.error || '').replace(/^.*?: (?=Can’t |Format not supported)/, '')),
       h('div', {class:'insp-actions'}, h('button', {class:'chip-button',onclick:()=>source.open(m,sourceKey(m))}, 'Retry source'),
         m && m.kind !== 'graphic' && mediaById(m.id) ? h('button', {class:'chip-button',disabled:!editable(),onclick:()=>relinkMedia(m),tip:{title:'Relink media',desc:'Point this bin item at a new file. Cuts and settings are kept.'}}, 'Relink…') : null),
       sourcePreparationControls());
