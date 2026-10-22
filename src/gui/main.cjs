@@ -9,7 +9,7 @@ const execFileAsync = promisify(execFile);
 protocol.registerSchemesAsPrivileged([{ scheme: 'afclip-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
   { scheme: 'afclip-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const args = process.argv.slice(2);
-const projectDir = path.resolve(args[0] || '.');
+let projectDir = args[0] && !args[0].startsWith('--') ? path.resolve(args[0]) : undefined;
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
 let window, endpoint, streamController, captureTimer, captured = false;
 let previewSession, previewGeneration = 0;
@@ -145,6 +145,25 @@ async function capture() {
 }
 
 app.whenReady().then(async () => {
+  const lastProjectFile = path.join(app.getPath('userData'), 'last-project.json');
+  if (!projectDir) {
+    try {
+      const saved = JSON.parse(await fs.readFile(lastProjectFile, 'utf8'));
+      if (typeof saved.path === 'string' && path.isAbsolute(saved.path)) {
+        await fs.access(path.join(saved.path, 'project.json'));
+        projectDir = saved.path;
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') console.warn('Could not restore last project:', error.message);
+    }
+    if (!projectDir) {
+      const selected = await dialog.showOpenDialog({title:'Open project', buttonLabel:'Open', properties:['openDirectory']});
+      if (selected.canceled || !selected.filePaths[0]) { app.quit(); return; }
+      projectDir = selected.filePaths[0];
+    }
+  }
+  try { await fs.access(path.join(projectDir, 'project.json')); }
+  catch { throw new Error(`Choose a project folder containing project.json: ${projectDir}`); }
   require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
   const raster=require('../render/asset-raster.cjs')(()=>previewGraphics.graphics);
   handle('asset-raster',data=>raster.render(data));
@@ -367,6 +386,12 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
+  try {
+    await fs.mkdir(path.dirname(lastProjectFile), {recursive:true});
+    const temporary = `${lastProjectFile}.${process.pid}.tmp`;
+    await fs.writeFile(temporary, JSON.stringify({path:projectDir}));
+    await fs.rename(temporary, lastProjectFile);
+  } catch (error) { console.warn('Could not save last project:', error.message); }
   if (process.connected) process.send({type:'project-ready'});
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
     previewGeneration++; previewSession.close(); raster.close(); previewFiles.clear(); previewGraphics.graphics = {};

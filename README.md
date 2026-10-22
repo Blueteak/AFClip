@@ -62,7 +62,7 @@ In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only bro
 
 ## Development reload
 
-Run `npm run dev -- /path/to/project` to reload GUI JavaScript, HTML, CSS and the shared timeline evaluator after source changes. The watcher waits until playback, dragging, text editing and pending GUI edits have stopped. It preserves saved project state and the playhead, then rebuilds the preview. Main-process, preload and worker changes still require restarting the editor. Normal `npm start` does not watch files.
+Run `npm run dev -- /path/to/project` to reload GUI JavaScript, HTML, CSS and the shared timeline evaluator after source changes. Without a project path, `npm start` and `npm run dev` reopen the last successfully opened project, or show the folder picker if none is available. The watcher waits until playback, dragging, text editing and pending GUI edits have stopped. It preserves saved project state and the playhead, then rebuilds the preview. Main-process, preload and worker changes still require restarting the editor. Normal `npm start` does not watch files.
 
 ## Rendering experiments
 
