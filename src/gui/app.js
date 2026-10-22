@@ -1953,6 +1953,28 @@ function drawClipInspector(box, c) {
       }, { min: 1, max: 1600, step: 1, big: 10, disabled: timingLocked || pending }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
   box.append(timing);
 
+  if (clipVisual(c)) {
+    const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message)
+      .finally(() => playback.previewTransform(c.id, k, undefined, v));
+    const live = (key, factor = 1) => v => {
+      clearTimeout(frameTimer);
+      playback.previewTransform(c.id, key, v === undefined ? undefined : v * factor);
+    };
+    const position = (key, label, tip) => {
+      const input = plainNumber(t[key] ?? 0, 0, v => setT(key, v, `${label} ${v}`), { disabled: locked, onPreview: live(key) });
+      input.setAttribute('aria-label', `Position ${label}`);
+      return h('div', { class: 'field-value' }, fieldLabel(label, input, tip), input);
+    };
+    box.append(collapsibleSection('Transform', [],
+      field('Position', h('div', { class: 'field-pair' },
+        position('x', 'X', 'Horizontal offset in pixels from the centered layout.'),
+        position('y', 'Y', 'Vertical offset in pixels from the centered layout.'))),
+      field('Scale', plainNumber((t.scale ?? 1) * 100, 1, v => setT('scale', v / 100, `Scale ${v}%`), { min: 1, max: 1000, disabled: locked, onPreview: live('scale', .01) }), { unit: '%' }),
+      field('Rotation', plainNumber(t.rotation ?? 0, 1, v => setT('rotation', v, `Rotation ${v}°`), { step: 1, big: 15, disabled: locked, onPreview: live('rotation') }), { unit: '°' }),
+      field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked, onPreview: live('opacity', .01) }), { unit: '%' }),
+      field('Framing', segmented([['fit', 'Fit', 'Show the whole picture, letterboxing if needed.'], ['fill', 'Fill', 'Cover the frame and crop the excess.']], t.fit || 'fit', v => setT('fit', v, v === 'fill' ? 'Fill frame' : 'Fit frame'), locked), { tip: 'Shift+F toggles.' })));
+  }
+
   if (clipHasAudio(c)) box.append(collapsibleSection('Audio', [h('span', { class: 'tab-spacer' }),
       h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))],
     field('Volume', numberInput({ value: c.volume <= 0 ? -60 : Math.max(-60, 20 * Math.log10(c.volume)), format: v => v <= -60 ? '-∞' : v.toFixed(1), parse: t => /^-?\s*(inf|∞)/i.test(String(t).trim()) ? -60 : Number.isFinite(Number(t)) && String(t).trim() !== '' ? Number(t) : null, step: .5, big: 3, min: -60, max: 24, disabled: locked,
@@ -1986,27 +2008,6 @@ function drawClipInspector(box, c) {
       for (const id of info.missing) section.append(h('button', {class:'chip-button text-reset', disabled:locked, onclick:() => perform(() => api.command({command:'text-set',clipId:c.id,field:id,reset:true,revision:info.revision,mediaRevision:info.mediaRevision}), 'Missing text override removed')}, `Remove missing field ${id}`));
       if (!info.fields.length && !info.missing.length) section.remove();
     }).catch(error => { if (section.isConnected) section.append(h('p',{},explain(error))); });
-  }
-  if (clipVisual(c)) {
-    const t = c.transform || {}, setT = (k, v, message) => putClip(fresh => ({ transform: { ...(fresh.transform || {}), [k]: v } }), message)
-      .finally(() => playback.previewTransform(c.id, k, undefined, v));
-    const live = (key, factor = 1) => v => {
-      clearTimeout(frameTimer);
-      playback.previewTransform(c.id, key, v === undefined ? undefined : v * factor);
-    };
-    const position = (key, label, tip) => {
-      const input = plainNumber(t[key] ?? 0, 0, v => setT(key, v, `${label} ${v}`), { disabled: locked, onPreview: live(key) });
-      input.setAttribute('aria-label', `Position ${label}`);
-      return h('div', { class: 'field-value' }, fieldLabel(label, input, tip), input);
-    };
-    box.append(collapsibleSection('Transform', [],
-      field('Position', h('div', { class: 'field-pair' },
-        position('x', 'X', 'Horizontal offset in pixels from the centered layout.'),
-        position('y', 'Y', 'Vertical offset in pixels from the centered layout.'))),
-      field('Scale', plainNumber((t.scale ?? 1) * 100, 1, v => setT('scale', v / 100, `Scale ${v}%`), { min: 1, max: 1000, disabled: locked, onPreview: live('scale', .01) }), { unit: '%' }),
-      field('Rotation', plainNumber(t.rotation ?? 0, 1, v => setT('rotation', v, `Rotation ${v}°`), { step: 1, big: 15, disabled: locked, onPreview: live('rotation') }), { unit: '°' }),
-      field('Opacity', plainNumber((t.opacity ?? 1) * 100, 0, v => setT('opacity', v / 100, `Opacity ${v}%`), { min: 0, max: 100, disabled: locked, onPreview: live('opacity', .01) }), { unit: '%' }),
-      field('Framing', segmented([['fit', 'Fit', 'Show the whole picture, letterboxing if needed.'], ['fill', 'Fill', 'Cover the frame and crop the excess.']], t.fit || 'fit', v => setT('fit', v, v === 'fill' ? 'Fill frame' : 'Fit frame'), locked), { tip: 'Shift+F toggles.' })));
   }
   if(clipVisual(c))drawEffectsInspector(box,c,locked);
   box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), peers.length ? chip('unlink', 'Unlink') : clipHasAudio(c) && m?.kind === 'video' ? chip('detachAudio', 'Detach') : null, chip('copy'), chip('delete', null, 'danger')));
