@@ -1,8 +1,9 @@
 'use strict';
 // Chromium reports pipeline codes; say what the user can do instead.
 const videoProblem = error => /COULD_NOT_OPEN|NOT_FOUND|NETWORK/i.test(error?.message || '') || error?.code === 2 ? 'Can’t open the file. It may have moved, be in use, or be damaged.'
-  : error?.code === 3 ? 'Can’t decode this file. Use software rendering.'
-  : 'Format not supported by GPU preview. Use software rendering.';
+  : error?.code === 3 ? 'Can’t decode this file. Try software rendering.'
+  : error?.code === 4 ? 'Format not supported by GPU preview. Try software rendering.'
+  : 'Can’t preview this file. Try reopening the source.';
 // Chromium decodes source video. Transition clips stay canvas-composited during
 // playback so entering a fade cannot change their rasterization or pixel grid.
 window.NativePreview = class NativePreview {
