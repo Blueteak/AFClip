@@ -592,7 +592,7 @@ kbd, .kbd {
 .toast .icon-button { width: 20px; height: 20px; margin: -2px -4px 0 0; }
 .toast .icon-button .icon { color: var(--text-3); width: 13px; height: 13px; margin: 0; }
 .welcome .t-body { line-height: 1.7; }
-.welcome .kbd-group { vertical-align: -3px; margin: 0 1px; }
+.welcome .kbd-group { margin: 0 1px; }
 @keyframes rise { from { transform: translateY(6px); opacity: 0; } }
 
 .graphic-text-hits { position:absolute; left:50%; top:50%; transform-origin:center; pointer-events:none; }
