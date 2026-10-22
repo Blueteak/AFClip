@@ -133,7 +133,9 @@ Graphic clips expose position, scale, rotation, opacity, timeline placement, tri
 
 Declared plain-text fields inside graphics are editable in the GUI and CLI. In the preview, selecting a field pauses playback and selects its clip. Highlight text or place the caret and type, preserving styling and animation. Support multiline text, plain-text paste and ordinary text shortcuts. Clicking outside commits one undoable edit; Escape cancels. Keep the caret stable while editing and reject conflicting external changes.
 
-Fields have stable IDs and HTML defaults. Store text overrides per timeline clip, so editing one instance does not change another. Copying or splitting a clip copies its values. Reset removes an override and restores the graphic's current default. Save, reopen, checkpoints, preview and export preserve the same values. Missing field IDs remain visible as errors until corrected or explicitly removed; never silently drop saved text. Expose field discovery, setting and reset through the shared engine and CLI.
+Fields have stable IDs and HTML defaults. Store text overrides per timeline clip, so editing one instance does not change another. Copying or splitting a clip copies its values. Reset removes an override and restores the graphic's current default. Save, reopen, checkpoints, preview and export preserve the same values. Removing a parameter removes its saved values and curves from instances; undo restores the removal. Expose field discovery, setting and reset through the shared engine and CLI.
+
+HTML clips, effects and transitions share declared number, boolean, color, text and choice parameters. Existing editable HTML text fields join that parameter list. Numbers and colors support keyframe curves in the inspector and CLI. Moving preserves timing, trimming hides animation, splitting preserves continuity, and Shift-drag stretches animation, including effects on images. Switching animation off retains the curve and holds its value at the playhead; switching back restores it. Complex animation can remain in code.
 
 Use external editors or agents for graphic authoring. Reload saved changes in AFClip. Assets, fonts and scripts must be project-local, with no network access during preview or export. Agents can download dependencies into the project during authoring.
 
@@ -172,7 +174,7 @@ Humans and agents can render and inspect a composited single frame or short sect
 - Video treatments and ordered treatment stacks, including blur, color adjustment and masks. The future stack should support reordering, disabling and removing individual treatments.
 - Custom transitions, pitch-preserving audio stretching, frame blending and generated intermediate frames.
 - Nested track folders, group effects, audio buses and ripple trimming.
-- Embedded code editing, rich-text formatting controls and visual animation authoring. Direct plain-text field editing is in MVP.
+- Embedded code editing and rich-text formatting controls. Direct plain-text editing and exposed parameter curve editing are supported.
 - Recording, multicam editing and nested timelines.
 - Additional export delivery formats.
 

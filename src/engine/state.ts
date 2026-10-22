@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {EngineError, assert, fail, validateProject, revisions, time, ZERO, ONE, trackLocked} from '../shared/project.ts';
+import {EngineError, assert, fail, validateProject, revisions, time, ZERO, ONE, trackLocked, pruneParams, add, mul} from '../shared/project.ts';
+import {createRequire} from 'node:module';
+import {htmlTextFields} from './graphic-text.ts';
 import type {Project} from '../shared/project.ts';
 import {restoreGraphicAuthors,pruneGraphicSnapshots,importBuiltin} from './probe.ts';
 import {rippleOperations} from './ripple.ts';
@@ -9,10 +11,38 @@ import {audioOperations,linkedOperations} from './linked-audio.ts';
 
 export function atomicJSON(file:string,value:any){fs.mkdirSync(path.dirname(file),{recursive:true});const temp=`${file}.${randomUUID()}.tmp`;const fd=fs.openSync(temp,'wx');try{fs.writeFileSync(fd,JSON.stringify(value,null,2)+'\n');fs.fsyncSync(fd);}finally{fs.closeSync(fd);}try{fs.renameSync(temp,file);}catch(e){fs.rmSync(temp,{force:true});throw e;}}
 export function createProject(dir:string,options:any={}):Project {fs.mkdirSync(dir,{recursive:true});assert(!fs.existsSync(path.join(dir,'project.json')),'Project already exists');const p:Project={version:1,id:randomUUID(),name:options.name||path.basename(dir),revision:0,resolution:{width:options.width||1920,height:options.height||1080},fps:options.fps||{num:30,den:1},media:[],tracks:[],clips:[],transitions:[],markers:[],relationshipRevisions:{'order:tracks':0,'collection:media':0}};p.media=['dissolve','wipe','blur-transition','spin','blur'].map(name=>importBuiltin(dir,name));validateProject(p);atomicJSON(path.join(dir,'project.json'),p);return p;}
+const schema=createRequire(import.meta.url)('../shared/asset.cjs');
+// Percentage default curves bind once to the source range visible when applied.
+// Later trims, splits and stretches keep that binding.
+function bindParamSpans(p:Project,clipIds?:Set<string>){
+ const changed=new Set<string>(),media=new Map(p.media.map(m=>[m.id,m]));
+ const needs=(id:string)=>schema.hasCurveDefault(media.get(id)?.metadata.asset);
+ for(const c of p.clips){
+  if(clipIds&&!clipIds.has(c.id))continue;
+  const span={start:c.sourceIn,end:add(c.sourceIn,mul(c.duration,c.speed))};
+  if(!c.paramSpan&&media.get(c.mediaId)?.metadata.asset?.role==='content'&&needs(c.mediaId)){c.paramSpan=span;changed.add(c.id);}
+  for(const e of c.effects||[])if(!e.paramSpan&&needs(e.assetId)){e.paramSpan=span;changed.add(c.id);}
+ }
+ return changed;
+}
+// Instances drop values whose declaration was removed or became incompatible.
+function pruneInstances(p:Project,assetIds:Set<string>){
+ const changed=new Set<string>(),media=new Map(p.media.map(m=>[m.id,m]));
+ const prune=(o:any,id:string)=>{if(!o.params||!assetIds.has(id))return false;const m=media.get(id),next=pruneParams(o.params,m?.metadata.asset,m?.metadata.textFields?.map((f:any)=>f.id)??[]);if(JSON.stringify(next)===JSON.stringify(o.params))return false;o.params=next;return true;};
+ for(const c of p.clips){let hit=prune(c,c.mediaId);for(const e of c.effects||[])hit=prune(e,e.assetId)||hit;if(hit)changed.add(`clip:${c.id}`);}
+ for(const t of p.transitions)if(prune(t,t.assetId))changed.add(`transition:${t.id}`);
+ return changed;
+}
 const singular:Record<string,string>={media:'media',tracks:'track',clips:'clip',transitions:'transition',markers:'marker',folders:'folder'};
 export class ProjectState {
  dir:string;p:Project;undo:Project[]=[];redo:Project[]=[];locked:string|null=null;generationStatus?:()=>any[];
- constructor(dir:string){this.dir=dir;this.p=JSON.parse(fs.readFileSync(path.join(dir,'project.json'),'utf8'));this.p.relationshipRevisions||={};validateProject(this.p);}
+ constructor(dir:string){this.dir=dir;this.p=JSON.parse(fs.readFileSync(path.join(dir,'project.json'),'utf8'));this.p.relationshipRevisions||={};
+  // Older projects: discover text parameters, move clip.text into params, bind spans.
+  // Unreadable HTML keeps its text overrides rather than dropping them.
+  const unknown=new Set<string>();
+  for(const m of this.p.media)if(m.kind==='graphic'&&!m.metadata.textFields){try{const fields=htmlTextFields(path.resolve(dir,m.path,m.metadata.entry||'index.html'));if(fields.length)m.metadata.textFields=fields;}catch{unknown.add(m.id);}}
+  for(const c of this.p.clips as any[])if(c.text){c.params={...c.params,...c.text};delete c.text;}
+  pruneInstances(this.p,new Set(this.p.media.filter(m=>m.kind==='graphic'&&!unknown.has(m.id)).map(m=>m.id)));bindParamSpans(this.p);validateProject(this.p);}
  inspect(){return {project:this.p,revisions:revisions(this.p),history:{undo:this.undo.length,redo:this.redo.length},renderLock:this.locked,...(this.generationStatus?{generations:this.generationStatus()}: {})};}
  requireUnlocked(){if(this.locked)fail('RENDER_LOCKED','Project edits are locked while rendering',{jobId:this.locked});}
  save(next:Project,history=true){validateProject(next);atomicJSON(path.join(this.dir,'project.json'),next);if(history){this.undo.push(structuredClone(this.p));if(this.undo.length>100)this.undo.shift();this.redo=[];}this.p=next;return this.inspect();}
@@ -75,10 +105,15 @@ export class ProjectState {
     const refs=(o:any)=>!o?[]:coll==='transitions'?[o.assetId]:(o.effects||[]).map((e:any)=>e.assetId);
     for(const assetId of new Set([...refs(old),...refs({...old,...op.value})].filter(Boolean))){if(!created.has(`media:${assetId}`))needed.add(`media:${assetId}`);touched.add(`usage:${assetId}`);}
    }
-   if(op.op==='remove'){assert(old,'Cannot remove missing object',{id});arr.splice(index,1);}else {assert(op.value&&typeof op.value==='object','Missing value');const allowed:Record<string,string[]>={markers:['id','revision','name','time','color'],tracks:['id','revision','name','disabled','locked','folderId'],folders:['id','revision','name','disabled','locked','collapsed'],media:['id','revision','path','kind','duration','metadata'],clips:['id','revision','name','trackId','mediaId','generationId','start','duration','sourceIn','speed','stream','linkId','volume','volumePoints','mute','fadeIn','fadeOut','transform','text','params','seed','effects'],transitions:['id','revision','trackId','fromClipId','toClipId','duration','alignment','assetId','params','seed','audio']};assert(Object.keys(op.value).every(k=>allowed[coll].includes(k)),'Unsupported object field',{collection:coll,fields:Object.keys(op.value).filter(k=>!allowed[coll].includes(k))});let value={...(old||{}),...op.value,revision:(current[objectKey]??0)+1};if(coll==='folders')value={name:'Folder',disabled:false,locked:false,collapsed:false,...value};if(coll==='tracks')value={name:'Track',disabled:false,locked:false,...value};if(coll==='clips')value={sourceIn:ZERO,speed:ONE,volume:1,mute:false,fadeIn:ZERO,fadeOut:ZERO,...value};if(coll==='transitions')value={alignment:'center',audio:'crossfade',params:{},seed:Math.floor(Math.random()*0x100000000),assetId:next.media.find((m:any)=>m.metadata.builtin==='dissolve')?.id,...value};if(coll==='clips'&&value.generationId===null)delete value.generationId;if(index>=0)arr[index]=value;else arr.push(value);}
+   if(op.op==='remove'){assert(old,'Cannot remove missing object',{id});arr.splice(index,1);}else {assert(op.value&&typeof op.value==='object','Missing value');const allowed:Record<string,string[]>={markers:['id','revision','name','time','color'],tracks:['id','revision','name','disabled','locked','folderId'],folders:['id','revision','name','disabled','locked','collapsed'],media:['id','revision','path','kind','duration','metadata'],clips:['id','revision','name','trackId','mediaId','generationId','start','duration','sourceIn','speed','stream','linkId','volume','volumePoints','mute','fadeIn','fadeOut','transform','text','params','seed','paramSpan','effects'],transitions:['id','revision','trackId','fromClipId','toClipId','duration','alignment','assetId','params','seed','audio']};assert(Object.keys(op.value).every(k=>allowed[coll].includes(k)),'Unsupported object field',{collection:coll,fields:Object.keys(op.value).filter(k=>!allowed[coll].includes(k))});let value={...(old||{}),...op.value,revision:(current[objectKey]??0)+1};if(coll==='folders')value={name:'Folder',disabled:false,locked:false,collapsed:false,...value};if(coll==='tracks')value={name:'Track',disabled:false,locked:false,...value};if(coll==='clips')value={sourceIn:ZERO,speed:ONE,volume:1,mute:false,fadeIn:ZERO,fadeOut:ZERO,...value};if(coll==='transitions')value={alignment:'center',audio:'crossfade',params:{},seed:Math.floor(Math.random()*0x100000000),assetId:next.media.find((m:any)=>m.metadata.builtin==='dissolve')?.id,...value};if(coll==='clips'&&value.generationId===null)delete value.generationId;if(index>=0)arr[index]=value;else arr.push(value);}
   }
   const conflicts=[];for(const key of needed){const actual=current[key]??0;if(!Object.hasOwn(pre,key)||pre[key]!==actual)conflicts.push({key,expected:pre[key]??null,actual,reason:Object.hasOwn(pre,key)?'changed':'missing_precondition'});}if(conflicts.length)fail('CONFLICT','Batch rejected. Reread these revisions and retry the complete batch.',{conflicts});
   for(const m of [...next.media])if(m.metadata.generationId&&!next.clips.some(c=>c.generationId===m.metadata.generationId||c.mediaId===m.id)){next.media=next.media.filter(x=>x.id!==m.id);touched.add(`media:${m.id}`);touched.add('collection:media');}
+  const changedMedia=new Set(batch.operations.filter((op:any)=>op.op==='put'&&op.collection==='media'&&this.p.media.some(m=>m.id===op.value?.id)).map((op:any)=>op.value.id));
+  const putClips=new Set<string>(batch.operations.filter((op:any)=>op.op==='put'&&op.collection==='clips').map((op:any)=>op.value.id));
+  for(const c of next.clips)if(changedMedia.has(c.mediaId)||c.effects?.some(e=>changedMedia.has(e.assetId)))putClips.add(c.id);
+  const derived=[...(changedMedia.size?pruneInstances(next,changedMedia):[]),...[...bindParamSpans(next,putClips)].map(id=>`clip:${id}`)];
+  for(const key of derived){const [coll,id]=key.split(':'),o=(next as any)[coll==='clip'?'clips':'transitions'].find((v:any)=>v.id===id);o.revision=(current[key]??0)+1;touched.add(key);}
   next.revision=this.p.revision+1;for(const key of touched)next.relationshipRevisions[key]=(current[key]??0)+1;const result=this.save(next);pruneGraphicSnapshots(this.dir,[this.p,...this.undo,...this.redo]);return result;
  }
  history(direction:'undo'|'redo'){this.requireUnlocked();const from=this[direction],to=this[direction==='undo'?'redo':'undo'];assert(from.length,`Nothing to ${direction}`);const current=structuredClone(this.p),previous=from[from.length-1],next=structuredClone(previous);next.revision=this.p.revision+1;const rev=revisions(this.p);for(const coll of Object.keys(singular))for(const o of next[coll]||[])o.revision=(rev[`${singular[coll]}:${o.id}`]??0)+1;const keys=new Set([...Object.keys(rev),...Object.keys(revisions(next))]);for(const key of keys)if(key!=='project')next.relationshipRevisions[key]=(rev[key]??0)+1;this.save(next,false);from.pop();to.push(current);

@@ -83,7 +83,7 @@ export function compactResult(value:any):any {
  if(value.trackId&&value.mediaId){
   omit('volume',1);omit('mute',false);omit('speed',{num:1,den:1});
   for(const key of ['sourceIn','fadeIn','fadeOut'])omit(key,{num:0,den:1});
-  omit('linkId',null);omit('generationId',null);empty('effects','volumePoints','text');
+  omit('linkId',null);omit('generationId',null);empty('effects','volumePoints','text','params');
   if(value.transform){
    out.transform={...value.transform};
    for(const [key,defaultValue] of Object.entries({x:0,y:0,rotation:0,scale:1,opacity:1,fit:'fit'}))

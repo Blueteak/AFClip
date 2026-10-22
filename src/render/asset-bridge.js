@@ -5,8 +5,10 @@
     await document.fonts.ready;
     if (typeof window.render !== 'function') throw new Error('Asset must define window.render(context)');
     window.AFClipApplyText?.(data.text);
+    // data-text fields are text parameters too, with their HTML content as default.
+    const params = { ...(window.AFClipTextValues?.() || {}), ...(data.params || {}) };
     return window.render({ apiVersion:1, time:data.time, progress:data.progress, duration:data.duration,
-      width:data.width, height:data.height, params:data.params || {}, seed:data.seed, random:random(data.seed), inputs:data.inputs || [] });
+      width:data.width, height:data.height, params, seed:data.seed, random:random(data.seed), inputs:data.inputs || [] });
   };
   window.addEventListener('message', async event => {
     const d = event.data;

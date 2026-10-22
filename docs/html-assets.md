@@ -42,11 +42,62 @@ Example `asset.json`:
 }
 ```
 
-Parameter types are `number`, `boolean`, `color`, `text`, and `choice`.
-Numbers accept `min`, `max`, and `step`; choices require a string `choices` array.
-Every parameter needs a default. Optional `label` controls the inspector label.
-Removing a parameter with an existing override produces an error; the inspector
-can remove that override. Parameters are constant per instance for now.
+## Parameters
+
+Content clips, effects and transitions share one parameter model. Types are
+`number`, `boolean`, `color`, `text` and `choice`. Declaration order is
+inspector order; optional `label` names the row.
+
+```json
+"parameters": {
+  "title": { "type": "text", "label": "Headline" },
+  "size": { "type": "number", "default": 64, "min": 8, "max": 400, "softMin": 24,
+            "softMax": 200, "step": 1, "integer": true, "unit": "px", "slider": true },
+  "tint": { "type": "color", "default": "#ffffffcc" },
+  "lift": { "type": "number", "default": { "curve": [
+    { "at": "0%", "v": 0 }, { "at": "40%", "v": 1, "ease": "back-out" }, { "at": "100%", "v": 1 } ] } }
+}
+```
+
+- `min`/`max` are hard limits, also applied to evaluated curves and overshoot.
+  `softMin`/`softMax` only suggest the slider/graph range. `integer` rounds
+  evaluated values. `slider` needs a finite soft or hard range.
+- Colors are `#rrggbb` or `#rrggbbaa`. Choices need a string `choices` array.
+- Every parameter needs a default except `text`, which can come from HTML.
+- Every `data-text` (or `data-afclip-text`) element is a text parameter with its
+  HTML content as default, and keeps direct preview editing. Declare the same ID
+  as `text` only to set its label or order; a declared non-text parameter with
+  that ID is an error.
+
+Number and color parameters can be animated per instance. Curves hold the
+first/last value outside their points. Each point's `ease` shapes the following
+segment: linear (default), `hold`, `ease`, `ease-in`, `ease-out`,
+`ease-in-out`, `back-in`, `back-out`, `back-in-out`, or `[x1,y1,x2,y2]`
+cubic-bezier handles; y outside 0..1 overshoots. Named easings are stored as
+handles. Colors blend in OKLab with independent alpha. Expressions and other
+drivers are not supported.
+
+A default curve uses percentages. It binds once to the visible source range when
+the instance is applied, including an effect added to a trimmed clip.
+
+Instances store only overrides in `params`: a constant, `{curve:[...]}`, or
+`{curve:[...],value}` when animation is off but the curve is kept for turning it
+back on. Stored points are `{t:{num,den},v,ease?}`. For clips and effects `t` is
+source time, so moving keeps timing, trims hide points, splits continue the
+curve and stretching or speed changes scale it. `paramSpan` records the bound
+default range. Transition points use progress 0..1 and scale with duration.
+Removed or incompatible declarations silently drop matching instance values when
+the asset reloads. Older `clip.text` overrides load as text parameters.
+
+The inspector shows each row's value at the playhead. The keyframe button toggles
+animation; while animated, edits set a point at the playhead. The curve button
+opens an editor: drag points, handles or the playhead, Ctrl+click adds, Delete
+removes, arrows step frames, Alt+arrows nudge a point, Up/Down nudge its value,
+and the fields below set exact time, value and ease. Right-click a row to reset.
+Drags commit on release. Handles shape interpolation between endpoint values;
+use an intermediate keyframe for a rise and fall between equal values.
+
+Agents use `af-clip params` and `af-clip param-set`; see `af-clip help param-set`.
 
 Define `window.render(context)` in the HTML. It can be asynchronous. The host
 handles messages and acknowledgement. For example:
@@ -73,7 +124,7 @@ window.render = ({ width, height, inputs: [outgoing, incoming], progress, params
 ```
 
 The context includes `apiVersion`, `width`, `height`, `time`, `duration`,
-`progress`, evaluated `params`, the instance `seed`, a seeded `random()` function,
+`progress`, `params` evaluated at this frame (including text fields), the instance `seed`, a seeded `random()` function,
 and `inputs`, an array of ImageBitmaps. Transitions receive outgoing then incoming;
 effects receive one image; content receives none. Transition time is elapsed time
 within its window. Effect/content time is source time. Effect progress describes
@@ -116,7 +167,8 @@ original edit, independently of the visual asset.
 
 Transition records store `assetId`, `params`, `seed`, and `audio` alongside the
 existing clip references, duration and alignment. Clip `effects` is an ordered
-array of `{id, assetId, params, seed}`. Use ordinary revision-checked `apply`
+array of `{id, assetId, params, seed, paramSpan?}`; content clips keep their own
+`params`. Use ordinary revision-checked `apply`
 batches to edit them. Asset usage includes effect/transition references for
 conflict detection, track locks and deletion validation.
 
@@ -179,5 +231,5 @@ albedo-tinted glint). The parts recompose the full logo at these offsets in its
 
 These are opt-in diagnostics. Performance records count completed asset renders
 as well as source-video presentation; they do not measure physical scanout.
-Temporal sampling, keyframes, nested-scene editing and overlapping transition
+Temporal sampling, nested-scene editing and overlapping transition
 composition remain deferred.

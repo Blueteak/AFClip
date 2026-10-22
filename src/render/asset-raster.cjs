@@ -17,7 +17,7 @@ module.exports = function assetRaster(graphics) {
     }
     await entry.ready;
     entry.win.setContentSize(width,height);
-    const payload={...data};if(asset.asset)payload.params=require('../shared/asset.cjs').parameters(asset.asset,data.params);delete payload.assetId;
+    const schema=require('../shared/asset.cjs'),payload={...data};if(asset.asset){payload.params=schema.parameters(asset.asset,data.params,{x:data.x,span:data.span});payload.text=schema.textValues(asset.asset,data.params);}delete payload.assetId;delete payload.x;delete payload.span;
     await entry.win.webContents.executeJavaScript(`(async()=>{
       const d=${JSON.stringify(payload)};
       d.inputs=await Promise.all((d.inputs||[]).map(bytes=>createImageBitmap(new Blob([new Uint8Array(bytes)],{type:'image/png'}))));

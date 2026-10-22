@@ -48,21 +48,21 @@
     new MutationObserver(() => { apply(); }).observe(document.body, { childList: true, characterData: true, subtree: true });
   });
   // HTML assets apply per-clip text before each render.
+  // Overrides for removed fields are ignored; parameters may also carry other strings.
   window.AFClipApplyText = text => {
     overrides = text || {};
-    const missing = Object.keys(overrides).filter(id => !fields.has(id) || !fields.get(id).el.isConnected);
-    if (window.afclipTextError || missing.length) throw new Error(window.afclipTextError || `Missing text field: ${missing.join(', ')}`);
+    if (window.afclipTextError) throw new Error(window.afclipTextError);
     apply();
   };
+  window.AFClipTextValues = () => Object.fromEntries([...fields].map(([id, field]) => [id, Object.hasOwn(overrides, id) ? overrides[id] : field.default]));
   addEventListener('message', event => {
     if (event.source !== parent) return;
     const d = event.data;
     if (d?.type === 'afclip-render') {
       overrides = d.text || {};
-      const missing = Object.keys(overrides).filter(id => !fields.has(id) || !fields.get(id).el.isConnected);
-      if (window.afclipTextError || missing.length) {
+      if (window.afclipTextError) {
         event.stopImmediatePropagation();
-        send({type:'afclip-error',requestId:d.requestId,error:window.afclipTextError || `Missing text field: ${missing.join(', ')}`}); return;
+        send({type:'afclip-error',requestId:d.requestId,error:window.afclipTextError}); return;
       }
       enabled = d.editable === true;
       apply(); requestAnimationFrame(() => requestAnimationFrame(describe));

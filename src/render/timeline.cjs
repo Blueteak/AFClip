@@ -1,4 +1,5 @@
 const seconds = value => typeof value === 'number' ? value : value ? value.num / value.den : 0;
+const assetSchema = () => typeof module !== 'undefined' ? require('../shared/asset.cjs') : window.AFClipAssetSchema;
 const clamp = x => Math.max(0, Math.min(1, x));
 const easeInOut = value => { const x = clamp(value); return x * x * (3 - 2 * x); };
 // A lone point gets temporary unity-gain anchors at the clip boundaries. They
@@ -71,7 +72,7 @@ function at(plan, time) {
   return plan.clips.filter(c => time >= c.visibleStart - 1e-8 && time < c.visibleEnd - 1e-8).map(c => {
     const local = time - c.start;
     let visual = 1, audio = audioGain(c, local), transition;
-    const rawTime=c.sourceIn+local*c.speed, sourceDuration=seconds(c.media.duration);
+    const rawTime=c.sourceIn+local*c.speed, sourceDuration=seconds(c.media.duration), visibleSpan=[c.sourceIn, c.sourceIn+c.duration*c.speed];
     if(rawTime<0||rawTime>=sourceDuration)audio=0;
     const fadeIn = c.fadeIn ? clamp(local / c.fadeIn) : 1;
     const fadeOut = c.fadeOut ? clamp((c.duration - local) / c.fadeOut) : 1;
@@ -85,7 +86,9 @@ function at(plan, time) {
     }
     return { clipId: c.id, mediaId: c.mediaId, kind: c.stream === 'audio' ? 'audio' : c.media.kind, sourceTime: ['video','audio'].includes(c.media.kind)?Math.max(0,Math.min(rawTime,Math.max(0,sourceDuration-1e-7))):Math.max(0,rawTime),
       held:rawTime<0||rawTime>=sourceDuration, transition, effects:c.effects||[], params:c.params||{}, seed:c.seed||0, time:local, duration:c.duration, progress:clamp(local/c.duration),
-      text: c.text || {}, opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
+      // Parameter curves use unclamped source time, so trims and stretches keep them on the content.
+      paramTime: rawTime, visibleSpan, paramSpan: c.paramSpan ? [seconds(c.paramSpan.start), seconds(c.paramSpan.end)] : visibleSpan,
+      text: c.media.kind === 'graphic' ? assetSchema().textValues(c.media.metadata?.asset, c.params) : {}, opacity: visual * (c.transform?.opacity ?? 1), volume: audio, transform: c.transform || {}, track: c.track.index };
   });
 }
 if (typeof module !== 'undefined') module.exports = { seconds, compile, at, easeInOut, automationPoints, automationGain, audioGain, automationExpression };

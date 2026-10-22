@@ -1793,6 +1793,7 @@ function drawPlayhead() {
   if (rr) rr.hidden = !hasRange;
   tr.hidden = !hasRange;
   if (hasRange) { const s = frameX(inF ?? 0), e = frameX((outF ?? lastFrame()) + 1); for (const el of [rr, tr]) if (el) { el.style.left = `${s}px`; el.style.width = `${Math.max(1, e - s)}px`; } }
+  syncCurves();
   agents?.contextChanged();
 }
 
@@ -1841,6 +1842,8 @@ function numberInput({ value, format, parse, step = 1, big = 10, min = -Infinity
   input.scrubStart = () => parse(input.value, value) ?? value;
   input.scrubEnd = commit;
   input.scrubCancel = () => { input.value = format(value); current = value; onPreview?.(); };
+  // Animated parameters follow the playhead without rebuilding the inspector.
+  input.setBase = v => { value = current = v; input.value = format(v); };
   return input;
 }
 function fieldLabel(label, control, tip) {
@@ -1993,28 +1996,8 @@ function drawClipInspector(box, c) {
   }
 
   if (m?.kind === 'graphic') {
-    const section = h('div', {class:'insp-section'}, h('div', {class:'section-title'}, 'Text'));
-    box.append(section);
-    api.command({command:'text-fields',clipId:c.id}).then(info => {
-      if (!section.isConnected) return;
-      for (const item of info.fields) {
-        const input = h('textarea', {rows:2, value:item.value, disabled:locked, 'aria-label':item.id});
-        let base;
-        input.onfocus = () => { clearTimeout(frameTimer); playback.pause(false); base = {revision:info.revision,mediaRevision:info.mediaRevision}; graphicTextEdit = {inspector:true,clipId:c.id,field:item.id,...base,predecessor:textCommit}; };
-        input.onkeydown = e => { if (e.key === 'Escape') {input.value=item.value;input.blur();} };
-        input.onblur = () => {
-          const edit = graphicTextEdit, value = input.value; graphicTextEdit = null;
-          if (value !== item.value) commitGraphicText(edit, value).then(result => {
-            if (result?.project) { info.revision = result.project.clips.find(clip => clip.id === c.id).revision; item.value = value; }
-          });
-          else if (playback.revision !== project().revision && !textCommit) {draw();requestFrame(0);}
-        };
-        section.append(field(item.id, input));
-        if (item.overridden) section.append(h('button', {class:'chip-button text-reset', onclick:() => perform(() => api.command({command:'text-set',clipId:c.id,field:item.id,reset:true,revision:info.revision,mediaRevision:info.mediaRevision}), 'Text reset'), disabled:locked}, `Reset ${item.id}`));
-      }
-      for (const id of info.missing) section.append(h('button', {class:'chip-button text-reset', disabled:locked, onclick:() => perform(() => api.command({command:'text-set',clipId:c.id,field:id,reset:true,revision:info.revision,mediaRevision:info.mediaRevision}), 'Missing text override removed')}, `Remove missing field ${id}`));
-      if (!info.fields.length && !info.missing.length) section.remove();
-    }).catch(error => { if (section.isConnected) section.append(h('p',{},explain(error))); });
+    const target = paramTarget('clip', c);
+    if (target.fields.length) { const section = collapsibleSection('Parameters'); drawParams(section, target, locked); box.append(section); }
   }
   if (clipVisual(c)) {
     drawEffectsInspector(box, c, locked);
@@ -2044,20 +2027,277 @@ function drawGraphicSource(box, m) {
   // A newer selection or revision may have replaced this view before the read settles.
   request.then(info => { if (view.isConnected) info.mediaRevision === m.revision ? show(info) : fail(new Error('HTML changed while loading')); }, error => { if (view.isConnected) fail(error); else graphicSources.delete(key); });
 }
-function assetParameters(box, instance, locked, update) {
-  const asset=mediaById(instance.assetId)?.metadata.asset;
-  if(!asset)return;
-  const section=h('div',{class:'insp-section'},h('div',{class:'section-title'},'Parameters'));
-  for(const [id,spec] of Object.entries(asset.parameters||{})){
-    const value=instance.params?.[id]??spec.default,set=value=>update({...instance.params,[id]:value});let input;
-    if(spec.type==='number')input=plainNumber(value,2,set,{min:spec.min,max:spec.max,step:spec.step||.1,disabled:locked});
-    else if(spec.type==='boolean'){input=h('input',{type:'checkbox',checked:value,disabled:locked});input.onchange=()=>set(input.checked);}
-    else if(spec.type==='choice'){input=h('select',{disabled:locked},...spec.choices.map(v=>h('option',{value:v,selected:v===value},v)));input.onchange=()=>set(input.value);}
-    else {input=h('input',{type:spec.type==='color'?'color':'text',value,disabled:locked});input.onchange=()=>set(input.value);}
-    section.append(field(spec.label||id,input));
+// ---------------------------------------------------------------- Asset parameters
+// One parameter list for HTML content clips, effects and transitions. Curve points are
+// stored in source time for clips/effects (trims hide them, stretches scale them) and
+// in progress for transitions. The UI works in frames from the visible start.
+const PS = window.AFClipAssetSchema;
+const openCurves = new Set(), curveViews = new Set();
+let curvePick = null, curveFocus = null;
+const EASE_OPTIONS = [['linear', 'Linear'], ['hold', 'Hold'], ['ease', 'Ease'], ['ease-in', 'Ease in'], ['ease-out', 'Ease out'], ['ease-in-out', 'Ease in-out'], ['back-in', 'Back in'], ['back-out', 'Back out'], ['back-in-out', 'Back in-out']];
+const decimalFrac = s => { const neg = String(s).startsWith('-'), [whole, part = ''] = String(s).replace('-', '').split('.'); return frac(Number(whole + part) * (neg ? -1 : 1), 10 ** part.length); };
+function paramFields(m) {
+  const declared = m?.metadata.asset?.parameters || {}, text = m?.metadata.textFields || [], out = [];
+  for (const [id, f] of Object.entries(declared)) out.push([id, f.type === 'text' && f.default === undefined ? { ...f, default: text.find(t => t.id === id)?.default ?? '' } : f]);
+  for (const t of text) if (!Object.hasOwn(declared, t.id)) out.push([t.id, { type: 'text', default: t.default }]);
+  return out;
+}
+function paramTarget(kind, owner, instance = owner) {
+  const transition = kind === 'transition', m = mediaById(kind === 'clip' ? owner.mediaId : instance.assetId);
+  let s0, durF, toX, xs, spanT;
+  if (transition) {
+    const b = clipById(owner.toClipId), before = owner.alignment === 'start' ? ZERO : owner.alignment === 'end' ? owner.duration : fmul(owner.duration, frac(1, 2));
+    s0 = toF(fsub(b.start, before)); durF = toF(owner.duration);
+    toX = f => fmul(fromF(f), frac(owner.duration.den, owner.duration.num));
+    xs = lf => lf / fps() / secs(owner.duration);
+    spanT = [ZERO, ONE];
+  } else {
+    s0 = startF(owner); durF = endF(owner) - s0;
+    toX = f => fadd(owner.sourceIn, fmul(fromF(f), owner.speed));
+    xs = lf => secs(owner.sourceIn) + lf / fps() * secs(owner.speed);
+    spanT = instance.paramSpan ? [instance.paramSpan.start, instance.paramSpan.end] : [owner.sourceIn, fadd(owner.sourceIn, fmul(owner.duration, owner.speed))];
   }
-  for(const id of Object.keys(instance.params||{}))if(!Object.hasOwn(asset.parameters||{},id))section.append(h('button',{disabled:locked,onclick:()=>{const next={...instance.params};delete next[id];update(next);}},`Remove missing parameter ${id}`));
-  if(section.children.length>1)box.append(section);
+  const localF = x => transition ? secs(x) * secs(owner.duration) * fps() : (secs(x) - secs(owner.sourceIn)) / secs(owner.speed) * fps();
+  // Edits apply to the instance as it is when their turn in the queue comes.
+  const write = (change, message) => edit(() => {
+    const fresh = transition ? transitionById(owner.id) : clipById(owner.id); if (!fresh) return null;
+    if (kind === 'effect') {
+      if (!fresh.effects?.some(e => e.id === instance.id)) return null;
+      return [put('clips', { id: fresh.id, effects: fresh.effects.map(e => e.id === instance.id ? { ...e, params: change({ ...(e.params || {}) }) } : e) })];
+    }
+    return [put(transition ? 'transitions' : 'clips', { id: fresh.id, params: change({ ...(fresh.params || {}) }) })];
+  }, message);
+  return { kind, key: `${kind}:${owner.id}:${kind === 'effect' ? instance.id : ''}`, owner, instance, media: m, fields: paramFields(m), s0, durF, toX, xs, localF,
+    span: [secs(spanT[0]), secs(spanT[1])], spanT, playLocal: () => Math.max(0, Math.min(durF, playF - s0)), write };
+}
+const activeCurve = (f, v) => PS.animatable(f) && !!PS.curve(f, v);
+// Stored points for editing. An unedited default curve binds to the instance span.
+function curvePoints(t, f, v) {
+  if (PS.isCurve(v)) return v.curve.map(p => ({ ...p }));
+  if (v === undefined && PS.isCurve(f.default)) return f.default.curve.map(p => ({ t: fadd(t.spanT[0], fmul(fsub(t.spanT[1], t.spanT[0]), fmul(decimalFrac(p.at.slice(0, -1)), frac(1, 100)))), v: p.v, ...(p.ease ? { ease: PS.ease(p.ease) } : {}) }));
+  return [];
+}
+const sortPoints = pts => pts.sort((a, b) => secs(a.t) - secs(b.t));
+// Constants keep a retained inactive curve; animated values key the playhead frame.
+function withValue(t, f, cur, value) {
+  if (activeCurve(f, cur)) {
+    const x = t.toX(Math.round(t.playLocal())), pts = curvePoints(t, f, cur), i = pts.findIndex(p => sameTime(p.t, x));
+    if (i >= 0) pts[i] = { ...pts[i], v: value }; else pts.push({ t: x, v: value });
+    return { curve: sortPoints(pts) };
+  }
+  if (PS.isCurve(cur)) return { curve: cur.curve, value };
+  return !PS.isCurve(f.default) && value === f.default ? undefined : value;
+}
+function toggleAnimation(t, f, cur) {
+  const now = PS.evaluate(f, cur, t.xs(t.playLocal()), t.span);
+  if (activeCurve(f, cur)) return { curve: curvePoints(t, f, cur), value: now };
+  if (PS.isCurve(cur)) return { curve: cur.curve };
+  return { curve: [{ t: t.toX(Math.round(t.playLocal())), v: now }] };
+}
+const setParam = (params, id, value) => { if (value === undefined) delete params[id]; else params[id] = value; return params; };
+function colorInput(value, disabled, commit) {
+  const swatch = h('input', { type: 'color', class: 'param-swatch', value: value.slice(0, 7), disabled, 'aria-label': 'Color' });
+  const hex = h('input', { value, disabled, spellcheck: 'false', class: 'numeric', 'aria-label': 'Hex color', tip: { title: 'Hex color', desc: '#rrggbb, or #rrggbbaa with alpha.' } });
+  swatch.onchange = () => commit(swatch.value + (hex.value.length > 7 ? hex.value.slice(7) : ''));
+  hex.onkeydown = e => { if (e.key === 'Enter') hex.blur(); if (e.key === 'Escape') { hex.value = value; hex.blur(); } };
+  hex.onchange = () => {
+    const v = hex.value.trim().toLowerCase().replace(/^([^#])/, '#$1');
+    if (/^#[\da-f]{6}([\da-f]{2})?$/.test(v)) commit(v); else { hex.classList.add('invalid'); setTimeout(() => hex.classList.remove('invalid'), 900); hex.value = value; }
+  };
+  const wrap = h('div', { class: 'param-color' }, swatch, hex);
+  wrap.show = v => { if (document.activeElement !== hex) { hex.value = v; swatch.value = v.slice(0, 7); } };
+  return wrap;
+}
+function numberControl(f, value, disabled, commit) {
+  const decimals = f.integer ? 0 : f.step ? Math.min(4, Math.max(0, Math.ceil(-Math.log10(f.step) - 1e-9))) : 2;
+  const step = f.step || (f.integer ? 1 : .1);
+  const done = v => commit(f.integer ? Math.round(v) : v);
+  const input = plainNumber(value, decimals, done, { min: f.min, max: f.max, step, big: step * 10, disabled });
+  input.show = v => { if (document.activeElement !== input) input.setBase(v); };
+  const lo = f.softMin ?? f.min, hi = f.softMax ?? f.max;
+  if (!f.slider || !Number.isFinite(lo) || !Number.isFinite(hi)) return { control: input, scrub: input };
+  const range = h('input', { type: 'range', class: 'param-slider', min: lo, max: hi, step: f.step || (f.integer ? 1 : 'any'), value, disabled, 'aria-label': f.label });
+  range.oninput = () => { input.value = Number(range.value).toFixed(decimals); };
+  range.onchange = () => done(Number(range.value));
+  const wrap = h('div', { class: 'param-slider-wrap' }, range, input);
+  wrap.show = v => { input.show(v); if (document.activeElement !== range) range.value = v; };
+  return { control: wrap, scrub: input };
+}
+function drawParams(box, t, locked) {
+  const params = t.instance.params || {};
+  for (const [id, f] of t.fields) {
+    const v = params[id], animated = activeCurve(f, v), label = f.label || id, curveKey = `${t.key}:${id}`;
+    const at = () => animated ? PS.evaluate(f, v, t.xs(t.playLocal()), t.span) : PS.evaluate(f, v, 0, t.span);
+    const commit = value => t.write(p => setParam(p, id, withValue(t, f, p[id], value)), `${label} ${animated ? 'keyed' : 'set'}`);
+    let control, scrub;
+    if (f.type === 'number') ({ control, scrub } = numberControl(f, at(), locked, commit));
+    else if (f.type === 'boolean') control = segmented([[false, 'Off'], [true, 'On']], at(), commit, locked);
+    else if (f.type === 'choice') { control = h('select', { disabled: locked, 'aria-label': label }, ...f.choices.map(c => h('option', { value: c, selected: c === at() }, c))); control.onchange = () => commit(control.value); }
+    else if (f.type === 'color') control = colorInput(at(), locked, commit);
+    else control = textParam(t, id, f, at(), locked);
+    const buttons = [];
+    if (PS.animatable(f)) {
+      const keyed = () => animated && curvePoints(t, f, v).some(p => Math.abs(t.localF(p.t) - t.playLocal()) < .5);
+      const toggle = () => t.write(p => setParam(p, id, toggleAnimation(t, f, p[id])), animated ? `${label} constant` : `${label} animated`);
+      const key = h('button', { class: `icon-button small param-key ${animated ? 'on' : ''} ${PS.isCurve(v) && !animated ? 'held' : ''} ${keyed() ? 'at' : ''}`, disabled: locked, onclick: toggle,
+        tip: { title: animated ? 'Stop animating' : 'Animate', desc: animated ? 'Keeps the value at the playhead. The curve is kept for turning animation back on.' : PS.isCurve(v) ? 'Restores the kept curve.' : 'Starts a curve with a point at the playhead. Edits then set points at the playhead.' } }, icon('keyframe'));
+      buttons.push(key);
+      if (animated) {
+        buttons.push(h('button', { class: `icon-button small ${openCurves.has(curveKey) ? 'on' : ''}`, tip: { title: openCurves.has(curveKey) ? 'Hide curve' : 'Edit curve' },
+          onclick: () => { openCurves.has(curveKey) ? openCurves.delete(curveKey) : openCurves.add(curveKey); inspectorKey = ''; drawInspector(); } }, icon('curve')));
+        curveViews.add({ el: key, sync: () => { key.classList.toggle('at', keyed()); control.show?.(at()); } });
+      }
+    }
+    const row = h('div', { class: `field param-row ${f.type === 'text' ? 'text' : ''}` }, fieldLabel(label, scrub), h('div', { class: 'field-value' }, control, f.unit ? h('span', { class: 'unit' }, f.unit) : null, ...buttons));
+    row.oncontextmenu = e => contextMenu(e, [
+      { label: 'Reset', icon: 'restore', disabled: locked || v === undefined, run: () => t.write(p => setParam(p, id, undefined), `${label} reset`) },
+      ...(PS.animatable(f) ? [{ label: animated ? 'Stop animating' : 'Animate', icon: 'keyframe', disabled: locked, run: () => t.write(p => setParam(p, id, toggleAnimation(t, f, p[id])), `${label} ${animated ? 'constant' : 'animated'}`) }] : []),
+      ...(PS.isCurve(v) && !animated ? [{ label: 'Discard curve', icon: 'x', disabled: locked, run: () => t.write(p => setParam(p, id, withValue(t, f, undefined, v.value)), `${label} curve discarded`) }] : [])]);
+    box.append(row);
+    if (animated && openCurves.has(curveKey)) box.append(curveEditor(t, id, f, v, locked));
+  }
+}
+// Data-text fields of a timeline clip keep the direct-edit revision flow.
+function textParam(t, id, f, value, locked) {
+  const input = h('textarea', { rows: 2, value, disabled: locked, 'aria-label': f.label || id });
+  const html = t.kind === 'clip' && t.media.metadata.textFields?.some(x => x.id === id) && t.media.metadata.asset?.parameters?.[id]?.default === undefined;
+  input.onkeydown = e => { if (e.key === 'Escape') { input.value = value; input.blur(); } };
+  if (!html) { input.onchange = () => t.write(p => setParam(p, id, input.value === f.default ? undefined : input.value), `${f.label || id} set`); return input; }
+  input.onfocus = () => { clearTimeout(frameTimer); playback.pause(false); graphicTextEdit = { inspector: true, clipId: t.owner.id, field: id, revision: t.owner.revision, mediaRevision: t.media.revision, predecessor: textCommit }; };
+  input.onblur = () => {
+    const edit = graphicTextEdit, next = input.value; graphicTextEdit = null;
+    if (next !== value) commitGraphicText(edit, next);
+    else if (playback.revision !== project().revision && !textCommit) { draw(); requestFrame(0); }
+  };
+  return input;
+}
+function syncCurves() { for (const view of curveViews) if (view.el.isConnected) view.sync(); else curveViews.delete(view); }
+// Point/handle editor over the visible duration. Drags commit once, on release.
+function curveEditor(t, id, f, v, locked) {
+  const key = `${t.key}:${id}`, color = f.type === 'color', pts = curvePoints(t, f, v);
+  let sel = curvePick?.key === key ? pts.findIndex(p => sameTime(p.t, curvePick.t)) : -1, lo = 0, hi = 1;
+  const area = h('div', { class: `curve-area ${color ? 'color' : ''}` });
+  const editor = h('div', { class: 'curve-editor', tabindex: 0, 'aria-label': `${f.label || id} curve`,
+    tip: { title: 'Curve', hint: [{ keys: '#Drag', text: 'point, handle or playhead' }, { keys: ['Ctrl', '#Click'], text: 'add point' }, { keys: 'Delete', text: 'remove point' }, { keys: ['Left', 'Right'], text: 'step frame' }, { keys: ['Alt', 'Left'], text: 'nudge point' }, { keys: ['Up', 'Down'], text: 'nudge value' }] } }, area);
+  const svg = document.createElementNS(SVG, 'svg'); svg.setAttribute('viewBox', '0 0 1000 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.classList.add('curve-svg');
+  const path = document.createElementNS(SVG, 'path'), guides = document.createElementNS(SVG, 'path'); path.classList.add('curve-line'); guides.classList.add('curve-guides'); svg.append(path, guides);
+  const head = h('div', { class: 'curve-playhead' }), labels = [h('span', { class: 'curve-axis hi' }), h('span', { class: 'curve-axis lo' })];
+  area.append(svg, head, ...(color ? [] : labels));
+  const fields = h('div', { class: 'curve-fields' }); editor.append(fields);
+  const xPct = lf => 100 * lf / Math.max(1, t.durF), yPct = value => color ? 50 : 100 * (1 - (value - lo) / (hi - lo));
+  const evalAt = lf => PS.evaluate(f, pts.length ? { curve: pts } : undefined, t.xs(lf), t.span);
+  const fromPointer = e => { const r = area.getBoundingClientRect(); return { lf: (e.clientX - r.left) / r.width * t.durF, value: lo + (1 - (e.clientY - r.top) / r.height) * (hi - lo) }; };
+  // Dragged values keep about four significant digits of the visible range.
+  const clampValue = value => { value = Math.max(f.min ?? -Infinity, Math.min(f.max ?? Infinity, value)); return f.integer ? Math.round(value) : +value.toFixed(Math.max(0, Math.min(6, 3 - Math.floor(Math.log10(hi - lo))))); };
+  const save = (message, pick = sel >= 0 ? pts[sel]?.t : null) => { curvePick = pick ? { key, t: pick } : null; const curve = pts.map(p => ({ ...p })); t.write(p => setParam(p, id, curve.length ? { curve } : undefined), message); };
+  if (!color) {
+    const vals = pts.map(p => p.v), soft = [f.softMin ?? f.min, f.softMax ?? f.max];
+    if (soft.every(Number.isFinite)) vals.push(...soft);
+    lo = Math.min(...vals); hi = Math.max(...vals); if (!(hi - lo > 1e-9)) { lo -= 1; hi += 1; }
+    labels[0].textContent = +hi.toFixed(2); labels[1].textContent = +lo.toFixed(2);
+    const pad = (hi - lo) * .08; lo -= pad; hi += pad;
+  }
+  function sync() { const lf = playF - t.s0; head.hidden = lf < 0 || lf > t.durF; head.style.left = `${xPct(lf)}%`; }
+  function paint() {
+    for (const el of area.querySelectorAll('.curve-point, .curve-handle')) el.remove();
+    if (color) {
+      const stops = Array.from({ length: 33 }, (_, i) => `${evalAt(t.durF * i / 32)} ${(i * 100 / 32).toFixed(2)}%`);
+      area.style.setProperty('--curve-gradient', `linear-gradient(90deg, ${stops.join(',')})`);
+    } else {
+      const n = Math.min(400, Math.max(2, t.durF * 2));
+      path.setAttribute('d', Array.from({ length: n + 1 }, (_, i) => { const lf = t.durF * i / n; return `${i ? 'L' : 'M'}${(10 * xPct(lf)).toFixed(2)} ${yPct(evalAt(lf)).toFixed(2)}`; }).join(''));
+    }
+    pts.forEach((p, i) => {
+      const lf = t.localF(p.t);
+      if (lf < -1e-6 || lf > t.durF + 1e-6) return;
+      area.append(h('div', { class: `curve-point ${i === sel ? 'selected' : ''} ${p.ease === 'hold' ? 'hold' : ''}`, dataset: { index: i }, style: { left: `${xPct(lf)}%`, top: `${yPct(p.v)}%` } }));
+    });
+    // Bezier handles for the segments on either side of the selected point.
+    let lines = '';
+    for (const i of color || sel < 0 ? [] : [sel - 1, sel]) {
+      const a = pts[i], b = pts[i + 1];
+      if (!a || !b || !Array.isArray(a.ease)) continue;
+      const la = t.localF(a.t), lb = t.localF(b.t);
+      for (const [k, anchorF, anchorV] of [[0, la, a.v], [1, lb, b.v]]) {
+        const hf = la + a.ease[k * 2] * (lb - la), hv = a.v + a.ease[k * 2 + 1] * (b.v - a.v);
+        lines += `M${10 * xPct(anchorF)} ${yPct(anchorV)}L${10 * xPct(hf)} ${yPct(hv)}`;
+        area.append(h('div', { class: 'curve-handle', dataset: { segment: i, handle: k }, style: { left: `${xPct(hf)}%`, top: `${yPct(hv)}%` } }));
+      }
+    }
+    guides.setAttribute('d', lines);
+    sync(); drawFields();
+  }
+  function drawFields() {
+    const p = pts[sel];
+    if (!p) { fields.replaceChildren(); return; }
+    const name = PS.easeName(p.ease), custom = Array.isArray(name);
+    const ease = h('select', { disabled: locked, 'aria-label': 'Ease' }, ...EASE_OPTIONS.map(([value, label]) => h('option', { value, selected: value === name }, label)), custom ? h('option', { value: 'custom', selected: true }, 'Custom') : null);
+    ease.onchange = () => { if (ease.value === 'custom') return; const next = PS.ease(ease.value); if (next === undefined) delete p.ease; else p.ease = next; save('Curve ease'); };
+    const value = color ? colorInput(p.v, locked, c => { p.v = c; save('Curve point value'); })
+      : numberControl({ ...f, slider: false }, p.v, locked, n => { p.v = clampValue(n); save('Curve point value'); }).control;
+    fields.replaceChildren(field('Time', timeInput(Math.round(t.localF(p.t)), lf => movePoint(lf), { min: -Infinity, disabled: locked }), { tip: 'From the visible start.' }),
+      field('Value', value), field('Ease', ease, { tip: 'Shape of the segment after this point.' }));
+  }
+  function movePoint(lf) {
+    const p = pts[sel], x = t.toX(Math.round(lf));
+    if (pts.some((q, i) => i !== sel && sameTime(q.t, x))) { say('Another point already uses that frame', 'warn'); paint(); return; }
+    p.t = x; sortPoints(pts); sel = pts.indexOf(p); save('Curve point moved');
+  }
+  editor.onpointerdown = e => {
+    if (e.button !== 0 || e.target.closest('.curve-fields')) return;
+    e.preventDefault(); editor.focus();
+    const handle = e.target.closest('.curve-handle'), point = e.target.closest('.curve-point'), start = fromPointer(e);
+    let moved = false, onMove = null, onUp = null;
+    if (handle && !locked) {
+      const a = pts[+handle.dataset.segment], b = pts[+handle.dataset.segment + 1], k = +handle.dataset.handle, la = t.localF(a.t), lb = t.localF(b.t);
+      onMove = ev => { const at = fromPointer(ev); moved = true; a.ease = [...a.ease]; a.ease[k * 2] = Math.max(0, Math.min(1, (at.lf - la) / (lb - la))); if (b.v !== a.v) a.ease[k * 2 + 1] = Math.max(-10, Math.min(10, (at.value - a.v) / (b.v - a.v))); paint(); };
+      onUp = () => moved && save('Curve handle moved');
+    } else if (point) {
+      sel = +point.dataset.index; const p = pts[sel], prev = pts[sel - 1], next = pts[sel + 1], f0 = t.localF(p.t), v0 = p.v;
+      paint();
+      onMove = ev => {
+        if (locked || (!moved && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) < 3)) return;
+        moved = true;
+        const at = fromPointer(ev);
+        let lf = Math.round(f0 + at.lf - start.lf);
+        if (prev) lf = Math.max(lf, Math.floor(t.localF(prev.t) + 1e-6) + 1);
+        if (next) lf = Math.min(lf, Math.ceil(t.localF(next.t) - 1e-6) - 1);
+        p.t = t.toX(lf); if (!color) p.v = clampValue(ev.shiftKey ? v0 : v0 + at.value - start.value);
+        paint(); readout(tc(t.s0 + lf), color ? '' : `${+p.v.toFixed(3)}${f.unit || ''}`);
+      };
+      onUp = () => { $('drag-readout').hidden = true; if (moved) save('Curve point moved'); else { const lf = Math.round(t.localF(p.t)); if (lf >= 0 && lf < t.durF) seek(t.s0 + lf); } };
+    } else if ((e.ctrlKey || e.metaKey || e.detail > 1) && !locked) {
+      const lf = Math.round(Math.max(0, Math.min(t.durF, start.lf))), x = t.toX(lf);
+      if (pts.some(q => sameTime(q.t, x))) return;
+      const p = { t: x, v: color ? evalAt(lf) : clampValue(start.value) };
+      pts.push(p); sortPoints(pts); sel = pts.indexOf(p); save('Curve point added');
+      return;
+    } else {
+      const scrub = at => seek(t.s0 + Math.max(0, Math.min(t.durF - 1, Math.round(at.lf))));
+      scrub(start); sel = -1; curvePick = null; paint();
+      onMove = ev => scrub(fromPointer(ev));
+    }
+    editor.setPointerCapture(e.pointerId);
+    editor.onpointermove = ev => onMove?.(ev);
+    editor.onpointerup = editor.onpointercancel = ev => { editor.onpointermove = editor.onpointerup = editor.onpointercancel = null; if (ev.type === 'pointerup') onUp?.(); else { $('drag-readout').hidden = true; inspectorKey = ''; drawInspector(); } };
+  };
+  editor.onkeydown = e => {
+    if (e.target !== editor) return;
+    const p = pts[sel], big = e.shiftKey ? 10 : 1;
+    if (e.key === 'Delete' || e.key === 'Backspace') { if (p && !locked) { pts.splice(sel, 1); sel = -1; save('Curve point removed', null); } }
+    else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.altKey) { if (p && !locked) movePoint(Math.round(t.localF(p.t)) + (e.key === 'ArrowLeft' ? -big : big)); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') seek(Math.max(t.s0, Math.min(t.s0 + t.durF - 1, playF + (e.key === 'ArrowLeft' ? -big : big))));
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { if (p && !color && !locked) { p.v = clampValue(p.v + (e.key === 'ArrowUp' ? 1 : -1) * big * (f.step || (f.integer ? 1 : (hi - lo) / 100))); save('Curve point value'); } }
+    else if (e.key === 'Escape' && sel >= 0) { sel = -1; curvePick = null; paint(); }
+    else return;
+    e.preventDefault(); e.stopPropagation();
+  };
+  editor.onfocus = () => { curveFocus = key; };
+  editor.onblur = () => { if (curveFocus === key) setTimeout(() => { if (!editor.isConnected) return; if (document.activeElement !== editor) curveFocus = null; }, 0); };
+  curveViews.add({ el: editor, sync });
+  paint();
+  if (curveFocus === key) requestAnimationFrame(() => { if (editor.isConnected) editor.focus(); });
+  return editor;
 }
 function assetSelect(role,value,locked,change){
   const select=h('select',{disabled:locked,'aria-label':role+' asset'},...project().media.filter(m=>m.metadata.asset?.role===role).map(m=>h('option',{value:m.id,selected:m.id===value},mediaName(m))));
@@ -2075,7 +2315,8 @@ function drawTransitionInspector(box, t) {
       field('Duration',timeInput(toF(t.duration),f=>update({duration:fromF(f)}),{min:1,max:room(t.alignment),disabled:locked})),
       field('Alignment',segmented([['start','Start'],['center','Center'],['end','End']],t.alignment,v=>{if(room(v)<toF(t.duration)){say('Transition would overlap another cut','warn');return;}update({alignment:v});},locked)),
       field('Audio',segmented([['crossfade','Crossfade'],['cut','Cut']],t.audio,v=>update({audio:v}),locked))));
-  assetParameters(box,t,locked,params=>update({params}));
+  const params=paramTarget('transition',t);
+  if(params.fields.length){const section=h('div',{class:'insp-section'},h('div',{class:'section-title'},'Parameters'));drawParams(section,params,locked);box.append(section);}
   const before=t.alignment==='start'?0:t.alignment==='end'?secs(t.duration):secs(t.duration)/2,after=secs(t.duration)-before;
   const hold=(sourceBound(mediaById(a.mediaId))&&secs(a.sourceIn)+(secs(a.duration)+after)*secs(a.speed)>secs(mediaById(a.mediaId).duration)+1e-7)||(sourceBound(mediaById(b.mediaId))&&secs(b.sourceIn)<before*secs(b.speed));
   box.append(h('div',{class:'insp-note'},hold?'Uses held boundary frames where source footage runs out.':'Uses available source footage. Cut position and timeline duration stay fixed.'),
@@ -2092,7 +2333,7 @@ function drawEffectsInspector(box, c, locked) {
     const up = index ? h('button', { class: 'icon-button small flip', disabled: locked, onclick: () => { const next = [...effects]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; set(next, `${name} moved up`); }, tip: { title: 'Move up', desc: 'Effects apply in list order.' } }, icon('chevron-down')) : null;
     const section = collapsibleSection(name, [h('span', { class: 'tab-spacer' }), up, removeComponent(() => set(effects.filter(e => e.id !== effect.id), `${name} removed`), locked)]);
     section.oncontextmenu = e => contextMenu(e, [{ label: 'Remove', icon: 'x', disabled: locked, run: () => set(effects.filter(e => e.id !== effect.id), `${name} removed`) }]);
-    assetParameters(section, effect, locked, params => set(effects.map(e => e.id === effect.id ? { ...e, params } : e), `${name} updated`));
+    drawParams(section, paramTarget('effect', c, effect), locked);
     section.append(h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', disabled: locked, tip: { title: 'Make unique', desc: 'Copy the effect asset so edits to its HTML affect only this clip.' }, onclick: () => perform(async () => { const r = await api.command({ command: 'asset-duplicate', assetId: effect.assetId }); const clip = r.project.clips.find(v => v.id === c.id); return api.command({ command: 'apply', batch: { preconditions: r.revisions, operations: [put('clips', { id: c.id, effects: clip.effects.map(e => e.id === effect.id ? { ...e, assetId: r.media.id } : e) })] } }); }, 'Effect made unique') }, 'Make unique')));
     box.append(section);
   }
@@ -2776,7 +3017,8 @@ function moveDrag(e) {
 }
 function trimDrag(e) {
   const d = drag, c = d.c, m = d.m, speed = secs(c.speed);
-  const stretch = e.shiftKey && m?.kind !== 'image';
+  // Images stretch too, so their effect curves scale with the clip.
+  const stretch = e.shiftKey;
   let dF = xFrame(e.clientX - d.x0);
   dF += snapFrame([(d.edge === 'l' ? d.s0 : d.e0) + dF], d.targets, e);
   let s = d.s0, en = d.e0, limit = '';

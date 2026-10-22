@@ -604,7 +604,40 @@ kbd, .kbd {
 .native-layer { pointer-events:none; }
 .insp-section textarea { width:100%; min-width:0; resize:vertical; color:inherit; background:var(--bg-2); border:1px solid var(--line-2); padding:5px; font:inherit; }
 
-.text-reset { margin:2px 12px 6px; }
+
+/* Asset parameters and curves. Points mirror timeline volume points. */
+.param-row.text { align-items: start; }
+.param-row.text .field-label { padding-top: 5px; }
+.param-row .field-value > textarea { flex: 1; }
+.param-key .icon { width: 11px; height: 11px; }
+.param-key.on .icon, .param-key.held .icon { fill: none; }
+.param-key.held { color: var(--text-2); }
+.param-key.at .icon { fill: currentColor; }
+.param-color { display: flex; gap: 4px; flex: 1; min-width: 0; }
+.field .param-color input.param-swatch { flex: none; width: 24px; padding: 2px; cursor: pointer; }
+.param-swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.param-swatch::-webkit-color-swatch { border: 0; border-radius: 2px; }
+.param-slider-wrap { display: grid; grid-template-columns: 1fr 58px; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.field input.param-slider { height: 16px; padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.curve-editor { margin: 2px 12px 8px; border-radius: 4px; outline: none; }
+.curve-editor:focus-visible .curve-area, .curve-editor:focus .curve-area { border-color: var(--line-2); }
+.curve-area { position: relative; height: 96px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px; cursor: crosshair; touch-action: none;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% 25%; background-position: 0 -1px; }
+.curve-area.color { height: 30px; background-image: var(--curve-gradient), repeating-conic-gradient(#3a3d43 0 25%, #2a2c31 0 50%); background-size: 100% 100%, 10px 10px; }
+.curve-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.curve-line { fill: none; stroke: #bcd8ff; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.curve-guides { fill: none; stroke: rgba(233, 180, 76, .7); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.curve-playhead { position: absolute; top: 0; bottom: 0; width: 1px; margin-left: -.5px; background: var(--accent); pointer-events: none; }
+.curve-axis { position: absolute; left: 4px; font: 9.5px var(--mono); color: var(--text-3); pointer-events: none; }
+.curve-axis.hi { top: 2px; } .curve-axis.lo { bottom: 2px; }
+.curve-point, .curve-handle { position: absolute; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; z-index: 2; cursor: move; }
+.curve-point::after { content: ''; position: absolute; inset: 3px; background: #f2f5fa; transform: rotate(45deg); box-shadow: 0 0 0 1.5px rgba(14, 15, 17, .7); transition: background .12s; }
+.curve-point.hold::after { transform: none; }
+.curve-point:hover::after, .curve-point.selected::after { background: var(--warn); }
+.curve-handle { width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; z-index: 3; }
+.curve-handle::after { content: ''; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--bg-0); border: 1.5px solid var(--warn); }
+.curve-fields { padding-top: 4px; }
+.curve-fields .field { padding: 2px 0; }
 .source-selection-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
 /* Source range selection and timeline drag target. */
