@@ -264,6 +264,11 @@ kbd, .kbd {
 /* Inspector */
 .inspector-kind { font-size: 11px; color: var(--text-3); display: inline-flex; align-items: center; gap: 5px; padding-right: 4px; text-transform: capitalize; }
 .inspector-body { flex: 1; overflow: auto; padding-bottom: 14px; }
+.inspector .panel-tabs .tab:not(.static) { cursor: pointer; }
+.insp-code-path { padding: 8px 12px 6px; color: var(--text-3); font: 10.5px var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.insp-code { margin: 0; padding: 6px 0; font: 11px/1.55 var(--mono); color: var(--text-2); white-space: pre; overflow-x: auto; user-select: text; tab-size: 2; outline: none; }
+.insp-code .line { display: block; padding-right: 12px; }
+.insp-code .line::before { content: attr(data-n); display: inline-block; width: 4ch; margin-right: 10px; padding-right: 6px; text-align: right; color: var(--text-3); opacity: .55; user-select: none; }
 .insp-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 4px; }
 .insp-head .icon { width: 16px; height: 16px; color: var(--text-3); }
 .insp-head input { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; background: none; border: 1px solid transparent; border-radius: 3px; padding: 3px 5px; margin-left: -5px; }

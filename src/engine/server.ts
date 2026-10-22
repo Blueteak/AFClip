@@ -10,7 +10,7 @@ import {fileURLToPath} from 'node:url';
 import {ProjectState,atomicJSON} from './state.ts';
 import {inspectMedia,importGraphic,graphicSignature,snapshotGraphic,reloadAssetMetadata,importBuiltin} from './probe.ts';
 import {checkpoint,listCheckpoints,restoreCheckpoint} from './checkpoints.ts';
-import {inspectGraphicText,setGraphicText} from './graphic-text.ts';
+import {graphicSource,inspectGraphicText,setGraphicText} from './graphic-text.ts';
 import {LibraryLink} from './library.ts';
 import {relinkMedia} from './relink.ts';
 import {collectProject} from './collect.ts';
@@ -43,6 +43,7 @@ function startRender(command:any){state.requireUnlocked();const kind=command.kin
 async function command(c:any){assert(c&&typeof c.command==='string','Missing command');if(c.command.startsWith('generation-'))return generations.command(c);switch(c.command){
  case 'inspect':return inspectProject(state,c);
  case 'text-fields':return inspectGraphicText(state,c.clipId);
+ case 'graphic-source':return graphicSource(state,c.id);
  case 'text-set':{const r=setGraphicText(state,c);publish('change',r);return r;}
  case 'source-inspect':return sources.preview(c.id);
  case 'source-frames':{const media=state.p.media.find(m=>m.id===c.id),link=media?.metadata?.library;assert(link,'Source must be registered in the library');const asset=await libraryCommand({command:'inspect',id:link.assetId,sourceId:link.sourceId});assert(asset.libraryId===link.libraryId&&asset.sourceMatches&&!asset.deleted&&!asset.purged,'Library source changed or was removed');return libraryCommand({command:'frames',id:link.assetId});}

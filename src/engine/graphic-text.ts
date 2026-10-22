@@ -4,11 +4,22 @@ import {parse} from 'parse5';
 import {assert,fail,trackLocked} from '../shared/project.ts';
 
 // Only explicit, static, plain-text fields are editable. Never rewrite source code.
-export function graphicFields(dir:string, media:any) {
+function graphicEntry(dir:string, media:any) {
  assert(media?.kind==='graphic','Select a graphic clip');
  const root=fs.realpathSync(path.resolve(dir,media.path));
  const file=fs.realpathSync(path.resolve(root,media.metadata.entry||'index.html'));
  assert(file.startsWith(root+path.sep),'Graphic entry escaped its asset folder');
+ return file;
+}
+// Read-only entry HTML of the accepted snapshot, as rendered.
+export function graphicSource(state:any, mediaId:string) {
+ const media=state.p.media.find((m:any)=>m.id===mediaId);assert(media,'Media not found',{mediaId});
+ const file=graphicEntry(state.dir,media),limit=2*1024*1024,size=fs.statSync(file).size;
+ const fd=fs.openSync(file,'r');try{const bytes=Buffer.alloc(Math.min(size,limit));fs.readSync(fd,bytes,0,bytes.length,0);
+  return {mediaId,mediaRevision:media.revision,entry:media.metadata.entry||'index.html',size,truncated:size>limit,html:bytes.toString('utf8')};}finally{fs.closeSync(fd);}
+}
+export function graphicFields(dir:string, media:any) {
+ const file=graphicEntry(dir,media);
  const fields:{id:string;default:string}[]=[], ids=new Set<string>();
  function visit(node:any) {
   const attr=node.attrs?.find((a:any)=>a.name==='data-text')??node.attrs?.find((a:any)=>a.name==='data-afclip-text');
