@@ -126,7 +126,7 @@ const withLinked = list => { const out = new Map(list.map(c => [c.id, c])); for 
 
 // ---------------------------------------------------------------- Preferences
 const prefs = (() => {
-  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, trackHeights: {}, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', binView: 'grid', welcomed: false, tips: {}, marks: {} };
+  const defaults = { leftW: 250, rightW: 290, tlH: 330, trackH: 50, trackHeights: {}, snap: true, autoRender: true, renderMode: 'gpu', verification: 'quick', binView: 'grid', welcomed: false, tips: {}, marks: {}, inspCollapsed: {} };
   try { return { ...defaults, ...JSON.parse(localStorage.getItem('afclip.ui') || '{}') }; } catch { return defaults; }
 })();
 const savePrefs = () => localStorage.setItem('afclip.ui', JSON.stringify(prefs));
@@ -1902,6 +1902,22 @@ function drawInspector() {
   else drawSequenceInspector(box, p);
   box.scrollTop = scroll;
 }
+// Clip inspector section whose collapsed state persists per title. `extras` sit in the header after the toggle.
+function collapsibleSection(title, extras = [], ...children) {
+  const collapsed = !!prefs.inspCollapsed[title];
+  const toggle = h('button', { class: 'section-toggle', 'aria-expanded': String(!collapsed) }, icon('chevron-down', 'sm'), title);
+  toggle.onkeydown = e => {
+    if ((e.key === 'Enter' || e.key === ' ') && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) e.stopPropagation();
+  };
+  const section = h('div', { class: `insp-section collapsible ${collapsed ? 'collapsed' : ''}` }, h('div', { class: 'section-title' }, toggle, ...extras), ...children);
+  toggle.onclick = () => {
+    const now = section.classList.toggle('collapsed');
+    toggle.setAttribute('aria-expanded', String(!now));
+    if (now) prefs.inspCollapsed[title] = true; else delete prefs.inspCollapsed[title];
+    savePrefs();
+  };
+  return section;
+}
 function drawClipInspector(box, c) {
   const m = mediaById(c.mediaId), locked = !!lockedTrack(c.trackId) || !editable();
   const durF = endF(c) - startF(c), speed = secs(c.speed);
@@ -1927,7 +1943,7 @@ function drawClipInspector(box, c) {
   const pending = !!generation?.pending(c), timingLocked = locked || !!lockedIn(peers);
   if (pending) box.append(h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', onclick: () => generation.open(c.id), tip: { title: 'Takes', desc: 'Generate more takes, pick one, or accept it.' } }, icon('audio', 'sm'), 'Takes')));
   const maxDur = sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.sourceIn)) / speed * fps() + 1e-6) : undefined;
-  const timing = h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Timing'),
+  const timing = collapsibleSection('Timing', [],
     field('Start', timeInput(startF(c), f => putClip({ start: fromF(f) }, `Start ${tc(f)}`), { disabled: timingLocked }), { tip: 'Where the clip begins on the timeline.' }),
     field('Duration', timeInput(durF, f => { const d = fromF(f); putClip(fresh => ({ duration: d, ...fadeClamp(fresh, d) }), `Duration ${shortTc(f)}`); }, { min: 1, max: maxDur, disabled: timingLocked || pending }), { tip: 'Length on the timeline. Speed stays the same, so this trims or extends the source.' }),
     ...(m?.kind === 'image' ? [] : [field('Source in', timeInput(toF(c.sourceIn), f => putClip({ sourceIn: fromF(f) }, `Source in ${tc(f)}`), { disabled: timingLocked || pending, max: sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.duration) * speed) * fps() + 1e-6) : undefined }), { tip: 'The first source frame used, measured in the source media.' }),
@@ -1937,13 +1953,13 @@ function drawClipInspector(box, c) {
       }, { min: 1, max: 1600, step: 1, big: 10, disabled: timingLocked || pending }), { unit: '%', tip: 'Keeps the same source section and changes duration to match. Audio pitch follows speed. Shift-dragging a clip edge does the same on the timeline.' })]));
   box.append(timing);
 
-  if (clipHasAudio(c)) box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Audio', h('span', { class: 'tab-spacer' }),
-      h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))),
+  if (clipHasAudio(c)) box.append(collapsibleSection('Audio', [h('span', { class: 'tab-spacer' }),
+      h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))],
     field('Volume', numberInput({ value: c.volume <= 0 ? -60 : Math.max(-60, 20 * Math.log10(c.volume)), format: v => v <= -60 ? '-∞' : v.toFixed(1), parse: t => /^-?\s*(inf|∞)/i.test(String(t).trim()) ? -60 : Number.isFinite(Number(t)) && String(t).trim() !== '' ? Number(t) : null, step: .5, big: 3, min: -60, max: 24, disabled: locked,
       onCommit: db => putClip({ volume: db <= -60 ? 0 : Math.min(16, 10 ** (db / 20)) }, `Volume ${db <= -60 ? '-∞' : db.toFixed(1)} dB`) }), { unit: 'dB', tip: '0 dB is the source level. Type -inf to silence.' }),
     field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps picture and sound up from silence/black at the clip start.' }),
     field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps down to silence/black at the clip end.' })));
-  else if (kind !== 'audio') box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Fades'),
+  else if (kind !== 'audio') box.append(collapsibleSection('Fades', [],
     field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending })),
     field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }))));
 
@@ -1983,7 +1999,7 @@ function drawClipInspector(box, c) {
       input.setAttribute('aria-label', `Position ${label}`);
       return h('div', { class: 'field-value' }, fieldLabel(label, input, tip), input);
     };
-    box.append(h('div', { class: 'insp-section' }, h('div', { class: 'section-title' }, 'Transform'),
+    box.append(collapsibleSection('Transform', [],
       field('Position', h('div', { class: 'field-pair' },
         position('x', 'X', 'Horizontal offset in pixels from the centered layout.'),
         position('y', 'Y', 'Vertical offset in pixels from the centered layout.'))),
@@ -2059,7 +2075,7 @@ function drawTransitionInspector(box, t) {
 function drawEffectsInspector(box,c,locked){
   const choices=project().media.filter(m=>m.metadata.asset?.role==='effect');if(!choices.length)return;
   const set=effects=>edit([put('clips',{id:c.id,effects})],'Effects updated');
-  const section=h('div',{class:'insp-section'},h('div',{class:'section-title'},'Effects'));
+  const section=collapsibleSection('Effects');
   for(const [index,effect] of (c.effects||[]).entries()){
     section.append(h('div',{class:'section-title'},mediaName(mediaById(effect.assetId)),
       h('button',{disabled:locked||index===0,onclick:()=>{const next=[...c.effects];[next[index-1],next[index]]=[next[index],next[index-1]];set(next);}},'Up'),

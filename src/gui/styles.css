@@ -279,6 +279,14 @@ kbd, .kbd {
 .insp-link .icon { width: 11px; height: 11px; }
 .insp-section { border-top: 1px solid var(--line); padding: 4px 0 6px; }
 .insp-section > .section-title { padding: 8px 12px 4px; }
+.insp-section.collapsible > .section-title { padding-left: 6px; }
+.insp-section.collapsed { padding-bottom: 0; }
+.insp-section.collapsed > :not(:first-child) { display: none; }
+.section-title .section-toggle { display: flex; align-items: center; gap: 2px; padding: 0 4px 0 0; border: 0; background: none; cursor: pointer; border-radius: 3px; }
+.section-title .section-toggle:hover { color: var(--text-2); text-decoration: none; }
+.section-title .section-toggle:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.section-toggle .icon { transition: transform .12s; }
+.insp-section.collapsed .section-toggle .icon { transform: rotate(-90deg); }
 .field { display: grid; grid-template-columns: 82px 1fr; align-items: center; gap: 8px; padding: 2px 12px; min-height: 28px; }
 .field-label { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .field-label.scrub { cursor: ew-resize; }
