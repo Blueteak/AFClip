@@ -94,7 +94,8 @@ animation; while animated, edits set a point at the playhead. The curve button
 opens an editor: drag points, handles or the playhead, Ctrl+click adds, Delete
 removes, arrows step frames, Alt+arrows nudge a point, Up/Down nudge its value,
 and the fields below set exact time, value and ease. Right-click a row to reset.
-Drags commit on release. Handles shape interpolation between endpoint values;
+Parameter inputs and curve drags preview immediately and commit once on release or blur.
+Handles shape interpolation between endpoint values;
 use an intermediate keyframe for a rise and fall between equal values.
 
 Agents use `af-clip params` and `af-clip param-set`; see `af-clip help param-set`.
