@@ -40,6 +40,7 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip marker-remove <project-dir> <marker-id>
   af-clip marker-next|marker-previous <project-dir> --time SEC
   af-clip ripple-delete <project-dir> --start SEC --end SEC [--revision N]
+  af-clip fade <project-dir> <clip-id> [--in SEC] [--out SEC] [--remove]
   af-clip detach-audio|unlink <project-dir> <clip-id> [--revision N]
   af-clip undo|redo <project-dir>
   af-clip export <project-dir> <output.mp4> [--mode gpu|software] [--start SEC --end SEC] [--verify quick|full] [--wait]
@@ -73,6 +74,10 @@ Points use Ease In/Out between gains and multiply clip volume and fades. One poi
 gain-1 anchors at clip edges; two or more hold endpoint values outside their span.
 Use [] to clear automation. Inspect returns revision keys. New IDs and missing relationship keys have revision 0.
 Put updates supplied fields. Remove uses {op:"remove",collection:"clips",id:"ID"}.
+Fade: visual clips fade to transparent, revealing lower tracks or black; audio fades from/to silence.
+Combined video/audio clips fade both; detach-audio first for independent picture and sound fades.
+fade snaps to the nearest frame and leaves an omitted side unchanged; 0 or --remove clears it.
+Clip effects: put clips.effects [{id,assetId,params:{},seed}] in apply order, assetId from role "effect" media.
 Ripple delete removes [start,end) across all tracks in one undoable edit.
 Its apply equivalent is {op:"ripple-delete",start:{num,den},end:{num,den}}
 as the only operation, with preconditions.project set to the inspected revision.
@@ -110,6 +115,7 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  if(topic.startsWith('library-'))notes=section('Find reusable clips','source-inspect returns');
  if(['export','frame','status'].includes(topic))notes=section('Export verification','Render progress')+'--wait exits nonzero on failure.\n';
  if(topic==='frame')notes+='Images default to review: 768px longest edge. --image-size low caps at 512px; high caps at 1024px; full keeps project resolution for small text and fine detail. Aspect ratio is preserved, with no upscaling. --full only expands JSON.\n';
+ if(topic==='fade')notes=section('Fade:','Clip effects:');
  if(topic==='inspect')notes='--id ID or --collection media|tracks|clips|transitions|markers|folders selects objects. --since REVISION returns changes from retained session history; unavailable history returns HISTORY_UNAVAILABLE. Use --since separately from filters.\n';
  if(['source-inspect','source-frames'].includes(topic))notes+='Frame windows use --start-frame N --frame-count N (default 120, max 10000). nextFrame continues the exact stored index. --full includes all timestamps.\n';
  return lines.join('\n')+'\n'+notes+'Times accept decimal seconds or fractions. --full includes raw data; --pretty indents.\n';

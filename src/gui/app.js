@@ -1942,6 +1942,9 @@ function drawClipInspector(box, c) {
 
   const pending = !!generation?.pending(c), timingLocked = locked || !!lockedIn(peers);
   if (pending) box.append(h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', onclick: () => generation.open(c.id), tip: { title: 'Takes', desc: 'Generate more takes, pick one, or accept it.' } }, icon('audio', 'sm'), 'Takes')));
+  const fadeFields = (inTip, outTip) => [
+    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: inTip }),
+    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: outTip })];
   const maxDur = sourceBound(m) ? Math.floor((secs(m.duration) - secs(c.sourceIn)) / speed * fps() + 1e-6) : undefined;
   const timing = collapsibleSection('Timing', [],
     field('Start', timeInput(startF(c), f => putClip({ start: fromF(f) }, `Start ${tc(f)}`), { disabled: timingLocked }), { tip: 'Where the clip begins on the timeline.' }),
@@ -1979,11 +1982,15 @@ function drawClipInspector(box, c) {
       h('button', { class: `icon-button small ${c.mute ? 'warn' : ''}`, disabled: locked, onclick: () => putClip({ mute: !c.mute }, c.mute ? 'Unmuted' : 'Muted'), tip: { action: 'mute', title: c.mute ? 'Unmute' : 'Mute' } }, icon(c.mute ? 'mute' : 'volume'))],
     field('Volume', numberInput({ value: c.volume <= 0 ? -60 : Math.max(-60, 20 * Math.log10(c.volume)), format: v => v <= -60 ? '-∞' : v.toFixed(1), parse: t => /^-?\s*(inf|∞)/i.test(String(t).trim()) ? -60 : Number.isFinite(Number(t)) && String(t).trim() !== '' ? Number(t) : null, step: .5, big: 3, min: -60, max: 24, disabled: locked,
       onCommit: db => putClip({ volume: db <= -60 ? 0 : Math.min(16, 10 ** (db / 20)) }, `Volume ${db <= -60 ? '-∞' : db.toFixed(1)} dB`) }), { unit: 'dB', tip: '0 dB is the source level. Type -inf to silence.' }),
-    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps picture and sound up from silence/black at the clip start.' }),
-    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }), { tip: 'Ramps down to silence/black at the clip end.' })));
-  else if (kind !== 'audio') box.append(collapsibleSection('Fades', [],
-    field('Fade in', timeInput(toF(c.fadeIn), f => putClip({ fadeIn: fromF(f) }, `Fade in ${shortTc(f)}`), { max: durF, disabled: locked || pending })),
-    field('Fade out', timeInput(toF(c.fadeOut), f => putClip({ fadeOut: fromF(f) }, `Fade out ${shortTc(f)}`), { max: durF, disabled: locked || pending }))));
+    ...(clipVisual(c) ? [] : fadeFields('Ramps sound up from silence at the clip start.', 'Ramps down to silence at the clip end.'))));
+  const fadeOn = clipVisual(c) && (secs(c.fadeIn) > 0 || secs(c.fadeOut) > 0), sound = clipHasAudio(c) ? ' Also fades this clip’s sound; detach audio to fade it separately.' : '';
+  if (fadeOn) {
+    const removeFade = () => putClip({ fadeIn: ZERO, fadeOut: ZERO }, 'Fade removed');
+    const section = collapsibleSection('Fade', [h('span', { class: 'tab-spacer' }), removeComponent(removeFade, locked || pending)],
+      ...fadeFields(`Fades in from transparent, revealing lower tracks or black.${sound}`, `Fades out to transparent, revealing lower tracks or black.${sound}`));
+    section.oncontextmenu = e => contextMenu(e, [{ label: 'Remove', icon: 'x', disabled: locked || pending, run: removeFade }]);
+    box.append(section);
+  }
 
   if (m?.kind === 'graphic') {
     const section = h('div', {class:'insp-section'}, h('div', {class:'section-title'}, 'Text'));
@@ -2009,7 +2016,10 @@ function drawClipInspector(box, c) {
       if (!info.fields.length && !info.missing.length) section.remove();
     }).catch(error => { if (section.isConnected) section.append(h('p',{},explain(error))); });
   }
-  if(clipVisual(c))drawEffectsInspector(box,c,locked);
+  if (clipVisual(c)) {
+    drawEffectsInspector(box, c, locked);
+    drawComponentPicker(box, c, fadeOn, locked, pending, putClip);
+  }
   box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), peers.length ? chip('unlink', 'Unlink') : clipHasAudio(c) && m?.kind === 'video' ? chip('detachAudio', 'Detach') : null, chip('copy'), chip('delete', null, 'danger')));
 }
 function drawGraphicSource(box, m) {
@@ -2073,20 +2083,29 @@ function drawTransitionInspector(box, t) {
     h('button',{class:'chip-button',disabled:locked,onclick:()=>perform(async()=>{const r=await api.command({command:'asset-duplicate',assetId:t.assetId});await api.command({command:'apply',batch:{preconditions:r.revisions,operations:[put('transitions',{id:t.id,assetId:r.media.id})]}});},'Transition made unique')},'Make unique'),
     h('div',{class:'insp-actions'},chip('delete',null,'danger')));
 }
-function drawEffectsInspector(box,c,locked){
-  const choices=project().media.filter(m=>m.metadata.asset?.role==='effect');if(!choices.length)return;
-  const set=effects=>edit([put('clips',{id:c.id,effects})],'Effects updated');
-  const section=collapsibleSection('Effects');
-  for(const [index,effect] of (c.effects||[]).entries()){
-    section.append(h('div',{class:'section-title'},mediaName(mediaById(effect.assetId)),
-      h('button',{disabled:locked||index===0,onclick:()=>{const next=[...c.effects];[next[index-1],next[index]]=[next[index],next[index-1]];set(next);}},'Up'),
-      h('button',{disabled:locked,onclick:()=>set(c.effects.filter(e=>e.id!==effect.id))},'Remove')));
-    assetParameters(section,effect,locked,params=>set(c.effects.map(e=>e.id===effect.id?{...e,params}:e)));
-    section.append(h('button',{disabled:locked,onclick:()=>perform(async()=>{const r=await api.command({command:'asset-duplicate',assetId:effect.assetId});const clip=r.project.clips.find(v=>v.id===c.id);return api.command({command:'apply',batch:{preconditions:r.revisions,operations:[put('clips',{id:c.id,effects:clip.effects.map(e=>e.id===effect.id?{...e,assetId:r.media.id}:e)})]}});},'Effect made unique')},'Make unique'));
+const removeComponent = (run, disabled) => h('button', { class: 'icon-button small', disabled, onclick: run, tip: { title: 'Remove' } }, icon('x'));
+// Each effect is its own component; effects apply in list order.
+function drawEffectsInspector(box, c, locked) {
+  const effects = c.effects || [], set = (next, message) => edit([put('clips', { id: c.id, effects: next })], message);
+  for (const [index, effect] of effects.entries()) {
+    const name = mediaName(mediaById(effect.assetId));
+    const up = index ? h('button', { class: 'icon-button small flip', disabled: locked, onclick: () => { const next = [...effects]; [next[index - 1], next[index]] = [next[index], next[index - 1]]; set(next, `${name} moved up`); }, tip: { title: 'Move up', desc: 'Effects apply in list order.' } }, icon('chevron-down')) : null;
+    const section = collapsibleSection(name, [h('span', { class: 'tab-spacer' }), up, removeComponent(() => set(effects.filter(e => e.id !== effect.id), `${name} removed`), locked)]);
+    section.oncontextmenu = e => contextMenu(e, [{ label: 'Remove', icon: 'x', disabled: locked, run: () => set(effects.filter(e => e.id !== effect.id), `${name} removed`) }]);
+    assetParameters(section, effect, locked, params => set(effects.map(e => e.id === effect.id ? { ...e, params } : e), `${name} updated`));
+    section.append(h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', disabled: locked, tip: { title: 'Make unique', desc: 'Copy the effect asset so edits to its HTML affect only this clip.' }, onclick: () => perform(async () => { const r = await api.command({ command: 'asset-duplicate', assetId: effect.assetId }); const clip = r.project.clips.find(v => v.id === c.id); return api.command({ command: 'apply', batch: { preconditions: r.revisions, operations: [put('clips', { id: c.id, effects: clip.effects.map(e => e.id === effect.id ? { ...e, assetId: r.media.id } : e) })] } }); }, 'Effect made unique') }, 'Make unique')));
+    box.append(section);
   }
-  const select=assetSelect('effect',choices[0].id,locked,()=>{});
-  section.append(select,h('button',{class:'chip-button',disabled:locked,onclick:()=>set([...(c.effects||[]),{id:uid('effect'),assetId:select.value,params:{},seed:crypto.getRandomValues(new Uint32Array(1))[0]}])},'Add effect'));
-  box.append(section);
+}
+// Wide add button below the components; lists only what this clip can take and does not have yet.
+function drawComponentPicker(box, c, fadeOn, locked, pending, putClip) {
+  const used = new Set((c.effects || []).map(e => e.assetId)), half = Math.floor((endF(c) - startF(c)) / 2), fade = fromF(Math.min(Math.round(fps() / 2), half));
+  const items = [...(fadeOn ? [] : [{ label: 'Fade', icon: 'fade', disabled: pending || half < 1, run: () => putClip({ fadeIn: fade, fadeOut: fade }, 'Fade added') }]),
+    ...project().media.filter(m => m.metadata.asset?.role === 'effect' && !used.has(m.id)).map(m => ({ label: mediaName(m), icon: 'sliders',
+      run: () => edit(() => { const fresh = clipById(c.id); return fresh && { ops: [put('clips', { id: c.id, effects: [...(fresh.effects || []), { id: uid('effect'), assetId: m.id, params: {}, seed: crypto.getRandomValues(new Uint32Array(1))[0] }] })], message: `${mediaName(m)} added` }; }) }))];
+  const b = h('button', { class: 'component-add', disabled: locked || !items.length, tip: { title: items.length ? 'Add component' : 'Every component is added' } }, icon('plus'));
+  b.onclick = () => { const r = b.getBoundingClientRect(); openMenu(items, r.left, r.bottom + 2, b); };
+  box.append(b);
 }
 function drawMarkerInspector(box, m) {
   const disabled = !editable(), beyond = secs(m.time) * fps() > timelineEndF() + 1e-8;
