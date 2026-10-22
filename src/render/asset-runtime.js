@@ -155,10 +155,10 @@ window.AssetRuntime = class AssetRuntime {
         // An effect can make an opaque source fully transparent. Never expose
         // that source while its first processed frame is still in flight.
         entry.layer.style.visibility=this.needsComposition(item)?'hidden':'';
-        // Retain a completed frame during scrubbing, but never resurrect it on
-        // re-entry or at the start of a reveal that should begin transparent.
+        // Retain a completed frame during scrubbing and same-time value edits,
+        // but never resurrect it on re-entry or a rewind to a reveal's start.
         // The unprocessed source stays hidden until compose produces output.
-        if(entry.effectOutput&&(!this.needsComposition(item)||!this.previousItems?.has(id)||(seeking&&item.progress<=0)))entry.effectOutput.hidden=true;
+        if(entry.effectOutput&&(!this.needsComposition(item)||!this.previousItems?.has(id)||(seeking&&item.progress<=0&&item.sourceTime!==this.previousItems.get(id).sourceTime)))entry.effectOutput.hidden=true;
       }
     }
     this.previousItems=active;
