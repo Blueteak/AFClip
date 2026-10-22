@@ -1570,7 +1570,6 @@ function drawMedia() {
   if (!media.length) list.append(h('div', { class: 'empty-note' }, 'No media yet.', h('br'), h('button', { class: 'link-button', onclick: () => run('import') }, 'Import media'), ' ', kbd('Ctrl+I'), h('br'), h('button', { class: 'link-button', onclick: () => run('library') }, 'Browse content library'), ' ', kbd('Ctrl+L')));
   else if (!visible.length) list.append(h('div', { class: 'empty-note' }, 'Nothing matches that search.'));
   list.scrollTop = scrollTop;
-  $('relink').disabled = !can('relink');
 }
 function setBinView(view) {
   if (prefs.binView === view) return;
@@ -1681,7 +1680,8 @@ function drawSourceInspector(box) {
   if (source.status === 'loading') { box.append(h('div', { class: 'insp-note' }, 'Loading source…')); return; }
   if (source.status === 'error') {
     box.append(h('div', { class: 'insp-note warn' }, source.error),
-      h('div', {class:'insp-actions'}, h('button', {class:'chip-button',onclick:()=>source.open(m,sourceKey(m))}, 'Retry source')),
+      h('div', {class:'insp-actions'}, h('button', {class:'chip-button',onclick:()=>source.open(m,sourceKey(m))}, 'Retry source'),
+        m && m.kind !== 'graphic' && mediaById(m.id) ? h('button', {class:'chip-button',disabled:!editable(),onclick:()=>relinkMedia(m),tip:{title:'Relink media',desc:'Point this bin item at a new file. Cuts and settings are kept.'}}, 'Relink…') : null),
       sourcePreparationControls());
     return;
   }
@@ -3295,7 +3295,7 @@ function buildChrome() {
   $('edit-group').append(actionButton('split'), actionButton('dissolve'), actionButton('addTrack'));
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
   $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('play', 'play', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), actionButton('renderFrame'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
-  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import'], ['add-library', 'library'], ['relink', 'relink']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
+  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import'], ['add-library', 'library']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
   $('command-center-keys').replaceWith(kbd('Ctrl+Space'));
   $('command-center').onclick = () => run('palette', 'key');
   $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Space', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });
