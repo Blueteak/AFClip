@@ -285,7 +285,7 @@ app.whenReady().then(async () => {
     } catch (error) { mediaLibraryEndpoint = null; throw error; }
   });
   handle('command', payload => {
-    if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel', 'generation-start', 'generation-status', 'generation-voices', 'generation-select', 'generation-accept'].includes(payload.command)) throw new Error('Unsupported editor command');
+    if (!payload || !['asset-duplicate', 'asset-builtin', 'text-fields', 'text-set', 'graphic-source', 'apply', 'undo', 'redo', 'status', 'cancel', 'checkpoint', 'checkpoints', 'restore', 'library-import', 'library-sync', 'source-insert', 'source-prepare', 'source-jobs', 'source-cancel', 'generation-start', 'generation-status', 'generation-voices', 'generation-select', 'generation-accept'].includes(payload.command)) throw new Error('Unsupported editor command');
     return request('/command', payload);
   });
   handle('new-project', async () => {

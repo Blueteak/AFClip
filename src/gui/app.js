@@ -1797,7 +1797,23 @@ function drawPlayhead() {
 }
 
 // ---------------------------------------------------------------- Inspector
-let inspectorKey = '';
+let inspectorKey = '', inspectorTab = 'basic';
+const graphicSources = new Map();
+// The title doubles as the first tab. Extra tabs are rebuilt on every draw.
+function resetInspectorTabs() {
+  const title = $('inspector-title');
+  title.className = 'tab active static'; title.onclick = null; title.removeAttribute('aria-selected'); title.tip = null;
+  for (const el of document.querySelectorAll('.insp-tab-extra')) el.remove();
+}
+function inspectorTabs(tabs, active) {
+  const title = $('inspector-title'), pick = id => { if (id === inspectorTab) return; inspectorTab = id; inspectorKey = ''; $('inspector').scrollTop = 0; drawInspector(); };
+  const [first, ...rest] = tabs;
+  title.replaceChildren(first.icon ? icon(first.icon, 'sm') : '', first.label);
+  if (!rest.length) return;
+  title.className = `tab ${active === first.id ? 'active' : ''}`; title.onclick = () => pick(first.id); title.tip = first.tip || null;
+  let after = title;
+  for (const t of rest) { const el = h('button', { class: `tab insp-tab-extra ${active === t.id ? 'active' : ''}`, role: 'tab', tip: t.tip, onclick: () => pick(t.id) }, t.label); after.after(el); after = el; }
+}
 function numberInput({ value, format, parse, step = 1, big = 10, min = -Infinity, max = Infinity, onCommit, onPreview, disabled, tip }) {
   let current = value;
   const input = h('input', { class: 'numeric', value: format(value), disabled, spellcheck: 'false', tip });
@@ -1859,19 +1875,19 @@ function drawInspector() {
   const box = $('inspector');
   if (monitorView === 'source' && source.media) {
     const key = sourceInspectorKey(), scroll = key.split('\u0001')[1] === inspectorKey.split('\u0001')[1] ? box.scrollTop : 0;
-    inspectorKey = key; box.replaceChildren(); $('inspector-kind').replaceChildren();
+    inspectorKey = key; box.replaceChildren(); $('inspector-kind').replaceChildren(); resetInspectorTabs();
     drawSourceInspector(box); box.scrollTop = scroll; return;
   }
   const list = selectedClips(), tr = selTransition && transitionById(selTransition), mk = selMarker && markerById(selMarker);
   const fo = selFolder && folderById(selFolder), heads = displayTracks().filter(t => selTracks.has(t.id));
   const layout = () => `${p.revision}`;
-  const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}` : list.length ? `m:${list.map(c => c.id).join()}`
+  const key = mk ? `k:${mk.id}:${mk.revision}:${p.fps.num}/${p.fps.den}` : tr ? `t:${tr.id}:${tr.revision}` : list.length === 1 ? `c:${list[0].id}:${list[0].revision}:${list[0].trackId}:${mediaById(list[0].mediaId)?.revision}:${inspectorTab}` : list.length ? `m:${list.map(c => c.id).join()}`
     : fo ? `f:${fo.id}:${layout()}` : heads.length ? `r:${heads.map(t => t.id).join()}:${layout()}` : `p:${p.revision}`;
   if (box.contains(document.activeElement) && document.activeElement.matches('input') && key.split(':').slice(0, 2).join() === inspectorKey.split(':').slice(0, 2).join()) return;
   inspectorKey = key;
   const scroll = box.scrollTop;
   box.replaceChildren();
-  $('inspector-kind').replaceChildren();
+  $('inspector-kind').replaceChildren(); resetInspectorTabs();
   if (mk) drawMarkerInspector(box, mk);
   else if (tr) drawTransitionInspector(box, tr);
   else if (list.length === 1) drawClipInspector(box, list[0]);
@@ -1897,9 +1913,11 @@ function drawClipInspector(box, c) {
     const peers = value.duration ? linkedPeers(fresh).map(o => ({ id: o.id, ...fadeClamp(o, value.duration) })).filter(o => Object.keys(o).length > 1) : [];
     return { ops: [put('clips', { id: c.id, ...value }), ...peers.map(o => put('clips', o))], message };
   });
-  const kind = clipKind(c), peers = linkedPeers(c);
-  $('inspector-title').textContent = 'Clip';
-  $('inspector-kind').append(icon(kindIcon(kind), 'sm'), kindLabel(kind));
+  const kind = clipKind(c), peers = linkedPeers(c), html = m?.kind === 'graphic' && kind === 'graphic';
+  const tab = html ? inspectorTab : 'basic';
+  inspectorTabs([{ id: 'basic', icon: kindIcon(kind), label: kindLabel(kind) },
+    ...(html ? [{ id: 'html', label: 'HTML', tip: { title: 'Raw HTML', desc: 'Read-only entry file of the accepted snapshot.', meta: m.metadata?.entry || 'index.html' } }] : [])], tab);
+  if (tab === 'html') return drawGraphicSource(box, m);
   const name = h('input', { value: clipName(c), maxlength: 160, disabled: locked, spellcheck: 'false', tip: { title: 'Clip name', desc: 'Shown on the timeline. Agents see this name through the CLI.' } });
   name.onkeydown = e => { if (e.key === 'Enter') name.blur(); if (e.key === 'Escape') { name.value = clipName(c); name.blur(); } };
   name.onblur = () => { const v = name.value.trim(); if (v && v !== clipName(c)) putClip({ name: v }, 'Clip renamed'); else name.value = clipName(c); };
@@ -1976,6 +1994,28 @@ function drawClipInspector(box, c) {
   }
   if(clipVisual(c))drawEffectsInspector(box,c,locked);
   box.append(h('div', { class: 'insp-actions' }, chip('split', 'Split'), chip('dissolve', 'Dissolve'), peers.length ? chip('unlink', 'Unlink') : clipHasAudio(c) && m?.kind === 'video' ? chip('detachAudio', 'Detach') : null, chip('copy'), chip('delete', null, 'danger')));
+}
+function drawGraphicSource(box, m) {
+  const key = `${m.id}:${m.revision}`, entry = m.metadata?.entry || 'index.html';
+  const copy = h('button', { class: 'icon-button small', disabled: true, tip: { title: 'Copy HTML' } }, icon('copy'));
+  $('inspector-kind').append(copy);
+  const view = h('div', { class: 'insp-code-wrap' }, h('div', { class: 'insp-note' }, 'Loading HTML…'));
+  box.append(h('div', { class: 'insp-code-path', tip: { title: mediaName(m), meta: m.metadata?.authoringPath || m.path } }, `${mediaName(m)} · ${entry}`), view);
+  const show = info => {
+    const lines = info.html.split(/\r?\n/);
+    view.replaceChildren(...(info.truncated ? [h('div', { class: 'insp-note warn' }, `Showing first 2 MiB of ${Math.round(info.size / 1048576)} MiB`)] : []),
+      h('pre', { class: 'insp-code', tabindex: 0, 'aria-label': 'Raw HTML' }, h('code', {}, lines.map((line, i) => h('span', { class: 'line', dataset: { n: i + 1 } }, line)))));
+    copy.disabled = false; copy.onclick = () => perform(() => api.copyText(info.html), 'HTML copied');
+  };
+  const fail = error => { graphicSources.delete(key); view.replaceChildren(h('div', { class: 'insp-note warn' }, explain(error)), h('div', { class: 'insp-actions' }, h('button', { class: 'chip-button', onclick: () => { inspectorKey = ''; drawInspector(); } }, 'Retry'))); };
+  let request = graphicSources.get(key);
+  if (!request) {
+    for (const k of graphicSources.keys()) if (k.startsWith(`${m.id}:`) || graphicSources.size >= 8) graphicSources.delete(k);
+    request = api.command({ command: 'graphic-source', id: m.id });
+    graphicSources.set(key, request);
+  }
+  // A newer selection or revision may have replaced this view before the read settles.
+  request.then(info => { if (view.isConnected) info.mediaRevision === m.revision ? show(info) : fail(new Error('HTML changed while loading')); }, error => { if (view.isConnected) fail(error); else graphicSources.delete(key); });
 }
 function assetParameters(box, instance, locked, update) {
   const asset=mediaById(instance.assetId)?.metadata.asset;
