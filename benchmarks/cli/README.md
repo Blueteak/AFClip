@@ -48,7 +48,7 @@ Default output omits these known values:
 - Completed library response envelope: `status:"complete"`. Pending and failed states remain.
 - Project inspection: `renderLock:null`.
 - Clips: volume 1, mute false, speed 1/1, sourceIn/fadeIn/fadeOut 0/1,
-  null linkId/generationId, empty effects/volumePoints/text, and default transform components
+  null linkId/generationId, empty effects/volumePoints/text/params, and default transform components
   x/y/rotation 0, scale/opacity 1, fit `fit`.
 - Tracks and folders: disabled/locked/collapsed false and null folderId.
 - Library assets and ranges: deleted/purged false, empty notes/tags/takes/blocks/
@@ -74,6 +74,21 @@ stored timestamps. `af-clip source-frames` and `af-lib frames` return exact tick
 and their time base, with 120 entries by default and a 10000-entry limit per page.
 Continue at `nextFrame`; null means the final page. `--full` without a window
 returns the whole index. Empty/unprepared indexes reject window requests.
+
+`af-clip params` lists one clip, effect or transition's parameters in declaration
+order, then undeclared data-text fields. Each has `id`, `type`, declared constraints
+and either `value` or `curve`; `default` appears only when overridden, so a `curve`
+without `default` is the bound default curve. `inactiveCurve` is a kept curve while
+the value is constant. Points are `[at,v,ease?]`: seconds from the visible start
+(transition start), rounded to 0.1 ms, linear ease omitted, named eases by name.
+`--at` adds `evaluated` values for animated number/color parameters only, rounded
+to 4 decimals. `param-set` returns the edit delta without the edited clip or
+transition object; `params` summarizes the edited parameters instead. `--full`
+restores the raw object/override, stored points and `paramSpan`.
+Measured with `tiktoken` / `o200k_base` on a five-parameter animated title:
+`params` 216 tokens (350 with `--full`), with `--at` for three times 281,
+transition `params` 155, one-point `param-set` 186 versus 3,014 with `--full`;
+the raw edited clip alone (`inspect --id`) is 528. `help param-set` is 445.
 
 `af-clip inspect --id ID` or `--collection NAME` returns selected items, project
 settings and relevant revision keys. `--since REVISION` instead returns changes

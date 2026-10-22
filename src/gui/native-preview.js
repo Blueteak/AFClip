@@ -278,13 +278,14 @@ window.NativePreview = class NativePreview {
     const version = entry.graphicVersion;
     entry.graphicBusy = entry.loaded.then(() => {
       if (this.closed) return;
-      if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,text:entry.clip.text || {},params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
+      const clip = entry.clip, schema = window.AFClipAssetSchema, text = schema.textValues(clip.media.metadata?.asset, clip.params);
+      if(this.setup.graphics[entry.clip.mediaId]?.asset)return this.assets.content(entry.clip.id,entry.clip.mediaId,entry.content,entry.loaded,{sourceTime:time,paramTime:time,paramSpan:schema.span(clip,[clip.sourceIn,clip.sourceIn+clip.duration*clip.speed]),params:entry.clip.params,seed:entry.clip.seed,duration:entry.clip.duration,progress:Math.max(0,Math.min(1,(time-entry.clip.sourceIn)/entry.clip.speed/entry.clip.duration))});
       return new Promise((resolve, reject) => {
       if (this.closed) return resolve();
       const id = ++this.requestId;
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Graphic did not acknowledge playback time')); }, 10000);
       this.pending.set(id, { source: entry.content.contentWindow, resolve, reject, timer });
-      entry.content.contentWindow.postMessage({ type: 'afclip-render', requestId: id, time, text: entry.clip.text || {}, editable: !entry.clip.track.locked }, '*');
+      entry.content.contentWindow.postMessage({ type: 'afclip-render', requestId: id, time, text, editable: !entry.clip.track.locked }, '*');
       });
     }).then(async () => {
       if (this.closed || version !== entry.graphicVersion || entry.layer.hidden) return;

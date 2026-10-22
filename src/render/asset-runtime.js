@@ -31,13 +31,14 @@ window.AssetRuntime = class AssetRuntime {
   content(id,mediaId,iframe,loaded,item){
     const key='content:'+id;
     if(!this.entries.has(key))this.entries.set(key,{iframe,loaded,asset:this.setup.graphics[mediaId]});
-    return this.render(key,{assetId:mediaId,params:item.params,seed:item.seed},[],{time:item.sourceTime,progress:item.progress||0,duration:item.duration||0,text:item.text});
+    return this.render(key,{assetId:mediaId,params:item.params,seed:item.seed},[],{time:item.sourceTime,progress:item.progress||0,duration:item.duration||0},false,{x:item.paramTime??item.sourceTime,span:item.paramSpan});
   }
-  async render(id, instance, inputs, context, bitmap=false) {
+  // `curve` gives the curve coordinate and percentage-default span for this instance.
+  async render(id, instance, inputs, context, bitmap=false, curve={}) {
     const began=performance.now();const entry=this.entry(id,instance.assetId);await entry.loaded;
     if(this.closed){inputs.forEach(i=>i.close());return null;}
-    const params=window.AFClipAssetSchema.parameters(entry.asset.asset,instance.params);
-    const data={...context,width:this.width,height:this.height,params,seed:instance.seed||0};
+    const schema=window.AFClipAssetSchema,params=schema.parameters(entry.asset.asset,instance.params,curve);
+    const data={...context,width:this.width,height:this.height,params,text:schema.textValues(entry.asset.asset,instance.params),seed:instance.seed||0};
     // Preserve fallback copies only for intermediates that render arbitrary DOM.
     const backup=bitmap?await Promise.all(inputs.map(i=>createImageBitmap(i))):[];
     let result;
@@ -52,7 +53,7 @@ window.AssetRuntime = class AssetRuntime {
           const canvas=new OffscreenCanvas(image.width,image.height);canvas.getContext('2d').drawImage(image,0,0);
           return Array.from(new Uint8Array(await (await canvas.convertToBlob({type:'image/png'})).arrayBuffer()));
         }));
-        result=await this.rasterImage(instance.assetId,{...data,inputs:encoded});
+        result=await this.rasterImage(instance.assetId,{...data,params:instance.params,x:curve.x,span:curve.span,inputs:encoded});
       }
       this.stats.samples.push({id,time:context.time,wall:performance.now(),ms:performance.now()-began});if(this.stats.samples.length>10000)this.stats.samples.shift();
       return result;
@@ -66,7 +67,7 @@ window.AssetRuntime = class AssetRuntime {
     const w=this.width,h=this.height,tr=item.transform;
     let source=entry.still&&!entry.still.hidden?entry.still:entry.content,owned;
     if(item.kind==='graphic'){
-      source=owned=await this.rasterImage(item.mediaId,{time:item.sourceTime,text:item.text,width:this.setup.graphics[item.mediaId].width,height:this.setup.graphics[item.mediaId].height,params:item.params,seed:item.seed});
+      source=owned=await this.rasterImage(item.mediaId,{time:item.sourceTime,text:item.text,width:this.setup.graphics[item.mediaId].width,height:this.setup.graphics[item.mediaId].height,params:item.params,seed:item.seed,x:item.paramTime,span:item.paramSpan});
     }
     if(!source)throw new Error(`Input ${item.clipId} is not ready`);
     const canvas=entry.assetInput||(entry.assetInput=new OffscreenCanvas(w,h)),ctx=canvas.getContext('2d');
@@ -81,7 +82,7 @@ window.AssetRuntime = class AssetRuntime {
     else ctx.drawImage(source,-sw*fit/2,-sh*fit/2,sw*fit,sh*fit);
     ctx.restore();owned?.close();
     let image=canvas.transferToImageBitmap();
-    for(const effect of item.effects||[])image=await this.render('effect:'+item.clipId+':'+effect.id,effect,[image],{time:item.sourceTime,progress:item.progress,duration:item.duration},true);
+    for(const effect of item.effects||[])image=await this.render('effect:'+item.clipId+':'+effect.id,effect,[image],{time:item.sourceTime,progress:item.progress,duration:item.duration},true,{x:item.paramTime,span:window.AFClipAssetSchema.span(effect,item.visibleSpan)});
     return image;
   }
   needsComposition(item){return !!item&&(!!item.effects?.length||this.compositedClips.has(item.clipId));}
@@ -102,7 +103,7 @@ window.AssetRuntime = class AssetRuntime {
       if(!a||!b)throw new Error(`Transition ${tr.id} needs two visual inputs`);
       const images=await Promise.all([a,b].map(i=>this.input(i,entries.get(i.clipId))));
       const bitmapOutput=!!(this.setup.exactFrames||this.compositedClips.has(a.clipId)||this.compositedClips.has(b.clipId));
-      const image=await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration},bitmapOutput);
+      const image=await this.render('transition:'+tr.id,tr,images,{time:tr.time,progress:tr.progress,duration:tr.duration},bitmapOutput,{x:tr.progress,span:[0,1]});
       if(this.closed||epoch!==this.epoch){image?.close();return;}
       const entry=this.entries.get('transition:'+tr.id);
       let output=entry.iframe;

@@ -18,8 +18,8 @@ export function graphicSource(state:any, mediaId:string) {
  const fd=fs.openSync(file,'r');try{const bytes=Buffer.alloc(Math.min(size,limit));fs.readSync(fd,bytes,0,bytes.length,0);
   return {mediaId,mediaRevision:media.revision,entry:media.metadata.entry||'index.html',size,truncated:size>limit,html:bytes.toString('utf8')};}finally{fs.closeSync(fd);}
 }
-export function graphicFields(dir:string, media:any) {
- const file=graphicEntry(dir,media);
+export function graphicFields(dir:string, media:any) {return htmlTextFields(graphicEntry(dir,media));}
+export function htmlTextFields(file:string) {
  const fields:{id:string;default:string}[]=[], ids=new Set<string>();
  function visit(node:any) {
   const attr=node.attrs?.find((a:any)=>a.name==='data-text')??node.attrs?.find((a:any)=>a.name==='data-afclip-text');
@@ -36,10 +36,11 @@ export function graphicFields(dir:string, media:any) {
  assert(fields.length<=256,'Graphic has too many editable text fields');
  return fields;
 }
+// Text fields are text parameters; overrides live in clip.params with other parameters.
 export function inspectGraphicText(state:any,clipId:string){
  const clip=state.p.clips.find((c:any)=>c.id===clipId);assert(clip,'Clip not found',{clipId});
- const media=state.p.media.find((m:any)=>m.id===clip.mediaId),fields=graphicFields(state.dir,media);
- return {clipId,revision:clip.revision,mediaRevision:media.revision,fields:fields.map(f=>({...f,value:Object.hasOwn(clip.text||{},f.id)?clip.text[f.id]:f.default,overridden:Object.hasOwn(clip.text||{},f.id)})),missing:Object.keys(clip.text||{}).filter(id=>!fields.some(f=>f.id===id))};
+ const media=state.p.media.find((m:any)=>m.id===clip.mediaId),fields=graphicFields(state.dir,media),params=clip.params||{},declared=media.metadata.asset?.parameters||{};
+ return {clipId,revision:clip.revision,mediaRevision:media.revision,fields:fields.map(f=>({...f,value:typeof params[f.id]==='string'?params[f.id]:f.default,overridden:typeof params[f.id]==='string'})),missing:Object.keys(params).filter(id=>typeof params[id]==='string'&&!Object.hasOwn(declared,id)&&!fields.some(f=>f.id===id))};
 }
 export function setGraphicText(state:any,c:any){
  const info=inspectGraphicText(state,c.clipId),clip=state.p.clips.find((v:any)=>v.id===c.clipId);
@@ -48,7 +49,7 @@ export function setGraphicText(state:any,c:any){
  assert(c.reset===true||typeof c.value==='string','Text value must be a string');
  state.requireUnlocked();if(trackLocked(state.p,clip.trackId))fail('TRACK_LOCKED','Cannot modify a locked track',{trackId:clip.trackId});
  const field=info.fields.find(f=>f.id===c.field);
- if(c.reset===true?!Object.hasOwn(clip.text||{},c.field):field?.value===c.value)return state.inspect();
- const text={...clip.text,...(c.reset===true?{}:{[c.field]:c.value})};if(c.reset===true)delete text[c.field];
- return state.batch({preconditions:state.inspect().revisions,operations:[{op:'put',collection:'clips',value:{id:c.clipId,text}}]});
+ if(c.reset===true?!Object.hasOwn(clip.params||{},c.field):field?.value===c.value)return state.inspect();
+ const params={...clip.params,...(c.reset===true?{}:{[c.field]:c.value})};if(c.reset===true)delete params[c.field];
+ return state.batch({preconditions:state.inspect().revisions,operations:[{op:'put',collection:'clips',value:{id:c.clipId,params}}]});
 }

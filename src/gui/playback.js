@@ -32,9 +32,10 @@ class TimelinePlayback {
       if (this.native) this.native.setup.project = project;
       return;
     }
-    // Text overrides only affect the existing graphic iframe. Keep its DOM,
+    // Text and parameter overrides only affect existing iframes. Keep their DOM,
     // decoded video frames and audio instead of starting another preview worker.
-    const textBaseKey = JSON.stringify({ ...project, clips: project.clips.map(c => ({ ...c, text: undefined })) }, (key, value) => {
+    const textBaseKey = JSON.stringify({ ...project, clips: project.clips.map(c => ({ ...c, text: undefined, params: undefined, effects: c.effects?.map(e => ({ ...e, params: undefined })) })),
+      transitions: project.transitions.map(t => ({ ...t, params: undefined })) }, (key, value) => {
       if (key === 'revision' || key === 'relationshipRevisions') return undefined;
       return value && typeof value === 'object' && !Array.isArray(value)
         ? Object.fromEntries(Object.keys(value).sort().map(k => [k, value[k]])) : value;

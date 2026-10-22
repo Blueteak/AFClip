@@ -3,12 +3,17 @@ export type Media = { id: string; revision: number; path: string; kind: 'video'|
 export type Track = { id: string; revision: number; name: string; disabled: boolean; locked: boolean; folderId?: string|null };
 export type TrackFolder = { id:string; revision:number; name:string; disabled:boolean; locked:boolean; collapsed:boolean };
 export type VolumePoint = { time: Time; value: number };
-export type AssetInstance = { assetId:string; params?:Record<string,number|boolean|string>; seed:number };
-export type Clip = { id: string; revision: number; trackId: string; mediaId: string; generationId?:string|null; start: Time; duration: Time; sourceIn: Time; speed: Time; stream?: 'audio'|'video'; linkId?: string|null; volume: number; volumePoints?: VolumePoint[]; mute: boolean; fadeIn: Time; fadeOut: Time; text?: Record<string,string>; transform?: {x?:number;y?:number;scale?:number;rotation?:number;opacity?:number;fit?:'fit'|'fill'}; name?:string; params?:Record<string,number|boolean|string>; seed?:number; effects?: (AssetInstance & {id:string})[] };
+// Param values are constants, {curve} or {curve,value}; see shared/asset.cjs.
+export type ParamValue = number|boolean|string|{curve:any[];value?:number|string};
+export type ParamSpan = {start:Time;end:Time};
+export type AssetInstance = { assetId:string; params?:Record<string,ParamValue>; seed:number; paramSpan?:ParamSpan };
+export type Clip = { id: string; revision: number; trackId: string; mediaId: string; generationId?:string|null; start: Time; duration: Time; sourceIn: Time; speed: Time; stream?: 'audio'|'video'; linkId?: string|null; volume: number; volumePoints?: VolumePoint[]; mute: boolean; fadeIn: Time; fadeOut: Time; transform?: {x?:number;y?:number;scale?:number;rotation?:number;opacity?:number;fit?:'fit'|'fill'}; name?:string; params?:Record<string,ParamValue>; seed?:number; paramSpan?:ParamSpan; effects?: (AssetInstance & {id:string})[] };
 export type Transition = AssetInstance & { audio:'crossfade'|'cut'; id: string; revision: number; trackId: string; fromClipId: string; toClipId: string; duration: Time; alignment:'center'|'start'|'end' };
 export const MARKER_COLORS = ['green','cyan','blue','purple','pink','red','orange','yellow'] as const;
 export type Marker = { id:string; revision:number; name:string; time:Time; color?:typeof MARKER_COLORS[number] };
 export type Project = { version:1; id:string; name:string; revision:number; resolution:{width:number;height:number}; fps:Time; media:Media[]; tracks:Track[]; folders?:TrackFolder[]; clips:Clip[]; transitions:Transition[]; markers?:Marker[]; relationshipRevisions:Record<string,number>; [key:string]:any };
+import {createRequire} from 'node:module';
+const schema=createRequire(import.meta.url)('./asset.cjs');
 export const ZERO: Time = {num:0,den:1};
 export const ONE: Time = {num:1,den:1};
 export class EngineError extends Error { code:string; details:any; constructor(code:string,message:string,details:any={}) {super(message);this.code=code;this.details=details;} }
@@ -55,7 +60,7 @@ export function validateProject(p:any):asserts p is Project {
   assert(indices[indices.length-1]-indices[0]+1===indices.length,'Folder tracks must remain adjacent',{folderId:folder.id});
  }
  for(const t of p.tracks)assert(t.folderId==null||p.folders.some((f:TrackFolder)=>f.id===t.folderId),'Track references missing folder',{trackId:t.id});
- for(const c of p.clips){assert(c.generationId==null||/^gen_[a-zA-Z0-9]+$/.test(c.generationId),'Invalid generation reference');const m=media.get(c.mediaId);assert(m&&tracks.has(c.trackId),'Clip references missing media or track',{clipId:c.id});for(const k of ['start','duration','sourceIn','speed','fadeIn','fadeOut'])time(c[k],k);assert(cmp(c.start,ZERO)>=0&&cmp(c.sourceIn,ZERO)>=0&&cmp(c.duration,ZERO)>0&&cmp(c.speed,ZERO)>0,'Invalid clip timing',{clipId:c.id});assert(cmp(c.fadeIn,ZERO)>=0&&cmp(c.fadeOut,ZERO)>=0&&cmp(c.fadeIn,c.duration)<=0&&cmp(c.fadeOut,c.duration)<=0,'Fade exceeds clip duration',{clipId:c.id});assert(Number.isFinite(c.volume)&&c.volume>=0&&c.volume<=16&&typeof c.mute==='boolean','Invalid clip audio');validateVolumePoints(c.volumePoints,m,c.id);assert(c.stream===undefined||(['audio','video'].includes(c.stream)&&m.kind==='video'),'Invalid clip stream');assert(c.linkId==null||(typeof c.linkId==='string'&&/^[a-zA-Z0-9_-]+$/.test(c.linkId)),'Invalid clip link');if(m.kind==='video'||m.kind==='audio')assert(cmp(add(c.sourceIn,mul(c.duration,c.speed)),m.duration)<=0,'Clip exceeds source duration',{clipId:c.id});if(c.text!==undefined){assert(m.kind==='graphic'&&c.text!==null&&typeof c.text==='object'&&!Array.isArray(c.text),'Text overrides require a graphic clip');assert(Object.keys(c.text).length<=256,'Too many text fields');for(const [id,value]of Object.entries(c.text))assert(/^[a-zA-Z0-9_-]{1,128}$/.test(id)&&typeof value==='string'&&value.length<=16384,'Invalid text field',{field:id});}if(m.metadata.asset)assert(m.metadata.asset.role==='content','Only content assets can be placed as clips');if(c.effects!==undefined){assert(m.kind!=='audio'&&c.stream!=='audio','Visual effects require a visual clip');assert(Array.isArray(c.effects),'Effects must be an ordered array');const ids=new Set();for(const effect of c.effects){assert(effect&&typeof effect.id==='string'&&!ids.has(effect.id),'Effects require unique IDs');ids.add(effect.id);validateInstance(effect,media,'effect');}}if(c.transform){assert(typeof c.transform==='object','Invalid transform');for(const [k,v]of Object.entries(c.transform))assert(k==='fit'?v==='fit'||v==='fill':['x','y','scale','rotation','opacity'].includes(k)&&typeof v==='number'&&Number.isFinite(v),'Invalid transform property',{key:k});assert((c.transform.scale??1)>0&&(c.transform.opacity??1)>=0&&(c.transform.opacity??1)<=1,'Invalid scale or opacity');}}
+ for(const c of p.clips){assert(c.generationId==null||/^gen_[a-zA-Z0-9]+$/.test(c.generationId),'Invalid generation reference');const m=media.get(c.mediaId);assert(m&&tracks.has(c.trackId),'Clip references missing media or track',{clipId:c.id});for(const k of ['start','duration','sourceIn','speed','fadeIn','fadeOut'])time(c[k],k);assert(cmp(c.start,ZERO)>=0&&cmp(c.sourceIn,ZERO)>=0&&cmp(c.duration,ZERO)>0&&cmp(c.speed,ZERO)>0,'Invalid clip timing',{clipId:c.id});assert(cmp(c.fadeIn,ZERO)>=0&&cmp(c.fadeOut,ZERO)>=0&&cmp(c.fadeIn,c.duration)<=0&&cmp(c.fadeOut,c.duration)<=0,'Fade exceeds clip duration',{clipId:c.id});assert(Number.isFinite(c.volume)&&c.volume>=0&&c.volume<=16&&typeof c.mute==='boolean','Invalid clip audio');validateVolumePoints(c.volumePoints,m,c.id);assert(c.stream===undefined||(['audio','video'].includes(c.stream)&&m.kind==='video'),'Invalid clip stream');assert(c.linkId==null||(typeof c.linkId==='string'&&/^[a-zA-Z0-9_-]+$/.test(c.linkId)),'Invalid clip link');if(m.kind==='video'||m.kind==='audio')assert(cmp(add(c.sourceIn,mul(c.duration,c.speed)),m.duration)<=0,'Clip exceeds source duration',{clipId:c.id});if(c.text!==undefined){assert(m.kind==='graphic'&&c.text!==null&&typeof c.text==='object'&&!Array.isArray(c.text),'Text overrides require a graphic clip');c.params={...c.params,...c.text};delete c.text;}if(c.params!==undefined){assert(m.kind==='graphic','Parameters require an HTML graphic clip',{clipId:c.id});validateParams(c.params,m.metadata.asset,{clipId:c.id});}validateSpan(c.paramSpan,{clipId:c.id});if(m.metadata.asset)assert(m.metadata.asset.role==='content','Only content assets can be placed as clips');if(c.effects!==undefined){assert(m.kind!=='audio'&&c.stream!=='audio','Visual effects require a visual clip');assert(Array.isArray(c.effects),'Effects must be an ordered array');const ids=new Set();for(const effect of c.effects){assert(effect&&typeof effect.id==='string'&&!ids.has(effect.id),'Effects require unique IDs');ids.add(effect.id);validateInstance(effect,media,'effect');}}if(c.transform){assert(typeof c.transform==='object','Invalid transform');for(const [k,v]of Object.entries(c.transform))assert(k==='fit'?v==='fit'||v==='fill':['x','y','scale','rotation','opacity'].includes(k)&&typeof v==='number'&&Number.isFinite(v),'Invalid transform property',{key:k});assert((c.transform.scale??1)>0&&(c.transform.opacity??1)>=0&&(c.transform.opacity??1)<=1,'Invalid scale or opacity');}}
  const links=new Map<string,Clip[]>();
  for(const c of p.clips)if(c.linkId)links.set(c.linkId,[...(links.get(c.linkId)||[]),c]);
  for(const [linkId,pair] of links){assert(pair.length===2&&pair[0].mediaId===pair[1].mediaId&&new Set(pair.map(c=>c.stream)).size===2&&pair.every(c=>c.stream==='audio'||c.stream==='video'),'A link requires one picture and one audio clip from the same source',{linkId});for(const key of ['start','duration','sourceIn','speed'])assert(cmp(pair[0][key],pair[1][key])===0,'Linked clips must have matching timing',{linkId,field:key});}
@@ -68,7 +73,33 @@ function validateInstance(instance:any,media:Map<string,Media>,role:string){
  const asset=media.get(instance.assetId);
  assert(asset?.kind==='graphic'&&asset.metadata.asset?.role===role,`Instance requires an HTML ${role} asset`,{assetId:instance.assetId});
  assert(Number.isInteger(instance.seed)&&instance.seed>=0&&instance.seed<=0xffffffff,'Asset instance requires a uint32 seed');
- assert(instance.params===undefined||(instance.params&&typeof instance.params==='object'&&!Array.isArray(instance.params)&&Object.values(instance.params).every(v=>typeof v==='string'||typeof v==='boolean'||typeof v==='number'&&Number.isFinite(v))),'Invalid asset parameters');
+ if(instance.params!==undefined)validateParams(instance.params,asset.metadata.asset,{id:instance.id});
+ if(role==='effect')validateSpan(instance.paramSpan,{id:instance.id});else assert(instance.paramSpan===undefined,'Transition curves use transition progress; paramSpan is unsupported');
+}
+// Declared values must match their declaration. Other strings override data-text fields.
+function validateParams(params:any,asset:any,details:any){
+ assert(params&&typeof params==='object'&&!Array.isArray(params)&&Object.keys(params).length<=256,'Parameters must be an object with at most 256 entries',details);
+ const fields=asset?.parameters||{};
+ for(const [id,value] of Object.entries(params)){
+  assert(/^[a-zA-Z0-9_-]{1,128}$/.test(id),'Invalid parameter ID',{...details,param:id});
+  if(Object.hasOwn(fields,id)){try{schema.override(id,fields[id],value);}catch(e:any){fail('VALIDATION',e.message,{...details,param:id});}}
+  else assert(typeof value==='string'&&value.length<=16384,'Unknown parameter; only data-text overrides may be undeclared',{...details,param:id});
+ }
+}
+function validateSpan(span:any,details:any){
+ if(span===undefined)return;
+ assert(span&&typeof span==='object'&&Object.keys(span).every(k=>k==='start'||k==='end'),'Invalid paramSpan',details);
+ assert(cmp(time(span.start,'paramSpan.start'),time(span.end,'paramSpan.end'))<0,'paramSpan must have start before end',details);
+}
+// Silently drops values for removed or changed declarations, e.g. after an asset reload.
+export function pruneParams(params:any,asset:any,textFields?:string[]){
+ if(!params)return params;
+ const fields=asset?.parameters||{},next:any={};
+ for(const [id,value] of Object.entries(params)){
+  if(Object.hasOwn(fields,id)){try{schema.override(id,fields[id],value);next[id]=value;}catch{}}
+  else if(typeof value==='string'&&(!textFields||textFields.includes(id)))next[id]=value;
+ }
+ return next;
 }
 
 export function trackLocked(p:Project,id:string):boolean {const t=p.tracks.find(t=>t.id===id);return !!(t?.locked||(t?.folderId&&p.folders?.find(f=>f.id===t.folderId)?.locked));}

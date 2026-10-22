@@ -5,6 +5,7 @@ import {spawn} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {randomUUID,createHash} from 'node:crypto';
 import {assert,fail,parseTime,ZERO} from '../shared/project.ts';
+import {htmlTextFields} from './graphic-text.ts';
 const require=createRequire(import.meta.url),ffprobe=require('../shared/ffprobe.cjs');
 export async function inspectMedia(file:string,kind?:string){file=path.resolve(file);assert(fs.existsSync(file),'Media file does not exist',{file});assert(fs.statSync(file).isFile(),'Media must be a file');const data:any=await new Promise((resolve,reject)=>{const child=spawn(ffprobe,['-v','error','-show_format','-show_streams','-of','json',file],{windowsHide:true});let out='',err='';const timer=setTimeout(()=>{child.kill();reject(new Error('Media inspection timed out after 30 seconds'));},30000);child.stdout.on('data',b=>{out+=b;if(out.length>8_000_000)child.kill();});child.stderr.on('data',b=>err+=b);child.on('error',e=>{clearTimeout(timer);reject(e);});child.on('close',code=>{clearTimeout(timer);if(code)reject(new Error(err||`ffprobe exited ${code}`));else{try{resolve(JSON.parse(out));}catch(e){reject(e);}}});});const video=data.streams.find((s:any)=>s.codec_type==='video'),audio=data.streams.find((s:any)=>s.codec_type==='audio');const image=['.png','.jpg','.jpeg','.webp','.bmp'].includes(path.extname(file).toLowerCase());kind||=image?'image':video?'video':audio?'audio':undefined;assert(['video','audio','image'].includes(kind||''),'No supported video, audio or still image stream');if(video&&['smpte2084','arib-std-b67'].includes(video.color_transfer))fail('UNSUPPORTED_COLOR','HDR source is unsupported in this SDR slice',{file,colorTransfer:video.color_transfer});const d=data.format.duration||video?.duration||audio?.duration||'0';return {id:`media_${randomUUID().replaceAll('-','')}`,revision:0,path:file,kind,duration:image?ZERO:parseTime(d),metadata:{width:video?.width,height:video?.height,fps:video?.avg_frame_rate,hasAudio:!!audio,colorSpace:video?.color_space,colorTransfer:video?.color_transfer,colorRange:video?.color_range,streams:data.streams,format:data.format}};}
 export function graphicSignature(source:string){let bytes=0;const hash=createHash('sha256');function check(dir:string){for(const entry of fs.readdirSync(dir,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))){const p=path.join(dir,entry.name);assert(!entry.isSymbolicLink(),'Graphic asset symlinks are unsupported');hash.update(path.relative(source,p));if(entry.isDirectory())check(p);else{bytes+=fs.statSync(p).size;assert(bytes<=128*1024*1024,'Graphic assets exceed 128 MiB limit');hash.update(fs.readFileSync(p));}}}check(source);return hash.digest('hex');}
@@ -13,11 +14,13 @@ export function importGraphic(projectDir:string,source:string){source=path.resol
 export function restoreGraphicAuthors(projectDir:string,project:any,previous?:any){for(const m of project.media.filter((m:any)=>m.kind==='graphic'&&m.metadata.authoringPath)){if(previous?.media.find((old:any)=>old.id===m.id)?.path===m.path)continue;const author=path.resolve(projectDir,m.metadata.authoringPath),source=path.resolve(projectDir,m.path);assert(author.startsWith(path.resolve(projectDir,'graphics')+path.sep),'Graphic authoring path must stay inside project graphics');if(author===source)continue;assert(fs.existsSync(source),'Accepted graphic snapshot is missing');fs.mkdirSync(author,{recursive:true});fs.cpSync(source,author,{recursive:true,force:true});function removeExtras(relative:string){const dest=path.resolve(author,relative),original=path.resolve(source,relative);for(const entry of fs.readdirSync(dest,{withFileTypes:true})){const suffix=path.join(relative,entry.name),target=path.resolve(author,suffix);assert(target.startsWith(author+path.sep),'Graphic restoration escaped authoring directory');if(!fs.existsSync(path.resolve(source,suffix)))fs.rmSync(target,{recursive:true,force:true});else if(entry.isDirectory()&&!entry.isSymbolicLink())removeExtras(suffix);}}removeExtras('');}}
 export function pruneGraphicSnapshots(projectDir:string,projects:any[]){const root=path.resolve(projectDir,'.afclip','graphic-assets');if(!fs.existsSync(root))return;const keep=new Set(projects.flatMap(p=>p.media.filter((m:any)=>m.kind==='graphic').map((m:any)=>path.resolve(projectDir,m.path).toLowerCase())));for(const id of fs.readdirSync(root,{withFileTypes:true})){if(!id.isDirectory()||id.isSymbolicLink())continue;for(const version of fs.readdirSync(path.join(root,id.name),{withFileTypes:true})){if(!version.isDirectory()||version.isSymbolicLink())continue;const target=path.resolve(root,id.name,version.name);assert(target.startsWith(root+path.sep),'Graphic cleanup escaped cache directory');if(!keep.has(target.toLowerCase()))fs.rmSync(target,{recursive:true,force:true});}}}
 
+// data-text fields are text parameters; their HTML content is the default.
 export function assetMetadata(source:string){
- const file=path.join(source,'asset.json');
- if(!fs.existsSync(file))return {asset:undefined};
- const asset=require('../shared/asset.cjs').manifest(JSON.parse(fs.readFileSync(file,'utf8')));
- return {asset};
+ const file=path.join(source,'asset.json'),entry=path.join(source,'index.html');
+ const textFields=fs.existsSync(entry)?htmlTextFields(entry):[];
+ const asset=fs.existsSync(file)?require('../shared/asset.cjs').manifest(JSON.parse(fs.readFileSync(file,'utf8'))):undefined;
+ for(const field of textFields){const declared=asset?.parameters?.[field.id];assert(!declared||declared.type==='text',`data-text "${field.id}" conflicts with a ${declared?.type} parameter`);}
+ return {asset,textFields:textFields.length?textFields:undefined};
 }
 export function importBuiltin(projectDir:string,name:string){
  assert(['dissolve','wipe','blur-transition','spin','blur'].includes(name),'Unknown built-in asset');
@@ -28,5 +31,5 @@ export function importBuiltin(projectDir:string,name:string){
 
 export function reloadAssetMetadata(source:string,previous:any){
  try{const next=assetMetadata(source);assert(!previous.asset||next.asset,'asset.json was removed from an HTML asset');assert(!previous.asset||previous.asset.role===next.asset.role,'An existing asset cannot change role; import a separate asset');return {...next,assetError:undefined};}
- catch(error:any){return {asset:previous.asset,assetError:error.message};}
+ catch(error:any){return {asset:previous.asset,textFields:previous.textFields,assetError:error.message};}
 }

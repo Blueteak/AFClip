@@ -24,6 +24,8 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip apply <project-dir> <batch.json>
   af-clip asset-builtin <project-dir> <dissolve|wipe|blur-transition|spin|blur>
   af-clip asset-duplicate <project-dir> <asset-id>
+  af-clip params <project-dir> <clip-or-transition-id> [--effect ID] [--at SEC|N%,...]
+  af-clip param-set <project-dir> <clip-or-transition-id> [--effect ID] [name=value ...] [--ops JSON | --file ops.json] [--revision N --media-revision N]
   af-clip text-fields <project-dir> <clip-id>
   af-clip text-set <project-dir> <clip-id> <field-id> --text VALUE [--revision N --media-revision N]
   af-clip text-set <project-dir> <clip-id> <field-id> --file text.txt
@@ -81,6 +83,19 @@ Clip effects: put clips.effects [{id,assetId,params:{},seed}] in apply order, as
 Ripple delete removes [start,end) across all tracks in one undoable edit.
 Its apply equivalent is {op:"ripple-delete",start:{num,den},end:{num,den}}
 as the only operation, with preconditions.project set to the inspected revision.
+Parameters: HTML content clips, their effects (--effect ID) and transitions. data-text fields are text parameters.
+params lists id, type and value. curve points are [at,v,ease?]; at is seconds from the visible clip or transition start.
+default appears once overridden. inactiveCurve is a retained curve while the value is constant.
+--at evaluates number/color parameters, e.g. --at 0,1.5,50%.
+param-set name=value converts by type. --ops takes one operation or an array; all form one undoable edit:
+ {param,value} constant, drops curve | {param,reset:true} default | {param,curve:[[at,v,ease?],...]} replace
+ {param,add:[at,v,ease?] or a list} add/replace by time | {param,move:AT|{index},to:{at?,v?,ease?}} | {param,delete:AT|{index}|list}
+ {param,animate:false,at?} constant from the curve at that time, curve kept inactive | {param,animate:true,at?} restore or start a curve.
+at: seconds, a/b, or N% of visible duration. Clip/effect points follow source content: trims hide them, splits keep them,
+stretching/speed scales them. Transition points scale with its duration. Values hold outside the first/last point.
+ease: linear (default), hold, ease, ease-in, ease-out, ease-in-out, back-in, back-out, back-in-out, or [x1,y1,x2,y2].
+Numbers clamp to min/max and round when integer. Colors are #rrggbb or #rrggbbaa and blend in OKLab with separate alpha.
+param-set returns revisions and params for edited parameters; --full adds the changed object. Number and color animate.
 Folders contain adjacent tracks. folder-members replaces membership; folder-remove ungroups without deleting tracks.
 folder-move moves the whole block before a track, or to the end. Track order is bottom-to-top compositing order.
 Folder Disable/Lock inherit without replacing individual track flags. Collapse is display-only.
@@ -116,6 +131,7 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  if(['export','frame','status'].includes(topic))notes=section('Export verification','Render progress')+'--wait exits nonzero on failure.\n';
  if(topic==='frame')notes+='Images default to review: 768px longest edge. --image-size low caps at 512px; high caps at 1024px; full keeps project resolution for small text and fine detail. Aspect ratio is preserved, with no upscaling. --full only expands JSON.\n';
  if(topic==='fade')notes=section('Fade:','Clip effects:');
+ if(['params','param-set'].includes(topic))notes=section('Parameters:','Folders contain');
  if(topic==='inspect')notes='--id ID or --collection media|tracks|clips|transitions|markers|folders selects objects. --since REVISION returns changes from retained session history; unavailable history returns HISTORY_UNAVAILABLE. Use --since separately from filters.\n';
  if(['source-inspect','source-frames'].includes(topic))notes+='Frame windows use --start-frame N --frame-count N (default 120, max 10000). nextFrame continues the exact stored index. --full includes all timestamps.\n';
  return lines.join('\n')+'\n'+notes+'Times accept decimal seconds or fractions. --full includes raw data; --pretty indents.\n';
