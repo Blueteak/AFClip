@@ -324,6 +324,7 @@ action('export', { menu: 'File', group: 2, label: 'Export…', icon: 'export', k
 action('collect', { menu: 'File', group: 2, label: 'Collect project…', icon: 'folder', keys: ['Ctrl+Alt+S'], desc: 'Copy the saved project, all bin media and HTML assets into a new portable folder. History and caches are excluded.', enabled: editable, run: () => perform(() => { say('Collecting project…'); return api.collectProject(project().revision); }, result => result ? `Collected project: ${result.path}` : 'Collection cancelled') });
 action('checkpoint', { menu: 'File', group: 3, label: 'New checkpoint…', icon: 'flag', keys: ['Ctrl+Shift+S'], desc: 'Save a restorable snapshot of the whole project. The latest five are kept.', enabled: editable, run: () => newCheckpoint() });
 action('syncLibrary', { menu: 'File', group: 2, label: 'Refresh media locations', icon: 'folder', desc: 'Recover moved audio and video from verified Content Library locations, preserving the saved source version and timeline cuts.', enabled: editable, run: () => perform(() => api.command({ command: 'library-sync' }), result => `${plural(result.relocated || 0, 'source')} relocated${result.skipped?.length ? ` · ${result.skipped.length} unavailable or unverified` : ''}`) });
+action('relink', { menu: 'File', group: 2, label: 'Relink media…', icon: 'link', keys: ['Ctrl+Shift+R'], desc: 'Point the selected bin item or timeline clip at a new file. Cuts and settings are kept.', enabled: () => editable() && !!relinkTarget(), why: () => editable() ? 'Select a bin item or clip with file media' : 'Edits are locked', run: () => relinkMedia(relinkTarget()) });
 action('showHistory', { menu: 'File', group: 3, label: 'Checkpoints', icon: 'history', desc: 'Show checkpoints and shared undo history.', run: () => showTab('history') });
 action('save', { label: 'Save', keys: ['Ctrl+S'], run: () => flashHint([{ text: 'Every committed edit saves automatically.' }, { keys: 'Ctrl+Shift+S', text: 'checkpoint' }]) });
 
@@ -620,7 +621,15 @@ const importMedia = kind => perform(() => api.importMedia(kind), result => resul
 
 // ---------------------------------------------------------------- Selection and navigation
 const selectedClips = () => [...selection].map(clipById).filter(Boolean);
+// The bin or the timeline, whichever was picked last.
+let binPicked = false;
+function relinkTarget() {
+  const list = selectedClips(), m = !binPicked && list.length === 1 ? mediaById(list[0].mediaId) : mediaById(binSelection);
+  return m && m.kind !== 'graphic' ? m : null;
+}
+const relinkMedia = m => perform(() => api.relinkMedia(m.id, project().revision), result => result ? 'Media relinked' : 'Relink cancelled');
 function select(ids, mode = 'replace') {
+  binPicked = false;
   if (mode === 'replace') selection = new Set(ids);
   else for (const id of ids) mode === 'toggle' && selection.has(id) ? selection.delete(id) : selection.add(id);
   selTransition = null; selPoint = null; selMarker = null; selTracks = new Set(); selFolder = null;
@@ -1545,7 +1554,7 @@ function drawMedia() {
       hint: [{ keys: '#Click', text: 'preview' }, { keys: '#Double-click', text: 'add at playhead' }, { keys: '#Drag', text: 'to timeline' }] });
     row.onclick = () => { binSelection = m.id; list.focus(); drawMedia(); openSource(m); };
     row.ondblclick = () => editable() && addMediaAt(m, null, playF);
-    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, { label: 'Preview in Source monitor', icon: 'eye', run: () => openSource(m) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}, {label:link.temporary?'Copy source library ID':'Copy library ID',icon:'copy',run:()=>perform(()=>api.copyText(mediaLibraryId(m)), 'Library ID copied')}]:[]), ...(m.kind !== 'graphic' ? [{label:'Relink media…',icon:'folder',disabled:!editable(),run:()=>perform(()=>api.relinkMedia(m.id, project().revision), result=>result?'Media relinked':'Relink cancelled')}] : []), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
+    row.oncontextmenu = e => { binSelection = m.id; drawMedia(); contextMenu(e, [{ label: 'Add at playhead on a new track', icon: 'plus', keys: ['Enter'], disabled: !editable(), run: () => addMediaAt(m, null, playF) }, { label: 'Preview in Source monitor', icon: 'eye', run: () => openSource(m) }, ...(m.metadata?.library ? [{label:'Open in content library',icon:'folder',run:()=>api.library(m.metadata.library.assetId)}, {label:link.temporary?'Copy source library ID':'Copy library ID',icon:'copy',run:()=>perform(()=>api.copyText(mediaLibraryId(m)), 'Library ID copied')}]:[]), ...(m.kind !== 'graphic' ? [{label:'Relink media…',icon:'link',disabled:!editable(),keys:actions.relink.keys,run:()=>relinkMedia(m)}] : []), {label:'Remove from project bin',icon:'x',disabled:!!used||!editable(),run:()=>edit(()=>({ops:[{op:'remove',collection:'media',id:m.id}],pre:{['usage:'+m.id]:snapshot.revisions['usage:'+m.id]||0},message:'Removed from bin'}))}]); };
     row.ondragstart = e => { hideTip(); e.dataTransfer.setData('application/x-afclip-media', m.id); e.dataTransfer.effectAllowed = 'copy'; dragMedia = m; };
     row.ondragend = () => { dragMedia = null; clearDropGhost(); };
     if(m.metadata.asset&&m.metadata.asset.role!=='content'){
@@ -1561,6 +1570,7 @@ function drawMedia() {
   if (!media.length) list.append(h('div', { class: 'empty-note' }, 'No media yet.', h('br'), h('button', { class: 'link-button', onclick: () => run('import') }, 'Import media'), ' ', kbd('Ctrl+I'), h('br'), h('button', { class: 'link-button', onclick: () => run('library') }, 'Browse content library'), ' ', kbd('Ctrl+L')));
   else if (!visible.length) list.append(h('div', { class: 'empty-note' }, 'Nothing matches that search.'));
   list.scrollTop = scrollTop;
+  $('relink').disabled = !can('relink');
 }
 function setBinView(view) {
   if (prefs.binView === view) return;
@@ -1582,6 +1592,7 @@ function gridStep(i, dir) {
   });
   return best ?? i;
 }
+for (const type of ['pointerdown', 'keydown']) $('media-list').addEventListener(type, () => { binPicked = true; }, true);
 $('media-list').addEventListener('keydown', e => {
   const media = filteredMedia(), i = media.findIndex(m => m.id === binSelection), grid = prefs.binView === 'grid';
   const vertical = e.key === 'ArrowDown' || e.key === 'ArrowUp', horizontal = grid && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey;
@@ -3284,7 +3295,7 @@ function buildChrome() {
   $('edit-group').append(actionButton('split'), actionButton('dissolve'), actionButton('addTrack'));
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
   $('transport-buttons').append(actionButton('toStart'), actionButton('prevEdit'), actionButton('stepBack'), actionButton('play', 'play', 'primary'), actionButton('stepForward'), actionButton('nextEdit'), actionButton('toEnd'), actionButton('renderFrame'), h('span', { class: 'gap' }), actionButton('markIn'), actionButton('markOut'));
-  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import'], ['add-library', 'library']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
+  for (const [id, a] of [['undo', 'undo'], ['redo', 'redo'], ['export', 'export'], ['import', 'import'], ['add-library', 'library'], ['relink', 'relink']]) { $(id).dataset.action = a; $(id).tip = { action: a }; $(id).onclick = () => run(a); }
   $('command-center-keys').replaceWith(kbd('Ctrl+Space'));
   $('command-center').onclick = () => run('palette', 'key');
   $('command-center').tip = () => ({ title: 'Search commands', desc: 'Every action, with its shortcut. Type a timecode to jump there.', keys: 'Ctrl+Space', meta: project() ? `${project().name}\n${project().resolution.width}×${project().resolution.height} · ${fpsLabel()} fps` : null });

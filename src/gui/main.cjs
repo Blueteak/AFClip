@@ -1,5 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } = require('electron');
-const { execFile, spawn } = require('node:child_process');
+const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -13,7 +13,9 @@ let projectDir = args[0] && !args[0].startsWith('--') ? path.resolve(args[0]) : 
 const option = name => { const index = args.indexOf(name); return index < 0 ? undefined : args[index + 1]; };
 let window, endpoint, streamController, captureTimer, captured = false;
 let previewSession, previewGeneration = 0;
-let mediaLibraryEndpoint;
+let mediaLibraryEndpoint, raster, sourceMedia;
+let switchingProject = false, ipcBlocked = false;
+const pendingRequests = new Set();
 const previewFiles = new Map();
 const previewGraphics = { graphics: {} };
 const files = new Map();
@@ -75,47 +77,87 @@ function checkSender(event) {
 }
 
 function handle(name, fn) {
-  ipcMain.handle(`afclip:${name}`, async (event, ...values) => { checkSender(event); return fn(...values); });
+  ipcMain.handle(`afclip:${name}`, async (event, ...values) => {
+    checkSender(event);
+    if (ipcBlocked) throw new Error('Project is switching');
+    const work = Promise.resolve().then(() => fn(...values));
+    // Switching waits for existing operations, never for its own IPC request.
+    const tracked = !['open-project', 'new-project'].includes(name);
+    if (tracked) pendingRequests.add(work);
+    try { return await work; }
+    finally { pendingRequests.delete(work); }
+  });
+}
+
+async function connectProject(destination) {
+  const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
+  const reply = JSON.parse(result.stdout.trim());
+  if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
+  const parsed = new URL(reply.result.url);
+  if (parsed.hostname !== '127.0.0.1' || parsed.protocol !== 'http:') throw new Error('The project endpoint must be local');
+  return reply.result;
+}
+
+async function rememberProject() {
+  const file = path.join(app.getPath('userData'), 'last-project.json');
+  try {
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    const temporary = `${file}.${process.pid}.tmp`;
+    await fs.writeFile(temporary, JSON.stringify({ path: projectDir }));
+    await fs.rename(temporary, file);
+  } catch (error) { console.warn('Could not save last project:', error.message); }
+}
+
+function bindProject() {
+  previewSession = new (require('./preview-session.cjs'))(projectDir,
+    value => { if (!window.isDestroyed()) window.webContents.send('afclip:preview', value); },
+    (file, id) => { previewFiles.set(id, file); return `afclip-media://${id}/asset`; },
+    graphics => { raster.close(); previewGraphics.graphics = structuredClone(graphics); },
+    id => previewFiles.delete(id));
+  sourceMedia = require('../shared/source-media.cjs')({
+    projectDir, inspect: () => request('/inspect'), libraryEndpoint: getMediaLibraryEndpoint,
+    grantFile: grantSourceFile, grantLibrary: grantLibraryResource,
+    invalidateLibrary: () => { mediaLibraryEndpoint = null; },
+  });
 }
 
 async function switchProject(destination) {
-  const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
-  const child = spawn(process.execPath, [__filename, destination, ...(args.includes('--dev') ? ['--dev'] : [])], {
-    detached: true, windowsHide: false, stdio: ['ignore', 'ignore', 'ignore', 'ipc'], env,
-  });
-  await new Promise((resolve, reject) => {
-    const finish = error => {
-      clearTimeout(timer);
-      child.removeListener('error', onError);
-      child.removeListener('exit', onExit);
-      child.removeListener('message', onMessage);
-      if (child.connected) child.disconnect();
-      if (error) { child.kill(); reject(error); }
-      else { child.unref(); resolve(); }
-    };
-    const onError = error => finish(error);
-    const onExit = code => finish(new Error(`Project window exited before opening (${code})`));
-    const onMessage = message => {
-      if (message?.type === 'project-ready') finish();
-      else if (message?.type === 'project-error') finish(new Error(message.message));
-    };
-    const timer = setTimeout(() => finish(new Error('Timed out opening the project window')), 60000);
-    child.once('error', onError);
-    child.once('exit', onExit);
-    child.on('message', onMessage);
-  });
-  setImmediate(() => app.quit());
-  return {path:destination};
+  if (switchingProject) throw new Error('Project is already switching');
+  switchingProject = true;
+  try {
+    // A failed connection leaves the current editor intact.
+    const nextEndpoint = await connectProject(destination);
+    ipcBlocked = true;
+    await Promise.allSettled([...pendingRequests]);
+    streamController?.abort();
+    previewGeneration++;
+    previewSession.close();
+    raster.close();
+    // Unload the old renderer before exposing the new project's IPC state.
+    await window.loadURL('about:blank');
+    files.clear(); sourceFiles.clear(); libraryResources.clear(); outputs.clear();
+    previewFiles.clear(); previewGraphics.graphics = {};
+    projectDir = destination;
+    endpoint = nextEndpoint;
+    bindProject();
+    ipcBlocked = false;
+    await window.loadFile(path.join(__dirname, 'index.html'));
+    watchEvents();
+    await rememberProject();
+    return { path: destination };
+  } finally { ipcBlocked = false; switchingProject = false; }
 }
 
 async function watchEvents() {
-  streamController = new AbortController();
+  const controller = new AbortController();
+  streamController = controller;
   try {
-    const response = await fetch(endpoint.url + '/events', { headers: { Authorization: `Bearer ${endpoint.token}` }, signal: streamController.signal });
+    const response = await fetch(endpoint.url + '/events', { headers: { Authorization: `Bearer ${endpoint.token}` }, signal: controller.signal });
     if (!response.ok) throw new Error(`Project connection returned ${response.status}`);
     const decoder = new TextDecoder();
     let pending = '';
     for await (const bytes of response.body) {
+      if (controller.signal.aborted) return;
       pending += decoder.decode(bytes, { stream: true }).replace(/\r\n/g, '\n');
       let boundary;
       while ((boundary = pending.indexOf('\n\n')) >= 0) {
@@ -129,7 +171,7 @@ async function watchEvents() {
       }
     }
   } catch (error) {
-    if (error.name !== 'AbortError' && !window?.isDestroyed()) window.webContents.send('afclip:event', { type: 'disconnected', value: { message: error.message } });
+    if (!controller.signal.aborted && !window?.isDestroyed()) window.webContents.send('afclip:event', { type: 'disconnected', value: { message: error.message } });
   }
 }
 
@@ -165,15 +207,10 @@ app.whenReady().then(async () => {
   try { await fs.access(path.join(projectDir, 'project.json')); }
   catch { throw new Error(`Choose a project folder containing project.json: ${projectDir}`); }
   require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
-  const raster=require('../render/asset-raster.cjs')(()=>previewGraphics.graphics);
+  raster=require('../render/asset-raster.cjs')(()=>previewGraphics.graphics);
   handle('asset-raster',data=>raster.render(data));
   app.on('before-quit',()=>raster.close());
-  const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', projectDir], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
-  const reply = JSON.parse(result.stdout.trim());
-  if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
-  endpoint = reply.result;
-  const parsed = new URL(endpoint.url);
-  if (parsed.hostname !== '127.0.0.1' || parsed.protocol !== 'http:') throw new Error('The project endpoint must be local');
+  endpoint = await connectProject(projectDir);
 
   protocol.handle('afclip-media', async req => {
     const id = new URL(req.url).hostname;
@@ -220,11 +257,7 @@ app.whenReady().then(async () => {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.on('console-message', details => { if (details.level === 'error' || details.level === 'warning') console.error('GUI:', details.message); });
-  previewSession = new (require('./preview-session.cjs'))(projectDir,
-    value => { if (!window.isDestroyed()) window.webContents.send('afclip:preview', value); },
-    (file, id) => { previewFiles.set(id, file); return `afclip-media://${id}/asset`; },
-    graphics => { raster.close(); previewGraphics.graphics = structuredClone(graphics); },
-    id => previewFiles.delete(id));
+  bindProject();
   handle('preview-open', async mode => {
     if (!['gpu', 'software'].includes(mode)) throw new Error('Invalid preview mode');
     const generation = ++previewGeneration;
@@ -239,13 +272,8 @@ app.whenReady().then(async () => {
     if (state.project.revision !== revision) throw new Error('Project changed while preparing audio');
     return previewSession.audio(sessionId, state.project);
   });
-  ipcMain.on('afclip:preview-frame', (event, value) => { checkSender(event); previewSession.frame(value); });
+  ipcMain.on('afclip:preview-frame', (event, value) => { checkSender(event); if (!ipcBlocked) previewSession.frame(value); });
   handle('inspect', () => request('/inspect'));
-  const sourceMedia = require('../shared/source-media.cjs')({
-    projectDir, inspect: () => request('/inspect'), libraryEndpoint: getMediaLibraryEndpoint,
-    grantFile: grantSourceFile, grantLibrary: grantLibraryResource,
-    invalidateLibrary: () => { mediaLibraryEndpoint = null; },
-  });
   handle('media-thumbnail', id => sourceMedia.thumbnail(id));
   handle('source-preview', id => sourceMedia.preview(id));
   handle('source-waveform', (id, options) => sourceMedia.waveform(id, options));
@@ -304,10 +332,6 @@ app.whenReady().then(async () => {
     const destination = path.resolve(selected.filePaths[0]);
     try { await fs.access(path.join(destination, 'project.json')); }
     catch { throw new Error('Choose a project folder containing project.json'); }
-    // Connect successfully before closing the current editor.
-    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], {windowsHide:true, timeout:30000});
-    const reply = JSON.parse(result.stdout.trim());
-    if (!reply.ok || !reply.result?.url) throw new Error(reply.error?.message || 'Could not open project');
     return switchProject(destination);
   });
   handle('collect', async revision => {
@@ -387,12 +411,7 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
-  try {
-    await fs.mkdir(path.dirname(lastProjectFile), {recursive:true});
-    const temporary = `${lastProjectFile}.${process.pid}.tmp`;
-    await fs.writeFile(temporary, JSON.stringify({path:projectDir}));
-    await fs.rename(temporary, lastProjectFile);
-  } catch (error) { console.warn('Could not save last project:', error.message); }
+  await rememberProject();
   if (process.connected) process.send({type:'project-ready'});
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
     previewGeneration++; previewSession.close(); raster.close(); previewFiles.clear(); previewGraphics.graphics = {};
