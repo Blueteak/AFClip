@@ -329,6 +329,9 @@ kbd, .kbd {
 .chip-button:hover:not(:disabled) { color: var(--text); border-color: var(--line-2); background: var(--bg-3); }
 .chip-button .kbd-group { margin-left: 2px; }
 .chip-button.danger:hover:not(:disabled) { color: var(--danger); }
+.component-add { display: grid; place-items: center; width: calc(100% - 24px); height: 24px; margin: 6px 12px 2px; border-radius: 3px; background: var(--bg-2); border: 1px solid var(--line); color: var(--text-2); }
+.component-add:hover:not(:disabled), .component-add.open { color: var(--text); border-color: var(--line-2); background: var(--bg-3); }
+.icon-button.flip .icon { transform: rotate(180deg); }
 
 /* Timeline */
 .timeline-bar { display: flex; align-items: center; gap: 2px; height: 32px; padding: 0 6px; border-bottom: 1px solid var(--line); flex: none; }
