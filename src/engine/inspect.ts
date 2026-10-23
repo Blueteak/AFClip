@@ -3,7 +3,7 @@ import {projectChanges} from '../shared/cli-output.ts';
 
 export function inspectProject(state:any,c:any={}) {
  const current=state.inspect();
- const collections=['media','tracks','clips','transitions','markers','folders'];
+ const collections=['media','tracks','clips','transitions','markers','folders','sequences'];
  if(c.since!==undefined){
   assert(!c.id&&!c.collection,'Use --since separately from --id/--collection');
   assert(Number.isSafeInteger(c.since)&&c.since>=0,'--since requires a nonnegative revision');
@@ -18,5 +18,5 @@ export function inspectProject(state:any,c:any={}) {
  if(c.id)assert(items.length,'Object not found',{id:c.id});
  const ids=new Set(items.flatMap((o:any)=>[o.id,o.trackId,o.mediaId,o.folderId,o.assetId,o.fromClipId,o.toClipId,...(o.effects||[]).map((e:any)=>e.assetId)]).filter(Boolean));
  const keys=Object.fromEntries(Object.entries(current.revisions).filter(([key])=>key==='project'||key==='order:tracks'||key.startsWith('collection:')||ids.has(key.slice(key.indexOf(':')+1))));
- return {project:{id:state.p.id,revision:state.p.revision,fps:state.p.fps,resolution:state.p.resolution},items,revisions:keys};
+ return {project:{id:state.p.id,revision:state.p.revision,activeSequenceId:state.p.activeSequenceId,fps:state.p.fps,resolution:state.p.resolution},items,revisions:keys};
 }

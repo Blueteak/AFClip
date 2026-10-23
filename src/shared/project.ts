@@ -11,6 +11,8 @@ export type Clip = { id: string; revision: number; trackId: string; mediaId: str
 export type Transition = AssetInstance & { audio:'crossfade'|'cut'; id: string; revision: number; trackId: string; fromClipId: string; toClipId: string; duration: Time; alignment:'center'|'start'|'end' };
 export const MARKER_COLORS = ['green','cyan','blue','purple','pink','red','orange','yellow'] as const;
 export type Marker = { id:string; revision:number; name:string; time:Time; color?:typeof MARKER_COLORS[number] };
+export type Timeline = { tracks:Track[]; folders:TrackFolder[]; clips:Clip[]; transitions:Transition[]; markers:Marker[] };
+export type Sequence = { id:string; revision:number; name:string; timeline?:Timeline };
 export type Project = { version:1; id:string; name:string; revision:number; resolution:{width:number;height:number}; fps:Time; media:Media[]; tracks:Track[]; folders?:TrackFolder[]; clips:Clip[]; transitions:Transition[]; markers?:Marker[]; relationshipRevisions:Record<string,number>; [key:string]:any };
 import {createRequire} from 'node:module';
 const schema=createRequire(import.meta.url)('./asset.cjs');
@@ -27,7 +29,16 @@ export const sub=(a:Time,b:Time)=>rational(BigInt(a.num)*BigInt(b.den)-BigInt(b.
 export const mul=(a:Time,b:Time)=>rational(BigInt(a.num)*BigInt(b.num),BigInt(a.den)*BigInt(b.den));
 export const cmp=(a:Time,b:Time)=>{const d=BigInt(a.num)*BigInt(b.den)-BigInt(b.num)*BigInt(a.den);return d<0n?-1:d>0n?1:0;};
 export function parseTime(v:string):Time {if(v.includes('/')){const [n,d]=v.split('/');return time({num:Number(n),den:Number(d)});} assert(/^-?\d+(\.\d+)?$/.test(v),'Expected seconds or fraction');const places=(v.split('.')[1]||'').length;return rational(BigInt(v.replace('.','')),10n**BigInt(places));}
-export function revisions(p:Project):Record<string,number> {const r:Record<string,number>={project:p.revision,...p.relationshipRevisions};for(const [collection,singular]of [['media','media'],['tracks','track'],['clips','clip'],['transitions','transition'],['markers','marker'],['folders','folder']])for(const o of p[collection]||[])r[`${singular}:${o.id}`]=o.revision;for(const t of p.tracks)r[`occupancy:${t.id}`]??=0;return r;}
+export const timelineCollections = ['tracks','folders','clips','transitions','markers'] as const;
+// The selected sequence uses the existing top-level arrays. Only inactive sequences
+// store a timeline, so legacy renderers and project files keep one active view.
+export function ensureSequences(p:Project) {
+ if(p.sequences===undefined&&p.activeSequenceId===undefined){p.activeSequenceId='sequence_main';p.sequences=[{id:p.activeSequenceId,name:'Sequence 1',revision:0}];}
+}
+export function sequenceProjects(p:Project):Project[] {
+ return [p,...(p.sequences||[]).filter((s:Sequence)=>s.id!==p.activeSequenceId&&s.timeline).map((s:Sequence)=>({...p,...s.timeline,activeSequenceId:s.id}))];
+}
+export function revisions(p:Project):Record<string,number> {const r:Record<string,number>={project:p.revision,...p.relationshipRevisions};for(const view of sequenceProjects(p))for(const [collection,singular]of [['media','media'],['tracks','track'],['clips','clip'],['transitions','transition'],['markers','marker'],['folders','folder'],['sequences','sequence']])for(const o of view[collection]||[])r[`${singular}:${o.id}`]=o.revision;for(const view of sequenceProjects(p))for(const t of view.tracks)r[`occupancy:${t.id}`]??=0;return r;}
 export function duration(p:Project):Time {return p.clips.reduce((end,c)=>{const e=add(c.start,c.duration);return cmp(e,end)>0?e:end;},ZERO);}
 // Source timestamps deliberately survive trims, splits, and project FPS changes.
 function validateVolumePoints(points:any, media:Media, clipId:string) {
@@ -43,11 +54,25 @@ function validateVolumePoints(points:any, media:Media, clipId:string) {
   previous=at;
  }
 }
-export function validateProject(p:any):asserts p is Project {
+export function validateProject(p:any,timelineOnly=false):asserts p is Project {
  assert(p&&p.version===1,'Unsupported project version'); assert(typeof p.id==='string'&&typeof p.name==='string','Project requires id and name');assert(Number.isSafeInteger(p.revision)&&p.revision>=0,'Invalid project revision');
  assert(p.resolution&&Number.isInteger(p.resolution.width)&&Number.isInteger(p.resolution.height)&&p.resolution.width>=2&&p.resolution.height>=2&&p.resolution.width%2===0&&p.resolution.height%2===0&&p.resolution.width<=7680&&p.resolution.height<=4320,'Resolution must have even dimensions up to 7680x4320');assert(seconds(time(p.fps,'fps'))>0&&seconds(p.fps)<=240,'Frame rate must be between 0 and 240');
  if(p.markers===undefined)p.markers=[];
  if(p.folders===undefined)p.folders=[];
+ if(!timelineOnly){
+  ensureSequences(p);
+  assert(Array.isArray(p.sequences)&&p.sequences.length>0,'Project requires at least one sequence');
+  const ids=new Set(),names=new Set();
+  for(const s of p.sequences){
+   assert(s&&typeof s.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(s.id)&&!ids.has(s.id),'Invalid or duplicate sequence ID');ids.add(s.id);
+   assert(Number.isSafeInteger(s.revision)&&s.revision>=0,'Invalid sequence revision');
+   assert(typeof s.name==='string'&&s.name.trim().length>0&&s.name.length<=256&&!names.has(s.name.trim().toLowerCase()),'Sequence names must be unique and contain 1 to 256 characters');names.add(s.name.trim().toLowerCase());
+   if(s.id===p.activeSequenceId)assert(s.timeline===undefined,'Active sequence uses the project timeline');
+   else {assert(s.timeline&&Object.keys(s.timeline).every(k=>(timelineCollections as readonly string[]).includes(k))&&timelineCollections.every(k=>Array.isArray(s.timeline[k])),'Inactive sequence requires only timeline collections');validateProject({...p,...s.timeline},true);}
+  }
+  assert(ids.has(p.activeSequenceId),'Active sequence not found');
+  for(const collection of timelineCollections){const ids=new Set();for(const view of sequenceProjects(p))for(const item of view[collection]||[]){assert(!ids.has(item.id),'Timeline IDs must be unique across sequences',{collection,id:item.id});ids.add(item.id);}}
+ }
  for(const name of ['media','tracks','clips','transitions','markers','folders']){assert(Array.isArray(p[name]),`Missing ${name} array`);const ids=new Set();for(const o of p[name]){assert(o&&typeof o.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(o.id)&&!ids.has(o.id),`Invalid or duplicate ${name} ID`);ids.add(o.id);assert(Number.isSafeInteger(o.revision)&&o.revision>=0,'Invalid object revision');}}
  for(const marker of p.markers){assert(typeof marker.name==='string'&&marker.name.trim().length>0&&marker.name.length<=256,'Marker name must contain 1 to 256 characters');assert(cmp(time(marker.time,'Marker time'),ZERO)>=0,'Marker time must not be negative');assert(marker.color===undefined||(MARKER_COLORS as readonly string[]).includes(marker.color),`Marker color must be one of ${MARKER_COLORS.join(', ')}`);}
  const media=new Map<string,Media>(p.media.map((m:Media)=>[m.id,m]));const tracks=new Map<string,Track>(p.tracks.map((t:Track)=>[t.id,t]));const clips=new Map<string,Clip>(p.clips.map((c:Clip)=>[c.id,c]));

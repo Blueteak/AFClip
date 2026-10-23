@@ -3,7 +3,7 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {atomicJSON} from './state.ts';
 import {graphicSignature} from './probe.ts';
-import {assert,fail,validateProject} from '../shared/project.ts';
+import {assert,fail,validateProject,sequenceProjects} from '../shared/project.ts';
 import type {ProjectState} from './state.ts';
 
 const within=(child:string,parent:string)=>child===parent||child.startsWith(parent+path.sep);
@@ -68,7 +68,7 @@ export async function collectProject(state:ProjectState, command:any) {
         if(media.metadata.format)media.metadata.format.filename=relative;
       }
     }
-    for(const id of new Set(project.clips.map(c=>c.generationId).filter(Boolean))){
+    for(const id of new Set(sequenceProjects(project).flatMap(view=>view.clips).map(c=>c.generationId).filter(Boolean))){
       const source=path.join(state.dir,'.afclip','generation',id),target=path.join(destination,'.afclip','generation',id);
       await fs.cp(source,target,{recursive:true,errorOnExist:true,force:false});
       const job=JSON.parse(await fs.readFile(path.join(target,'job.json'),'utf8'));

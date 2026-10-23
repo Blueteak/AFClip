@@ -46,6 +46,14 @@ async function folderCommand(ep:any,command:string,id:string|undefined,options:R
  if(!operations.length)return fullOutput?state:projectChanges(state,state);
  return request(ep,'/command',{command:'apply',batch:{preconditions:pre,operations}});
 }
+async function sequenceCommand(ep:any,command:string,id:string|undefined,options:Record<string,string|boolean>){
+ if(command==='sequences')return request(ep,'/command',{command:'inspect',collection:'sequences'});
+ assert(command==='sequence-copy'||id,'Sequence ID required');
+ if(command==='sequence-rename')assert(typeof options.name==='string','Supply --name');
+ const revision=options.revision===undefined?(await request(ep,'/command',{command:'inspect',collection:'sequences'})).project.revision:Number(options.revision);
+ assert(Number.isSafeInteger(revision)&&revision>=0,'Revision must be a non-negative integer');
+ return request(ep,'/command',{command:'apply',batch:{preconditions:{project:revision},operations:[{op:command,...(id?{id}:{}),...(options.name!==undefined?{name:options.name}:{})}]}});
+}
 async function markerCommand(ep:any,command:string,id:string|undefined,options:Record<string,string|boolean>){
  const state=await request(ep,'/command',{command:'inspect',collection:'markers'}),markers=[...state.items].sort((a:any,b:any)=>cmp(a.time,b.time)||a.id.localeCompare(b.id));
  if(command==='markers')return markers;
@@ -78,6 +86,7 @@ async function fadeCommand(ep:any,id:string|undefined,options:Record<string,stri
 }
 async function main(){const args=process.argv.slice(2);const command=args.shift();if(!command||['help','--help','-h'].includes(command)){console.log(clipHelp(args[0]));return;}if(args.includes('--help')||args.includes('-h')){console.log(clipHelp(command));return;}const dirArg=args.shift();assert(dirArg,'Project directory required');const dir=path.resolve(dirArg),positionals:string[]=[],options:Record<string,string|boolean>={};for(let i=0;i<args.length;i++){if(args[i].startsWith('--')){const key=args[i].slice(2);if(['wait','full','pretty','add-video','refresh-video','extend','remove'].includes(key)){options[key]=['true','false'].includes(args[i+1])?args[++i]==='true':true;}else{assert(args[i+1]!==undefined&&(!args[i+1].startsWith('--')||key==='text'),`Missing --${key} value`);options[key]=args[++i];}}else positionals.push(args[i]);}fullOutput=!!options.full;let r:any;if(command==='create')r=(await import('./engine/state.ts')).createProject(dir,{name:options.name,width:options.width?Number(options.width):undefined,height:options.height?Number(options.height):undefined,fps:options.fps?parseTime(String(options.fps)):undefined});else if(command==='agent')r=await (await import('./agents/cli.mjs')).agentCommand(dir,positionals,options);else{const ep=await endpoint(dir);switch(command){
 case 'generation-voices':r=await request(ep,'/command',{command,nextPageToken:options['next-page-token']});if(!options.full)r={...r,voices:r.voices.map(({id,name}:any)=>({id,name}))};break;
+case 'sequences':case 'sequence-copy':case 'sequence-select':case 'sequence-rename':r=await sequenceCommand(ep,command,positionals[0],options);break;
 case 'generation-status':r=await request(ep,'/command',{command,clipId:positionals[0],offset:options.offset,limit:options.limit});break;
 case 'generation-select':case 'generation-accept':assert(positionals[0],'Clip ID required');r=await request(ep,'/command',{command,clipId:positionals[0],takeId:positionals[1],extend:!!options.extend});break;
 case 'generation-start':{

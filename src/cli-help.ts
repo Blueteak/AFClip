@@ -31,6 +31,10 @@ const REFERENCE=`AFClip first editing slice. Every command prints JSON except he
   af-clip text-set <project-dir> <clip-id> <field-id> --file text.txt
   af-clip text-reset <project-dir> <clip-id> <field-id>
   af-clip folders <project-dir>
+  af-clip sequences <project-dir>
+  af-clip sequence-copy <project-dir> [--name NAME] [--revision N]
+  af-clip sequence-select <project-dir> <sequence-id> [--revision N]
+  af-clip sequence-rename <project-dir> <sequence-id> --name NAME [--revision N]
   af-clip folder-create <project-dir> --name NAME --tracks ID,ID [--id ID]
   af-clip folder-set <project-dir> <folder-id> [--name NAME --disabled true|false --locked true|false --collapsed true|false]
   af-clip folder-members <project-dir> <folder-id> --tracks ID,ID
@@ -102,6 +106,13 @@ Folder Disable/Lock inherit without replacing individual track flags. Collapse i
 Apply supports put/remove on folders, track.folderId, and {op:"reorder-tracks",trackIds:[all IDs]}.
 Reorder requires project and order:tracks revisions; child edits also require their folder revision.
 Project changes use {op:"project",value:{name?,fps?,resolution?}} and project revision.
+Sequences share media and project settings. Edits and exports use activeSequenceId.
+sequence-copy duplicates the active timeline with fresh IDs and selects the copy. Accept generated clips first.
+sequence-select and sequence-rename require a sequence ID. Names are unique within a project.
+Sequence operations are undoable. apply accepts {op:"sequence-copy",name?},
+{op:"sequence-select",id} or {op:"sequence-rename",id,name}, alone with preconditions.project.
+Default output omits inactive timeline bodies. inspect --id SEQUENCE_ID --full includes an inactive timeline;
+the active timeline remains in the top-level project arrays. sequences lists IDs, names and revisions.
 The engine keeps session undo for five idle minutes; close ends that session.
 Frame PNGs default to a 768px longest edge; --image-size low caps at 512px, high caps at 1024px, full keeps project resolution. No upscaling.
 Export verification defaults to quick container/timestamp checks. --verify full also decodes every output frame.
@@ -127,12 +138,13 @@ JSON output; --full includes raw data, --pretty indents. Edits return changes.
  if(topic==='apply')notes=section('Batch:', 'Folders contain')+section('Apply supports','The engine keeps');
  if(topic.startsWith('source-'))notes=section('source-inspect returns','Graphics import');
  if(topic.startsWith('folder'))notes=section('Folders contain','Project changes');
+ if(topic.startsWith('sequence'))notes=section('Sequences share','The engine keeps');
  if(topic.startsWith('library-'))notes=section('Find reusable clips','source-inspect returns');
  if(['export','frame','status'].includes(topic))notes=section('Export verification','Render progress')+'--wait exits nonzero on failure.\n';
  if(topic==='frame')notes+='Images default to review: 768px longest edge. --image-size low caps at 512px; high caps at 1024px; full keeps project resolution for small text and fine detail. Aspect ratio is preserved, with no upscaling. --full only expands JSON.\n';
  if(topic==='fade')notes=section('Fade:','Clip effects:');
  if(['params','param-set'].includes(topic))notes=section('Parameters:','Folders contain');
- if(topic==='inspect')notes='--id ID or --collection media|tracks|clips|transitions|markers|folders selects objects. --since REVISION returns changes from retained session history; unavailable history returns HISTORY_UNAVAILABLE. Use --since separately from filters.\n';
+ if(topic==='inspect')notes='--id ID or --collection media|tracks|clips|transitions|markers|folders|sequences selects objects. --since REVISION returns changes from retained session history; unavailable history returns HISTORY_UNAVAILABLE. Use --since separately from filters. Inactive sequence timelines require --full; active timeline arrays remain at project level.\n';
  if(['source-inspect','source-frames'].includes(topic))notes+='Frame windows use --start-frame N --frame-count N (default 120, max 10000). nextFrame continues the exact stored index. --full includes all timestamps.\n';
  return lines.join('\n')+'\n'+notes+'Times accept decimal seconds or fractions. --full includes raw data; --pretty indents.\n';
 }

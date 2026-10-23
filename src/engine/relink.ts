@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {inspectMedia} from './probe.ts';
 import {libraryCommand} from '../library/client.ts';
-import {assert,fail,revisions,trackLocked,validateProject} from '../shared/project.ts';
+import {assert,fail,revisions,trackLocked,validateProject,sequenceProjects} from '../shared/project.ts';
 
 export async function relinkMedia(state:any, library:any, command:any) {
   state.requireUnlocked();
@@ -10,8 +10,8 @@ export async function relinkMedia(state:any, library:any, command:any) {
   const old=state.p.media.find((m:any)=>m.id===command.id);
   assert(old&&old.kind!=='graphic','Select video, audio or an image to relink');
   assert(typeof command.path==='string'&&path.isAbsolute(command.path),'Relink requires an absolute file path');
-  for(const clip of state.p.clips.filter((c:any)=>c.mediaId===old.id))
-    if(trackLocked(state.p,clip.trackId))fail('TRACK_LOCKED','Media is used by a locked track',{trackId:clip.trackId});
+  for(const view of sequenceProjects(state.p))for(const clip of view.clips.filter((c:any)=>c.mediaId===old.id))
+    if(trackLocked(view,clip.trackId))fail('TRACK_LOCKED','Media is used by a locked track',{trackId:clip.trackId});
   let media:any=await inspectMedia(command.path);
   assert(media.kind===old.kind,'Replacement must have the same media kind');
   assert(old.kind!=='video'||!!media.metadata.hasAudio===!!old.metadata.hasAudio,

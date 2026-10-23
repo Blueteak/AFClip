@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
 import {atomicJSON} from './state.ts';
 import {inspectMedia} from './probe.ts';
-import {assert,fail,revisions,time,seconds,add,cmp,ZERO,ONE,rational,trackLocked,duration} from '../shared/project.ts';
+import {assert,fail,revisions,time,seconds,add,cmp,ZERO,ONE,rational,trackLocked,duration,sequenceProjects} from '../shared/project.ts';
 
 const require=createRequire(import.meta.url),ffmpeg=require('ffmpeg-static');
 const uid=(prefix:string)=>prefix+'_'+randomUUID().replaceAll('-','');
@@ -134,12 +134,12 @@ export class Generations {
       const preview:any=await inspectMedia(previewFile,'audio');preview.path=path.relative(this.state.dir,previewFile);preview.metadata.generationId=job.id;
       if(signal.aborted)return;
       await this.enqueue(()=>{
-        const clip=this.state.p.clips.find((c:any)=>c.generationId===job.id);
+        const clip=sequenceProjects(this.state.p).flatMap(view=>view.clips).find((c:any)=>c.generationId===job.id);
         if(!clip||signal.aborted)return;
         const first=job.takes.length===0;
         job.media.push(media,preview);job.takes.push({id,...settings,duration:media.duration,mediaId:media.id,previewMediaId:preview.id,requestId:response.requestId});
         job.status='ready';job.phase='ready';delete job.error;this.persist(job);
-        if(first&&!this.state.locked&&!trackLocked(this.state.p,clip.trackId))this.commit([{op:'put',collection:'media',value:media},{op:'put',collection:'media',value:preview},{op:'put',collection:'clips',value:{id:clip.id,mediaId:preview.id}}],false);
+        if(first&&this.state.p.clips.some((c:any)=>c.id===clip.id)&&!this.state.locked&&!trackLocked(this.state.p,clip.trackId))this.commit([{op:'put',collection:'media',value:media},{op:'put',collection:'media',value:preview},{op:'put',collection:'clips',value:{id:clip.id,mediaId:preview.id}}],false);
         else if(first)job.pendingSelection=id;
         this.emit(job);
       });
@@ -163,11 +163,11 @@ export class Generations {
     const original=job.media.find((m:any)=>m.id===take.mediaId),file=path.join(this.state.dir,'media','generated',take.id+'.wav');fs.mkdirSync(path.dirname(file),{recursive:true});await this.run(ffmpeg,['-v','error','-y','-i',path.resolve(this.state.dir,original.path),'-af','apad','-t',String(seconds(actual)+.001),'-ar','48000','-ac','2','-c:a','pcm_s16le',file]);
     let media:any=await inspectMedia(file,'audio');media=await this.library.register(media);media.path=path.relative(this.state.dir,file);
     const operations:any[]=[{op:'put',collection:'media',value:media},{op:'put',collection:'clips',value:{id:clip.id,generationId:null,mediaId:media.id,duration:length,name:take.text.slice(0,64)}}];
-    for(const m of this.state.p.media.filter((m:any)=>m.metadata.generationId===job.id))if(!this.state.p.clips.some((x:any)=>x.id!==clip.id&&x.mediaId===m.id))operations.push({op:'remove',collection:'media',id:m.id});
+    for(const m of this.state.p.media.filter((m:any)=>m.metadata.generationId===job.id))if(!sequenceProjects(this.state.p).some(view=>view.clips.some((x:any)=>x.id!==clip.id&&x.mediaId===m.id)))operations.push({op:'remove',collection:'media',id:m.id});
     this.commit(operations);this.reconcile();await this.library.sync();this.notify(this.state.inspect());return this.state.inspect();
   }
   reconcile(){
-    for(const [id,controller]of this.active)if(!this.state.p.clips.some((c:any)=>c.generationId===id)){
+    for(const [id,controller]of this.active)if(!sequenceProjects(this.state.p).some(view=>view.clips.some((c:any)=>c.generationId===id))){
       controller.abort();const job=this.jobs.get(id);job.status='failed';job.error={code:'GENERATION_CANCELLED',message:'Cancelled locally. Retry explicitly to generate again.'};this.persist(job);
     }
     for(const job of this.jobs.values()){const clip=this.state.p.clips.find((c:any)=>c.generationId===job.id);if(clip&&job.takes.length&&!job.takes.some((t:any)=>t.previewMediaId===clip.mediaId))job.pendingSelection=job.takes[0].id;}
@@ -175,7 +175,7 @@ export class Generations {
     // Undo retains files. After the last recoverable reference disappears, remove only
     // this manager's own directory; accepted audio lives in media/generated instead.
     const projects=[this.state.p,...this.state.undo,...this.state.redo];
-    for(const [id,job] of this.jobs)if(!this.active.has(id)&&!projects.some(p=>p.clips.some((c:any)=>c.generationId===id)||p.media.some((m:any)=>m.metadata.generationId===id))){
+    for(const [id,job] of this.jobs)if(!this.active.has(id)&&!projects.some(p=>sequenceProjects(p).some(view=>view.clips.some((c:any)=>c.generationId===id))||p.media.some((m:any)=>m.metadata.generationId===id))){
       const target=path.resolve(this.directory(id));assert(target.startsWith(path.resolve(this.root)+path.sep),'Generation cleanup escaped its directory');fs.rmSync(target,{recursive:true,force:true});this.jobs.delete(id);
     }
   }
