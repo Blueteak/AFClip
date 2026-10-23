@@ -3635,7 +3635,8 @@ window.afclipPrepareReload = () => {
 api.onEvent(async event => {
   try {
     if (event.type === 'disconnected') { playback.pause(false); setConnected(false, event.value?.message); syncChrome(); say('Project connection closed. Reopen the project to reconnect.', 'error'); return; }
-    if(event.type==='graphic-error'){playback.pause(false);say(event.value.error?.message||'HTML asset reload failed','error');return;}
+    // A failed reload leaves the accepted graphic unchanged and safe to play.
+    if(event.type==='graphic-error'){say(event.value.error?.message||'HTML asset reload failed','error');return;}
     if (event.type === 'job') { await onJob(event.value.job || event.value); return; }
     if (event.type === 'change' || event.type === 'hello') {
       const next = event.value.inspect || event.value;
