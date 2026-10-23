@@ -336,6 +336,13 @@ kbd, .kbd {
 /* Timeline */
 .timeline-bar { display: flex; align-items: center; gap: 2px; height: 32px; padding: 0 6px; border-bottom: 1px solid var(--line); flex: none; }
 .tool-group { display: flex; align-items: center; gap: 1px; }
+.sequence-picker {
+  display: flex; align-items: center; gap: 6px; height: 22px; max-width: 220px; padding: 0 5px 0 7px; flex: none;
+  background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 5px; color: var(--text-2);
+}
+.sequence-picker:hover, .sequence-picker.open { border-color: #43474f; color: var(--text); }
+.sequence-picker #sequence-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sequence-picker .icon { color: var(--text-3); }
 .tool-spacer { flex: 1; }
 .lock-banner { display: inline-flex; align-items: center; gap: 6px; margin-right: 10px; color: var(--warn); font-size: 11px; }
 .tl-scroll { position: relative; flex: 1; overflow: auto; min-height: 0; }

@@ -47,6 +47,10 @@ Default output omits these known values:
 
 - Completed library response envelope: `status:"complete"`. Pending and failed states remain.
 - Project inspection: `renderLock:null`.
+- Sequences: inactive `timeline` bodies. `sequences` and `inspect --collection sequences`
+  retain IDs, names, revisions and `project.activeSequenceId`. Use
+  `inspect --id SEQUENCE_ID --full` for an inactive timeline. Active tracks, clips,
+  folders, transitions and markers remain in the top-level project arrays.
 - Clips: volume 1, mute false, speed 1/1, sourceIn/fadeIn/fadeOut 0/1,
   null linkId/generationId, empty effects/volumePoints/text/params, and default transform components
   x/y/rotation 0, scale/opacity 1, fit `fit`.
@@ -107,6 +111,18 @@ existing order changed or whose additions were not appended at the end.
 `removedRevisions` lists revision keys that disappeared.
 Empty change sections are omitted. Command-specific results such as `media` and
 `clip` remain available.
+
+Sequence edits use the same delta contract, with sequence records under
+`changes.sequences` and selection under `changes.project.activeSequenceId`.
+Timeline `removed` IDs on selection leave the active view; the inactive sequence
+still owns them. Default deltas omit inactive timeline bodies, so they reconstruct
+the active view and sequence index only. Use `--full` for a complete snapshot.
+Copying, selecting and renaming are undoable, revision-checked operations. Media
+and project settings are shared; normal timeline edits and renders use the selected
+sequence. Existing projects open as `Sequence 1`.
+A two-sequence listing with two clips, a folder, marker and dissolve in its inactive
+timeline measured 199 tokens compact versus 554 with `--full`, using
+`tiktoken` / `o200k_base`.
 
 Changed objects replace their previous versions, with omitted defaults restored
 as described above. Revision-only changes appear only in `revisions`; this avoids

@@ -18,7 +18,7 @@ class TimelinePlayback {
     // Folder organization does not change the picture or audio. Keep playback
     // alive when collapsing, renaming, grouping, or changing locks.
     const folderById = new Map((project.folders || []).map(f => [f.id, f]));
-    const renderKey = JSON.stringify({ ...project, folders: undefined,
+    const renderKey = JSON.stringify({ ...project, sequences: undefined, folders: undefined,
       tracks: project.tracks.map(t => ({ id: t.id, disabled: t.disabled || !!folderById.get(t.folderId)?.disabled })),
     }, (key, value) => {
       if (key === 'revision' || key === 'relationshipRevisions') return undefined;
@@ -34,7 +34,7 @@ class TimelinePlayback {
     }
     // Text and parameter overrides only affect existing iframes. Keep their DOM,
     // decoded video frames and audio instead of starting another preview worker.
-    const textBaseKey = JSON.stringify({ ...project, clips: project.clips.map(c => ({ ...c, text: undefined, params: undefined, effects: c.effects?.map(e => ({ ...e, params: undefined })) })),
+    const textBaseKey = JSON.stringify({ ...project, sequences: undefined, clips: project.clips.map(c => ({ ...c, text: undefined, params: undefined, effects: c.effects?.map(e => ({ ...e, params: undefined })) })),
       transitions: project.transitions.map(t => ({ ...t, params: undefined })) }, (key, value) => {
       if (key === 'revision' || key === 'relationshipRevisions') return undefined;
       return value && typeof value === 'object' && !Array.isArray(value)
@@ -55,7 +55,7 @@ class TimelinePlayback {
     const pictureMedia = new Set(pictureClips.map(c => c.mediaId));
     for(const tr of visualTransitions)pictureMedia.add(tr.assetId);
     for(const c of pictureClips)for(const effect of c.effects||[])pictureMedia.add(effect.assetId);
-    const videoKey = JSON.stringify({ ...project,
+    const videoKey = JSON.stringify({ ...project, sequences: undefined,
       markers: [], folders: undefined,
       media: project.media.filter(m => pictureMedia.has(m.id)),
       tracks: project.tracks.filter(t => pictureTracks.has(t.id)).map(t => ({ id: t.id, disabled: t.disabled || !!folderById.get(t.folderId)?.disabled })),

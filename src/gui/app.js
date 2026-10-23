@@ -22,6 +22,8 @@ const tracks = () => project()?.tracks || [];
 const folders = () => project()?.folders || [];
 const transitions = () => project()?.transitions || [];
 const markers = () => project()?.markers || [];
+const sequences = () => project()?.sequences || [];
+const activeSequence = () => byId(sequences(), project()?.activeSequenceId);
 const displayTracks = () => [...tracks()].reverse();
 const rate = () => project()?.fps || { num: 30, den: 1 };
 const fps = () => secs(rate());
@@ -202,7 +204,7 @@ function icon(name, cls = '') {
   s.setAttribute('class', `icon ${cls}`.trim()); u.setAttribute('href', `#i-${name}`); s.append(u);
   return s;
 }
-const KEY_NAMES = { Left: '←', Right: '→', Up: '↑', Down: '↓', Delete: 'Del', Backspace: '⌫', Escape: 'Esc' };
+const KEY_NAMES = { Left: '←', Right: '→', Up: '↑', Down: '↓', Delete: 'Del', Backspace: '⌫', Escape: 'Esc', PageUp: 'PgUp', PageDown: 'PgDn' };
 function kbd(combo) {
   if (!combo) return null;
   const parts = combo === '+' ? ['+'] : combo.split('+').map((p, i, all) => p === '' && i === all.length - 1 ? '+' : p).filter(Boolean);
@@ -350,6 +352,11 @@ action('nudgeRight', { menu: 'Clip', group: 3, label: 'Nudge right 1 frame', key
 action('nudgeLeft5', { label: 'Nudge left 5 frames', keys: ['Alt+Shift+Left'], enabled: () => editable() && selection.size > 0, run: () => nudge(-5) });
 action('nudgeRight5', { label: 'Nudge right 5 frames', keys: ['Alt+Shift+Right'], enabled: () => editable() && selection.size > 0, run: () => nudge(5) });
 
+action('sequenceCopy', { menu: 'Timeline', group: 0, label: 'New sequence from copy…', icon: 'copy', keys: ['Ctrl+Shift+N'], desc: 'Duplicate the current sequence and switch to the copy.', enabled: () => editable() && !!activeSequence(), run: copySequenceDialog });
+action('sequenceRename', { menu: 'Timeline', group: 0, label: 'Rename sequence…', desc: 'Rename the current sequence.', enabled: () => editable() && !!activeSequence(), run: renameSequenceDialog });
+action('sequenceSwitch', { menu: 'Timeline', group: 0, label: 'Switch sequence…', icon: 'layers', desc: 'Choose another sequence of this project.', enabled: () => !!activeSequence(), run: openSequenceMenu });
+action('nextSequence', { menu: 'Timeline', group: 0, label: 'Next sequence', keys: ['Ctrl+PageDown'], enabled: () => editable() && sequences().length > 1, run: () => stepSequence(1) });
+action('prevSequence', { menu: 'Timeline', group: 0, label: 'Previous sequence', keys: ['Ctrl+PageUp'], enabled: () => editable() && sequences().length > 1, run: () => stepSequence(-1) });
 action('renderFrame', { menu: 'Timeline', group: 1, label: 'Render frame', icon: 'render', keys: ['Enter'], desc: 'Render the exact frame at the playhead from original media.', enabled: () => clips().length > 0 && !exportJobId, run: () => renderFrame(true) });
 action('play', { menu: 'Timeline', group: 1, label: 'Play / pause', icon: 'play', keys: ['Space'], desc: 'Play the timeline with synchronized audio. Pause to inspect the current frame.', enabled: () => clips().length > 0 && connected, run: togglePlay });
 action('markIn', { menu: 'Timeline', group: 2, label: 'Mark In', icon: 'in', keys: ['I'], desc: 'Start the export range at the playhead.', enabled: () => !!project(), run: () => setMarks(Math.min(playF, lastFrame()), outF != null && outF < playF ? null : outF) });
@@ -438,14 +445,14 @@ function menuKey(e) {
   else if (e.key === 'ArrowDown') move(cur < 0 ? 0 : 1);
   else if (e.key === 'ArrowUp') move(cur < 0 ? 0 : -1);
   else if (e.key === 'Enter' || e.key === ' ') live[cur]?.click();
-  else if (anchor && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+  else if (anchor && $('menubar').contains(anchor) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
     const bar = [...$('menubar').children], i = bar.indexOf(anchor);
     bar[(i + (e.key === 'ArrowRight' ? 1 : -1) + bar.length) % bar.length].dispatchEvent(new Event('open'));
     openMenuState?.buttons.find(b => !b.disabled)?.classList.add('active');
   } else return;
   e.preventDefault();
 }
-document.addEventListener('pointerdown', e => { if (openMenuState && !openMenuState.el.contains(e.target) && !$('menubar').contains(e.target)) closeMenu(); }, true);
+document.addEventListener('pointerdown', e => { if (openMenuState && !openMenuState.el.contains(e.target) && !e.target.closest?.('#menubar, #sequence-picker')) closeMenu(); }, true);
 window.addEventListener('blur', closeMenu);
 function buildMenubar() {
   for (const name of MENUS) {
@@ -500,6 +507,8 @@ function openPalette() {
     items = [];
     if (frame != null) items.push({ label: `Go to ${tc(Math.max(0, frame))}`, icon: 'step-forward', where: 'Timeline', run: () => seek(frame, true) });
     const words = q.split(/\s+/).filter(Boolean);
+    if (words.length) for (const s of sequences()) if (s.id !== project().activeSequenceId && words.every(w => `sequence ${s.name}`.toLowerCase().includes(w)))
+      items.push({ label: s.name, icon: 'layers', where: 'Sequence', disabled: !editable(), run: () => selectSequence(s.id) });
     const scored = pool.map(a => {
       const hay = `${a.label} ${a.menu || ''} ${a.desc || ''} ${a.keys.join(' ')}`.toLowerCase();
       if (!words.every(w => hay.includes(w))) return null;
@@ -695,7 +704,78 @@ function seekMarker(direction) {
   selectMarker(target.id); seek(markerF(target), true);
 }
 function setMarks(i, o) { inF = i; outF = o; rememberMarks(); drawPlayhead(); syncChrome(); say(i == null && o == null ? 'In and Out cleared' : `Range ${i == null ? 'start' : tc(i)} → ${o == null ? 'end' : tc(o)}`); }
-function rememberMarks() { const id = project()?.id; if (!id) return; prefs.marks[id] = { in: inF, out: outF, play: playF }; clearTimeout(rememberMarks.t); rememberMarks.t = setTimeout(savePrefs, 400); }
+function rememberMarks() { const p = project(); if (!p) return; const key = viewKey(p, p.activeSequenceId); prefs.marks[key] = { ...prefs.marks[key], in: inF, out: outF, play: playF }; clearTimeout(rememberMarks.t); rememberMarks.t = setTimeout(savePrefs, 400); }
+// ---------------------------------------------------------------- Sequences
+// The engine keeps the active sequence in the top-level timeline arrays. Each sequence keeps its own
+// UI view (playhead, range, zoom, scroll); the first sequence reuses the pre-sequence project key.
+const viewKey = (p, id) => id && p.sequences?.[0]?.id !== id ? `${p.id}:${id}` : p.id;
+let seqId = null, pendingScroll = null;
+const sequenceTaken = (name, except) => sequences().some(s => s.id !== except && s.name.trim().toLowerCase() === name.trim().toLowerCase());
+function uniqueSequenceName(base) { let name = base; for (let i = 2; sequenceTaken(name); i++) name = `${base} ${i}`; return name; }
+// Sequence ops must be the only operation in their batch.
+const sequenceOp = op => perform(() => api.command({ command: 'apply', batch: { preconditions: { project: snapshot.project.revision }, operations: [op] } }));
+function selectSequence(id) { if (id && id !== project()?.activeSequenceId && editable()) sequenceOp({ op: 'sequence-select', id }); }
+function stepSequence(dir) {
+  const list = sequences(), i = list.findIndex(s => s.id === project().activeSequenceId);
+  if (list.length > 1) selectSequence(list[(i + dir + list.length) % list.length].id);
+}
+function sequenceDialog({ title, value, label, except, commit }) {
+  const name = h('input', { value, maxlength: 256, spellcheck: 'false', 'aria-label': 'Sequence name' });
+  dialog({ title, iconName: 'layers', body: h('div', { class: 'dialog-body' }, field('Name', name)),
+    buttons: [{ label: 'Cancel' }, { label, kind: 'primary', keys: 'Enter', run: () => {
+      const v = name.value.trim();
+      if (!v) { say('Name the sequence', 'warn'); name.focus(); return false; }
+      if (sequenceTaken(v, except)) { say(`A sequence named “${v}” already exists`, 'warn'); name.select(); return false; }
+      commit(v);
+    } }] });
+  setTimeout(() => name.select(), 0);
+}
+function copySequenceDialog() {
+  const s = activeSequence(); if (!s) return;
+  sequenceDialog({ title: 'New sequence from copy', value: uniqueSequenceName(`${s.name.slice(0,240)} copy`), label: 'Create', commit: name => sequenceOp({ op: 'sequence-copy', sourceId: s.id, name }) });
+}
+function renameSequenceDialog() {
+  const s = activeSequence(); if (!s) return;
+  sequenceDialog({ title: 'Rename sequence', value: s.name, label: 'Rename', except: s.id, commit: name => { if (name !== s.name) sequenceOp({ op: 'sequence-rename', id: s.id, name }); } });
+}
+function openSequenceMenu() {
+  const b = $('sequence-picker'); if (b.hidden) return;
+  if (openMenuState?.anchor === b) { closeMenu(); return; }
+  const active = project().activeSequenceId, list = sequences(), r = b.getBoundingClientRect();
+  openMenu([...list.map(s => ({ label: s.name, checked: () => s.id === active, disabled: s.id !== active && !editable(), run: () => selectSequence(s.id) })),
+    '-', { action: 'sequenceCopy' }, { action: 'sequenceRename' }], r.left, r.bottom + 2, b);
+  openMenuState?.buttons[list.findIndex(s => s.id === active)]?.classList.add('active');
+}
+function drawSequencePicker() {
+  const s = activeSequence(), b = $('sequence-picker');
+  b.hidden = $('sequence-divider').hidden = !s;
+  $('sequence-name').textContent = s?.name || '';
+}
+// Runs inside draw() once the snapshot shows another active sequence, whoever switched it.
+// Drops every piece of state that points into the old timeline before anything redraws.
+function leaveSequence(p, previous) {
+  const old = viewKey(p, previous);
+  prefs.marks[old] = { in: inF, out: outF, play: playF, pps, fit: fitZoom, scroll: $('tl-scroll').scrollLeft };
+  if (graphicTextEdit) {
+    if (graphicTextEdit.inspector) document.activeElement.onblur = null;
+    graphicTextEdit = null;
+    playback.native?.finishText(true);
+  }
+  playback.pause(false); clearTimeout(frameTimer); frameQueued = false;
+  closeMenu(); closeMarkerPopover(false);
+  document.querySelector('.track-name-input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  if ($('inspector').contains(document.activeElement)) document.activeElement.scrubCancel?.();
+  selection = new Set(); selTransition = null; selPoint = null; selMarker = null; selTracks = new Set(); selFolder = null; trackAnchor = null;
+  if (drag) onDragCancel();
+  shown = null; $('preview').removeAttribute('src');
+  restoreView(prefs.marks[viewKey(p, p.activeSequenceId)]);
+  savePrefs();
+}
+function restoreView(saved) {
+  inF = saved?.in ?? null; outF = saved?.out ?? null; playF = saved?.play ?? 0;
+  fitZoom = saved?.fit ?? true; if (saved?.pps) pps = saved.pps;
+  pendingScroll = saved?.scroll ?? 0;
+}
 function setRenderMode(mode) { prefs.renderMode = mode; savePrefs(); if (project()) playback.setProject(project(), mode); requestFrame(0); syncChrome(); say(mode === 'gpu' ? 'GPU rendering (D3D11 + NVENC)' : 'Software rendering (CPU + x264)'); }
 function zoom(factor, anchorX) {
   const scroll = $('tl-scroll'), anchor = anchorX ?? (frameX(playF) - scroll.scrollLeft);
@@ -1405,13 +1485,16 @@ function setMonitorView(view) {
 
 // ---------------------------------------------------------------- Drawing
 function draw() {
-  if (graphicTextEdit) return;
+  if (graphicTextEdit && project()?.activeSequenceId === seqId) return;
   const p = project(); if (!p) return;
+  const sid = p.activeSequenceId || null, switched = !firstLoad && sid !== seqId;
+  if (switched) leaveSequence(p, seqId);
+  seqId = sid;
   playback.setProject(p, prefs.renderMode);
   if (!p.clips.length) { shown = null; $('preview').removeAttribute('src'); }
   if (firstLoad) {
-    const saved = prefs.marks[p.id];
-    if (saved) { inF = saved.in ?? null; outF = saved.out ?? null; playF = saved.play ?? 0; } else if (p.clips.length) playF = Math.min(2 * nominal(), lastFrame());
+    const saved = prefs.marks[viewKey(p, sid)];
+    if (saved) restoreView(saved); else if (p.clips.length) playF = Math.min(2 * nominal(), lastFrame());
   }
   // Clips inside collapsed folders cannot stay selected, whoever collapsed them.
   for (const id of [...selection]) if (!clipById(id) || hiddenTrack(clipById(id).trackId)) selection.delete(id);
@@ -1423,8 +1506,11 @@ function draw() {
   playF = Math.min(playF, navEndF());
   $('project-name').textContent = p.name;
   document.title = `${p.name} · AFClip`;
-  drawMedia(); syncSource(); drawInspector(); drawMonitor(); syncChrome();
+  drawSequencePicker();
+  drawMedia(); syncSource(); drawInspector(switched); drawMonitor(); syncChrome();
   if (drag || editingTrack) deferredDraw = true; else drawTimeline();
+  if (pendingScroll != null && !deferredDraw) { $('tl-scroll').scrollLeft = pendingScroll; pendingScroll = null; }
+  if (switched) { say(`Sequence “${activeSequence()?.name || ''}”`); requestFrame(0); }
   generation?.changed();
   if (!$('history-panel').closest('.tab-page').hidden) drawHistory();
   if (firstLoad) { firstLoad = false; api.ready(); }
@@ -3317,6 +3403,8 @@ function actionButton(id, iconName, cls = '') {
   return h('button', { class: `icon-button ${cls}`, dataset: { action: id }, onclick: () => run(id), tip: { action: id } }, icon(iconName || actions[id].icon));
 }
 function buildChrome() {
+  $('sequence-picker').onclick = openSequenceMenu;
+  $('sequence-picker').tip = () => ({ title: activeSequence()?.name || 'Sequence', desc: 'Switch sequences, or copy this one into a new sequence.', hint: [{ keys: ['Ctrl+PageUp', 'Ctrl+PageDown'], text: 'switch' }, { keys: 'Ctrl+Shift+N', text: 'copy' }] });
   $('tool-group').append(actionButton('selectTool'), actionButton('razorTool'), actionButton('snap'));
   $('edit-group').append(actionButton('split'), actionButton('dissolve'), actionButton('addTrack'));
   $('zoom-group').append(actionButton('zoomOut'), actionButton('zoomFit'), actionButton('zoomIn'));
@@ -3618,6 +3706,7 @@ function agentContext(anchor) {
   if (selFolder) sel.folder = selFolder;
   if (selPoint) sel.volumePoint = { clipId: selPoint.clipId, time: selPoint.time };
   const context = { capturedAt: new Date().toISOString(), projectId: p.id, projectRevision: p.revision, fps: rate(), playhead: fromF(playF), playheadTimecode: tc(playF), selection: sel };
+  if (activeSequence()) context.sequence = { id: activeSequence().id, name: activeSequence().name };
   if (inF != null || outF != null) context.range = { in: fromF(inF ?? 0), out: fromF((outF ?? lastFrame()) + 1) };
   if (anchor) context.anchor = { kind: anchor.kind, label: anchor.label, ...(anchor.trackId ? { trackId: anchor.trackId } : {}), ...(anchor.time ? { time: anchor.time } : {}),
     items: (anchor.items || []).map(i => agentItemContext(i) || { kind: i.kind, id: i.id, missing: true }) };

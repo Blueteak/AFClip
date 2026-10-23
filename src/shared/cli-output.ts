@@ -5,7 +5,7 @@ export function projectChanges(before:any,after:any):any {
  const {project,revisions,...rest}=after;
  if(rest.generations){const old=new Map((before.generations||[]).map((j:any)=>[j.id,JSON.stringify(j)]));rest.generations=rest.generations.filter((j:any)=>old.get(j.id)!==JSON.stringify(j));if(!rest.generations.length)delete rest.generations;}
  const changes:any={},removed:any={},order:any={};
- const collections=new Set(['media','tracks','clips','transitions','markers','folders']);
+ const collections=new Set(['media','tracks','clips','transitions','markers','folders','sequences']);
  const same=(a:any,b:any)=>JSON.stringify(a)===JSON.stringify(b);
  for(const key of new Set([...Object.keys(before.project),...Object.keys(project)])){
   if(['revision','relationshipRevisions'].includes(key))continue;
@@ -40,6 +40,9 @@ export function compactResult(value:any):any {
  if(Array.isArray(value))return value.map(compactResult);
  if(!value||typeof value!=='object')return value;
  const out={...value};
+ // Inactive timelines are available through inspect --id SEQUENCE_ID --full.
+ // Normal reads and deltas keep sequence identity without repeating every edit.
+ if(value.timeline&&Array.isArray(value.timeline.tracks)&&Array.isArray(value.timeline.clips))delete out.timeline;
  const omit=(key:string,expected:any)=>{if(JSON.stringify(out[key])===JSON.stringify(expected))delete out[key];};
  const empty=(...keys:string[])=>{for(const key of keys){omit(key,[]);omit(key,{});}};
  if(value.metadata&&(value.kind||value.recordType==='source')){
