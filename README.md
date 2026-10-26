@@ -64,7 +64,7 @@ In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only bro
 
 Run `npm run dev:install` with Node 24+ to install **AFClip Dev** in the Windows Start Menu or `~/Applications/AFClip Dev.app` on macOS. Open the Mac app through Finder or Spotlight. It launches this checkout with `--dev`, restores the last project and uses the AFClip icon, without opening a terminal.
 
-On another machine, pull the checkout, run `npm ci`, then `npm run dev:install` to create its local launcher.
+On another machine, pull the checkout, run `npm ci`, then `npm run dev:install` to create its local launcher. Rerun `dev:install` after `npm ci` to restore the macOS runtime's AFClip Dev name in the menu bar.
 
 The launcher records absolute checkout and Node paths, so it works without your shell environment. Rerun after moving the checkout or replacing Node. Generated paths and icons stay in ignored `.afclip/` storage or the installed app, outside Git. Remove the Start Menu shortcut or Mac app to uninstall. Mac launch diagnostics go to `~/Library/Logs/AFClip Dev.log`. These source-based launchers are separate from future installed releases and do not download updates.
 
