@@ -1,6 +1,10 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const api = window.afclip;
+// macOS window controls occupy the left side of the existing title bar.
+if (navigator.platform.startsWith('Mac')) {
+  document.documentElement.style.setProperty('--titlebar-padding', '0 10px 0 80px');
+}
 const SVG = 'http://www.w3.org/2000/svg';
 
 // ---------------------------------------------------------------- Exact time
