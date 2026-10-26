@@ -62,7 +62,11 @@ In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only bro
 
 ## Development reload
 
-On Windows, run `npm run dev:install` once to add **AFClip Dev** to Start Menu. It opens this checkout with live reload and restores the last project, without a terminal window. It uses the existing AFClip icon and the Node executable used for installation. Rerun after moving the checkout or replacing Node. Remove the Start Menu shortcut to uninstall the launcher. This source-based launcher is separate from future installed releases and does not download updates.
+Run `npm run dev:install` with Node 24+ to install **AFClip Dev** in the Windows Start Menu or `~/Applications/AFClip Dev.app` on macOS. Open the Mac app through Finder or Spotlight. It launches this checkout with `--dev`, restores the last project and uses the AFClip icon, without opening a terminal.
+
+On another machine, pull the checkout, run `npm ci`, then `npm run dev:install` to create its local launcher.
+
+The launcher records absolute checkout and Node paths, so it works without your shell environment. Rerun after moving the checkout or replacing Node. Generated paths and icons stay in ignored `.afclip/` storage or the installed app, outside Git. Remove the Start Menu shortcut or Mac app to uninstall. Mac launch diagnostics go to `~/Library/Logs/AFClip Dev.log`. These source-based launchers are separate from future installed releases and do not download updates.
 
 Run `npm run dev -- examples/vellum-first-edit` to reload GUI JavaScript, HTML, CSS and the shared timeline evaluator after source changes. Without a project path, `npm start` and `npm run dev` reopen the last successfully opened project, or show the folder picker if none is available. The watcher waits until playback, dragging, text editing and pending GUI edits have stopped. It preserves saved project state and the playhead, then rebuilds the preview. Main-process, preload and worker changes still require restarting the editor. Normal `npm start` does not watch files.
 
