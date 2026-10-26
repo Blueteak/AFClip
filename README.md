@@ -62,6 +62,8 @@ In AFClip, **File > Browse content library** or `Ctrl+L` opens its read-only bro
 
 ## Development reload
 
+On Windows, run `npm run dev:install` once to add **AFClip Dev** to Start Menu. It opens this checkout with live reload and restores the last project, without a terminal window. It uses the existing AFClip icon and the Node executable used for installation. Rerun after moving the checkout or replacing Node. Remove the Start Menu shortcut to uninstall the launcher. This source-based launcher is separate from future installed releases and does not download updates.
+
 Run `npm run dev -- /path/to/project` to reload GUI JavaScript, HTML, CSS and the shared timeline evaluator after source changes. Without a project path, `npm start` and `npm run dev` reopen the last successfully opened project, or show the folder picker if none is available. The watcher waits until playback, dragging, text editing and pending GUI edits have stopped. It preserves saved project state and the playhead, then rebuilds the preview. Main-process, preload and worker changes still require restarting the editor. Normal `npm start` does not watch files.
 
 ## Rendering experiments
