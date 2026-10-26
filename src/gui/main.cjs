@@ -6,6 +6,11 @@ const path = require('node:path');
 const { randomUUID, createHash } = require('node:crypto');
 const execFileAsync = promisify(execFile);
 
+// Renaming the checkout's macOS runtime must not move the existing editor profile.
+if (process.platform === 'darwin' && !app.isPackaged) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'Electron'));
+}
+
 protocol.registerSchemesAsPrivileged([{ scheme: 'afclip-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true, corsEnabled:true } },
   { scheme: 'afclip-graphic', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const args = process.argv.slice(2);

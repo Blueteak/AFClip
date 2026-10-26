@@ -23,6 +23,12 @@ fs.writeFileSync(entry, [
 ].join('\n'));
 
 if (process.platform === 'darwin') {
+  // macOS names the running Electron bundle, not the shell launcher bundle.
+  // This checkout-local runtime is replaced by npm ci; reinstall afterward.
+  const runtimePlist = path.resolve(path.dirname(electron), '..', 'Info.plist');
+  for (const key of ['CFBundleName', 'CFBundleDisplayName']) {
+    execFileSync('/usr/libexec/PlistBuddy', ['-c', `Set :${key} AFClip Dev`, runtimePlist]);
+  }
   const bundle = path.join(os.homedir(), 'Applications', 'AFClip Dev.app');
   const contents = path.join(bundle, 'Contents');
   const resources = path.join(contents, 'Resources');
