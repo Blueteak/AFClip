@@ -60,7 +60,7 @@ kbd, .kbd {
 
 /* Title bar */
 .titlebar {
-  display: flex; align-items: center; gap: 4px; padding: 0 140px 0 10px; background: #141518;
+  display: flex; align-items: center; gap: 4px; padding: var(--titlebar-padding, 0 140px 0 10px); background: #141518;
   border-bottom: 1px solid var(--line); -webkit-app-region: drag; min-width: 0;
 }
 .titlebar button, .titlebar nav { -webkit-app-region: no-drag; }
