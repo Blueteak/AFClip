@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('afclip', Object.freeze({
   waveform: id => ipcRenderer.invoke('afclip:waveform', id),
   command: payload => ipcRenderer.invoke('afclip:command', payload),
   collectProject: revision => ipcRenderer.invoke('afclip:collect', revision),
+  updates: () => ipcRenderer.invoke('afclip:updates'),
   newProject: () => ipcRenderer.invoke('afclip:new-project'),
   openProject: () => ipcRenderer.invoke('afclip:open-project'),
   relinkMedia: (id, revision) => ipcRenderer.invoke('afclip:relink', id, revision),

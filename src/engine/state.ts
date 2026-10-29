@@ -37,7 +37,7 @@ function pruneInstances(p:Project,assetIds:Set<string>){
 const singular:Record<string,string>={media:'media',tracks:'track',clips:'clip',transitions:'transition',markers:'marker',folders:'folder'};
 export class ProjectState {
  dir:string;p:Project;undo:Project[]=[];redo:Project[]=[];locked:string|null=null;generationStatus?:()=>any[];
- constructor(dir:string){this.dir=dir;this.p=JSON.parse(fs.readFileSync(path.join(dir,'project.json'),'utf8'));this.p.relationshipRevisions||={};
+ constructor(dir:string){this.dir=dir;this.p=JSON.parse(fs.readFileSync(path.join(dir,'project.json'),'utf8'));assert(this.p.version===1,'This project requires a different AFClip release. No data was changed.',{projectFormat:this.p.version});this.p.relationshipRevisions||={};
   // Older projects: discover text parameters, move clip.text into params, bind spans.
   // Unreadable HTML keeps its text overrides rather than dropping them.
   const unknown=new Set<string>();

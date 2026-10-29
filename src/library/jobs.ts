@@ -1,3 +1,4 @@
+import lifecycle from '../shared/lifecycle.cjs';
 import fs from 'node:fs';
 import reviewImage from '../shared/review-image.cjs';
 import path from 'node:path';
@@ -19,7 +20,7 @@ export class Jobs {
   constructor(db:Catalog, ops:Operations, changed:()=>void) {
     Object.assign(this,{db,ops,changed});
     fs.mkdirSync(path.join(db.dir,'cache'),{recursive:true});
-    for(const r of db.db.prepare("SELECT id FROM jobs WHERE json_extract(data,'$.status')='running'").all() as any[]){const j=db.getJob(r.id);j.status='queued';db.job(j);}
+    for(const r of db.db.prepare("SELECT id FROM jobs WHERE json_extract(data,'$.status') IN ('running','queued')").all() as any[]){const j=db.getJob(r.id);j.status='failed';j.error='Library work was interrupted. Retry the operation.';j.finishedAt=now();db.job(j);}
     setTimeout(()=>this.pump(),100);
   }
   enqueue(kind:string,assetId:string,level='preview') {
@@ -41,6 +42,7 @@ export class Jobs {
       elapsedMs:Math.max(0,end-created),runningMs:j.startedAt?Math.max(0,end-Date.parse(j.startedAt)):0};
   }
   async pump() {
+    try{lifecycle.assertAvailable();}catch{return;}
     if(this.active)return;
     const j=this.db.nextJob();if(!j)return;
     this.active=j;j.status='running';j.startedAt=now();this.update(j,'Starting',0);

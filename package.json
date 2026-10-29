@@ -1,6 +1,6 @@
 {
   "name": "afclip-prototypes",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "AFClip project engine and Windows editing prototype",
@@ -15,14 +15,16 @@
     "edit:example": "node examples/vellum-first-edit/build.mjs",
     "bench:windows": "node benchmarks/windows/run.cjs",
     "bench:solutions": "node benchmarks/windows/solutions.cjs",
-    "bench:gpu": "node benchmarks/windows/gpu.cjs"
+    "bench:gpu": "node benchmarks/windows/gpu.cjs",
+    "dist:win": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --win --x64 --publish never",
+    "pack:win": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --win --x64 --dir --publish never"
   },
   "optionalDependencies": {
     "@ffprobe-installer/darwin-arm64": "5.0.1"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.303",
-    "electron": "44.8.0",
+    "electron-updater": "6.8.11",
     "ffmpeg-static": "5.3.0",
     "ffprobe-static": "3.1.0",
     "markdown-it": "14.3.3",
@@ -34,5 +36,16 @@
   },
   "engines": {
     "node": ">=24.0.0"
+  },
+  "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.18.0"
+  },
+  "main": "src/desktop/main.cjs",
+  "author": "AFClip",
+  "homepage": "https://afclip.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Blueteak/AFClip.git"
   }
 }

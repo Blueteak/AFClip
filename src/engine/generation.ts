@@ -1,3 +1,4 @@
+import runtime from '../shared/runtime.cjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
@@ -57,7 +58,7 @@ export class Generations {
   }
   async api(config:any,signal?:AbortSignal){
     const file=path.join(this.root,uid('request')+'.json');atomicJSON(file,config);
-    try{const output=await this.run(require('electron'),[fileURLToPath(new URL('./elevenlabs-worker.cjs',import.meta.url)),file],signal);
+    try{const launch=runtime.electron('credentials',[file]);const output=await this.run(launch.binary,launch.args,signal);
       const response=JSON.parse(output.trim().split('\n').at(-1)!);assert(response.ok,response.error?.message||'API worker failed');return response.result;
     }finally{fs.rmSync(file,{force:true});}
   }

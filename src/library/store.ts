@@ -14,7 +14,16 @@ export class Catalog {
   constructor(dir:string) {
     this.dir=dir;
     fs.mkdirSync(dir, {recursive:true});
-    this.db = new DatabaseSync(path.join(dir, 'catalog.sqlite'));
+    const file=path.join(dir,'catalog.sqlite');
+    // Check before opening writable or applying PRAGMAs/schema changes.
+    if(fs.existsSync(file)){
+      const existing=new DatabaseSync(file,{readOnly:true});
+      try{
+        const version=(existing.prepare('PRAGMA user_version').get() as any).user_version;
+        assert(version===0||version===1,'This library requires a different AFClip release. No data was changed.',{libraryFormat:version});
+      }finally{existing.close();}
+    }
+    this.db = new DatabaseSync(file);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
       CREATE TABLE IF NOT EXISTS records(id TEXT PRIMARY KEY, kind TEXT NOT NULL, revision INTEGER NOT NULL, data TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS records_kind ON records(kind);
@@ -30,6 +39,7 @@ export class Catalog {
       CREATE INDEX IF NOT EXISTS jobs_artifact ON jobs(json_extract(data,'$.options.key'),json_extract(data,'$.status'));
       CREATE INDEX IF NOT EXISTS asset_source ON records(kind,json_extract(data,'$.sourceId'));
       CREATE TABLE IF NOT EXISTS source_locations(path TEXT,sourceId TEXT,size INTEGER,mtime REAL,PRIMARY KEY(path,sourceId));`);
+    this.db.exec('PRAGMA user_version=1');
     if(!this.meta('locationsIndexed')){for(const s of this.all('source'))this.indexLocations(s);this.meta('locationsIndexed',true);}
     this.search=new SearchIndex(this);
     if (!this.meta('id')) {

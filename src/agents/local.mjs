@@ -1,3 +1,5 @@
+import runtime from '../shared/runtime.cjs';
+import lifecycle from '../shared/lifecycle.cjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -37,15 +39,16 @@ export async function callEndpoint(ep, action, payload = {}) {
 }
 const starting = new Map();
 export async function agentEndpoint(project) {
+  lifecycle.assertAvailable();
   const loc = location(project);
   if(starting.has(loc.dir)) return starting.get(loc.dir);
   const start = (async () => {
     const file = path.join(loc.dir, 'endpoint.json');
-    async function existing() { try { const ep = readJSON(file, null); if(ep) { await callEndpoint(ep, 'health'); return ep; } } catch {} return null; }
+    async function existing() { try { const ep = readJSON(file, null); if(ep) { runtime.compatible((await callEndpoint(ep, 'health')).release); return ep; } } catch(e) {if(e.code==='RELEASE_MISMATCH')throw e;} return null; }
     const ready = await existing(); if(ready) return ready;
     fs.mkdirSync(loc.dir, {recursive:true});
     const log = fs.openSync(path.join(loc.dir, 'controller.log'), 'a');
-    const child = spawn(process.env.AFCLIP_NODE_PATH || (process.versions.electron ? 'node' : process.execPath), [fileURLToPath(new URL('./server.mjs', import.meta.url)), loc.project], {detached:true, windowsHide:true, stdio:['ignore',log,log], env:{...process.env, ELECTRON_RUN_AS_NODE:undefined}});
+    const child = spawn(runtime.node, [fileURLToPath(new URL('./server.mjs', import.meta.url)), loc.project], {detached:true, windowsHide:true, stdio:['ignore',log,log], env:{...process.env, ELECTRON_RUN_AS_NODE:undefined}});
     child.unref(); fs.closeSync(log);
     let error; child.on('error', e => { error = e; });
     for(let i=0;i<150;i++) { if(error) throw error; await new Promise(r=>setTimeout(r,100)); const ep=await existing(); if(ep) return ep; }
