@@ -1,0 +1,72 @@
+name: Windows installer
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional build version, such as 0.1.1 or 0.1.1-nightly.1
+        type: string
+        required: false
+      publish:
+        description: Publish a signed release and its update feed
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          cache: npm
+      - run: npm ci
+      - name: Set requested version
+        if: inputs.version != ''
+        env:
+          AFCLIP_BUILD_VERSION: ${{ inputs.version }}
+        run: |
+          if ($env:AFCLIP_BUILD_VERSION -notmatch '^\d+\.\d+\.\d+(-nightly\.\d+)?$') { throw 'Use a stable or nightly version' }
+          npm version $env:AFCLIP_BUILD_VERSION --no-git-tag-version
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check publication prerequisites
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+        run: |
+          if (!(Test-Path LICENSE)) { throw 'Choose and commit a license before publication' }
+          $private = gh api repos/${{ github.repository }} --jq '.private'
+          if ($LASTEXITCODE -or $private -ne 'false') { throw 'Public release hosting requires a public repository' }
+          if (!$env:CSC_LINK -or !$env:CSC_KEY_PASSWORD) { throw 'Windows signing credentials are required for publication' }
+      - name: Build installer
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          AFCLIP_RELEASE_UPDATES: ${{ inputs.publish && '1' || '0' }}
+        run: npm run dist:win
+      - name: Retain installer and compatibility metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFClip-Windows-${{ inputs.version || 'current' }}-${{ github.run_number }}
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/*.yml
+            build/release.json
+          if-no-files-found: error
+      - name: Publish explicit stable or nightly release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = node -p "require('./package.json').version"
+          $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.exe','.blockmap','.yml' } | ForEach-Object FullName)
+          $args = @('release','create',"v$version",'--target','${{ github.sha }}','--title',"AFClip $version",'--generate-notes')
+          if ($version -match '-nightly\.') { $args += '--prerelease' }
+          gh @args @files 'build/release.json'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }

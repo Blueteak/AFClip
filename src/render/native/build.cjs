@@ -4,6 +4,12 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { createHash } = require('node:crypto');
 async function build() {
+  const runtime = require('../../shared/runtime.cjs');
+  if (runtime.packaged) {
+    const binary = path.join(runtime.resources, 'runtime', 'texture-encoder.exe');
+    if (!fs.existsSync(binary)) throw new Error('Hardware encoder is unavailable. Choose software rendering.');
+    return binary;
+  }
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('Shared-texture benchmark requires Windows x64.');
   const out = path.resolve(__dirname, '../../../.cache/afclip-native'); fs.mkdirSync(out, { recursive: true });
   const executable = path.join(out, 'texture-encoder.exe');

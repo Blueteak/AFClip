@@ -1,3 +1,5 @@
+const runtime = require('../shared/runtime.cjs');
+const lifecycle = require('../shared/lifecycle.cjs');
 // A disposable Node worker owns media subprocesses. The project engine remains independent.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -56,6 +58,7 @@ async function audioMix(plan, begin, end) {
   return { output, clips: n };
 }
 async function main() {
+  await lifecycle.register(config.kind === 'preview' || config.kind === 'preview-audio' ? 'preview' : 'render', {busy: () => !['preview','preview-audio'].includes(config.kind), close: () => {cancelled=true; fs.writeFileSync(config.cancelFile,''); for (const child of children) kill(child);}});
   fs.mkdirSync(work, { recursive: true }); cancelCheck();
   const started = performance.now(), project = config.project, plan = compile(project);
   if (config.kind === 'preview-audio') {
@@ -168,12 +171,13 @@ async function main() {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     renderConfig.control = { port: server.address().port, token };
     fs.writeFileSync(renderFile, JSON.stringify(renderConfig));
-    try { await run('renderer', require('electron'), [path.join(__dirname, 'preview-worker.cjs'), renderFile], false, true); }
+    try { const launch=runtime.electron('preview',[renderFile]); await run('renderer', launch.binary, launch.args, false, true); }
     finally { socket?.destroy(); server.close(); }
     return;
   }
   fs.writeFileSync(renderFile, JSON.stringify(renderConfig));
-  await run('renderer', require('electron'), [path.join(__dirname, 'worker.cjs'), renderFile], false, true);
+  const launch=runtime.electron('render',[renderFile]);
+  await run('renderer', launch.binary, launch.args, false, true);
   cancelCheck();
   const stats = JSON.parse(fs.readFileSync(path.join(work, 'stats.json'), 'utf8'));
   let verification = null;

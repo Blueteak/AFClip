@@ -1,3 +1,8 @@
+import runtimeInfo from '../shared/runtime.cjs';
+import lifecycle from '../shared/lifecycle.cjs';
+lifecycle.assertAvailable();
+let serviceReady=false;
+await lifecycle.register('agents',{busy:()=>!serviceReady||requests>0||conversations.some(c=>['running','waiting'].includes(c.status)||c.queue?.length)||[...runtime.values()].some(rt=>rt.dispatching),close:()=>process.exit(0)});
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -23,6 +28,7 @@ const stateFile=path.join(loc.dir,'conversations.json');
 let conversations=readJSON(stateFile,[]).filter(c=>c.status!=='settled');
 let uiContext=readJSON(path.join(loc.dir,'context.json'),null);
 for(const c of conversations){c.pending=[];if(['running','waiting'].includes(c.status)){c.status='interrupted';c.error='Agent controller stopped. Send a message to resume.';}}
+let requests=0;
 const runtime=new Map();let lastActivity=Date.now(),saveTimer;let providerCache,providerCacheAt=0;
 function persist(){clearTimeout(saveTimer);saveTimer=null;writeJSON(stateFile,conversations);}
 function changed(c){if(c)c.updatedAt=new Date().toISOString();if(!saveTimer)saveTimer=setTimeout(persist,150);}
@@ -119,7 +125,7 @@ function validateSettings(p){
 }
 async function act(action,p={}){
   lastActivity=Date.now();
-  if(action==='health')return {pid:process.pid};
+  if(action==='health')return {release:runtimeInfo.identity,pid:process.pid};
   if(action==='state')return {conversations:conversations.map(publicConversation),settings:settings()};
   if(action==='settings'){
     validateSettings(p);const s=settings();
@@ -201,9 +207,10 @@ const server=http.createServer(async(req,res)=>{
   const reply=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
   if(req.headers.authorization!==`Bearer ${token}`){reply(401,{ok:false,error:'Unauthorized'});return;}
   if(req.method!=='POST'||req.url!=='/request'){reply(404,{ok:false,error:'Not found'});return;}
-  try{let bytes=0,parts=[];for await(const part of req){bytes+=part.length;if(bytes>48*1024*1024)throw new Error('Request exceeds 48 MB');parts.push(part);}const {action,payload}=JSON.parse(Buffer.concat(parts).toString());reply(200,{ok:true,result:await act(action,payload)});}
+  try{let bytes=0,parts=[];for await(const part of req){bytes+=part.length;if(bytes>48*1024*1024)throw new Error('Request exceeds 48 MB');parts.push(part);}const {action,payload}=JSON.parse(Buffer.concat(parts).toString());lifecycle.assertAvailable();requests++;res.once('finish',()=>requests--);reply(200,{ok:true,result:await act(action,payload)});}
   catch(e){reply(400,{ok:false,error:e.message});}
 });
+serviceReady=true;
 server.listen(0,'127.0.0.1',()=>{writeJSON(path.join(loc.dir,'endpoint.json'),{url:`http://127.0.0.1:${server.address().port}`,token,pid:process.pid});persist();});
 function cleanup(){persist();for(const rt of runtime.values()){rt.adapter?.close();releaseEngine(rt);}try{if(fs.readFileSync(lockFile,'utf8')===String(process.pid))fs.unlinkSync(lockFile);}catch{}}
 process.on('exit',cleanup);process.on('SIGTERM',()=>process.exit(0));process.on('SIGINT',()=>process.exit(0));

@@ -20,6 +20,17 @@ Minimize the tokens needed to complete an editing task. Default output reports u
 
 The [editing prototype](docs/editing-prototype.md) loads a project folder, imports source media, commits atomic edits through a background Node engine, updates an Electron GUI over a local change stream, and coordinates headless frame renders and MP4 exports. The same commands handle GUI and CLI edits. Source decoding now streams through bounded live-frame buffers instead of writing a whole-clip RGBA cache.
 
+Windows installer builds are available through the manually dispatched **Windows installer** GitHub Actions workflow. The default build produces a private artifact, not a public release. Download its `AFClip-…-windows-x64-setup.exe`, run it, and choose **New project** or **Open project**. It installs for the current user, adds AFClip and Content Library to Start, and registers `af-clip` / `af-lib` for new terminals. No account or developer tools are required. Unsigned development artifacts can trigger Windows security warnings; public publication requires signing.
+
+Build on Windows x64 with Node 24+ and Visual Studio C++ Build Tools plus the Windows SDK:
+
+```powershell
+npm ci
+npm run dist:win
+```
+
+The installer lands in `dist/`. Node, Electron, FFmpeg/ffprobe and the native encoder are bundled. **Help > Updates** manages published releases; private builds keep automatic checks off. Publication is explicit, requires a public repository and license, and uses the `WINDOWS_CSC_LINK` / `WINDOWS_CSC_KEY_PASSWORD` Actions secrets. Uninstall keeps projects, originals and catalog data. See the [macOS installation handoff](docs/macos-setup-handoff.md) for the Mac agent's work.
+
 Install from a checkout with Node 24 or newer:
 
 ```powershell

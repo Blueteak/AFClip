@@ -1,6 +1,6 @@
 # Updater Overview
 
-Agreed target, October 18, 2026. Implementation is deferred.
+Agreed target, October 18, 2026. Windows installation implementation started October 29; macOS packaging and public distribution remain pending.
 
 This document records the update flow AFClip should support when it is ready for distribution. Use it when changing process ownership, runtime dependencies, storage, or project formats to identify changes that would make that flow harder to deliver.
 
@@ -63,18 +63,19 @@ T3's relevant references:
 
 AFClip intentionally differs from the inspected T3 behavior by targeting automatic background downloads followed by an explicit installation action. Do not copy T3's download policy accidentally.
 
-Exact polling intervals, release metadata schema, signing configuration, and installer mechanics remain implementation choices. None requires work now.
+Exact polling intervals, release metadata schema, signing configuration, and installer mechanics remain implementation choices.
 
 ## Current gaps to address before distribution
 
-These are observations from the initial source inspection, not requirements to fix immediately:
+Windows now has a self-contained NSIS build, packaged launch paths, bundled Node and media tools, a prebuilt native encoder, first-launch New/Open dialogs, release-aware service connections, coordinated update shutdown, and format compatibility metadata. The manually dispatched workflow retains private artifacts by default. See [README](README.md) for build commands and the [macOS handoff](docs/macos-setup-handoff.md) for platform work and review instructions.
 
-- `package.json` describes a source-run prototype, without a packaged-app release configuration. Add a release version, app identity, packaged entry point, and build workflow.
-- `src/gui/launch.cjs` and `src/library/launch.cjs` launch Electron from development dependencies. Installed apps need packaged launch paths.
-- `src/gui/main.cjs` invokes an external Node runtime. Bundle a runtime and resolve it inside the installation rather than relying on the user's environment.
-- Render workers launch Electron and use FFmpeg/FFprobe. Package the executables, resolve their installed paths, and prebuild the Windows native encoder instead of requiring a user-side compiler.
-- `src/engine/client.ts` and `src/library/client.ts` start detached processes. Add release-aware connection checks and coordinated shutdown/restart so replacing the app cannot leave old processes serving it.
-- Add format compatibility metadata, retained release discovery, downgrade pinning, workspace restoration, and updater UI when implementing this flow.
+Before public distribution:
+
+- Complete native Windows installer/update acceptance on a clean user profile, including active work and failed replacement.
+- Implement and validate macOS packaging, Applications-folder handling, signing and notarization.
+- Set up signing credentials, choose the license, and make the repository public before publishing installers/update feeds.
+- Add compatible-release discovery and selection for project/library format conflicts. Current checks reject unsupported formats; they do not yet recommend a specific compatible installer.
+- Verify downgrade pinning and workspace restoration on both platforms. Conversion remains optional and is not implemented.
 
 ## Check future changes against this flow
 
@@ -91,6 +92,6 @@ When a change touches these areas, ask:
 
 ## Implementation starting point
 
-When Jonathan decides to proceed, start with a real installed version updating to a second release on one target platform. Include the backend restart and reopening the same project in that first working path, then extend it to the other platform and release channels.
+Validate a real installed version updating to a second release on Windows first. Include the backend restart and reopening the same project in that first working path, then extend it to the other platform and release channels.
 
 Use practical checks for update, downgrade, incompatible data, active work, and installation failure as the implementation develops. This is implementation guidance, not a feature-completeness gate or a requirement for a broad automated test suite.

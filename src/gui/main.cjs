@@ -1,3 +1,6 @@
+const runtime = require('../shared/runtime.cjs');
+const lifecycle = require('../shared/lifecycle.cjs');
+const projectDialogs = require('../desktop/projects.cjs');
 const { app, BrowserWindow, Menu, ipcMain, dialog, protocol, shell, clipboard } = require('electron');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
@@ -41,7 +44,7 @@ function grantLibraryResource(route, ep) {
 }
 async function getMediaLibraryEndpoint() {
   if (!mediaLibraryEndpoint) {
-    mediaLibraryEndpoint = execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true, timeout:15000 })
+    mediaLibraryEndpoint = execFileAsync(runtime.node, [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true, timeout:15000 })
       .then(result => JSON.parse(result.stdout).result).catch(error => { mediaLibraryEndpoint = null; throw error; });
   }
   return mediaLibraryEndpoint;
@@ -84,10 +87,11 @@ function checkSender(event) {
 function handle(name, fn) {
   ipcMain.handle(`afclip:${name}`, async (event, ...values) => {
     checkSender(event);
+    lifecycle.assertAvailable();
     if (ipcBlocked) throw new Error('Project is switching');
     const work = Promise.resolve().then(() => fn(...values));
     // Switching waits for existing operations, never for its own IPC request.
-    const tracked = !['open-project', 'new-project'].includes(name);
+    const tracked = !['open-project', 'new-project', 'updates'].includes(name);
     if (tracked) pendingRequests.add(work);
     try { return await work; }
     finally { pendingRequests.delete(work); }
@@ -95,7 +99,7 @@ function handle(name, fn) {
 }
 
 async function connectProject(destination) {
-  const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
+  const result = await execFileAsync(runtime.node, [path.resolve(__dirname, '../cli.ts'), 'endpoint', destination], { windowsHide: true, timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
   const reply = JSON.parse(result.stdout.trim());
   if (!reply.ok || !reply.result?.url || !reply.result?.token) throw new Error(reply.error?.message || 'Could not connect to project');
   const parsed = new URL(reply.result.url);
@@ -192,6 +196,7 @@ async function capture() {
 }
 
 app.whenReady().then(async () => {
+  await lifecycle.register('editor', {busy: () => pendingRequests.size > 0 || switchingProject, close: () => app.quit(), workspace: () => ({role:'editor', project:projectDir})});
   const lastProjectFile = path.join(app.getPath('userData'), 'last-project.json');
   if (!projectDir) {
     try {
@@ -204,9 +209,8 @@ app.whenReady().then(async () => {
       if (error.code !== 'ENOENT') console.warn('Could not restore last project:', error.message);
     }
     if (!projectDir) {
-      const selected = await dialog.showOpenDialog({title:'Open project', buttonLabel:'Open', properties:['openDirectory']});
-      if (selected.canceled || !selected.filePaths[0]) { app.quit(); return; }
-      projectDir = selected.filePaths[0];
+      projectDir = await projectDialogs.firstLaunch();
+      if (!projectDir) {app.quit(); return;}
     }
   }
   try { await fs.access(path.join(projectDir, 'project.json')); }
@@ -296,19 +300,20 @@ app.whenReady().then(async () => {
   });
   handle('library', async (id, folder) => {
     await request('/command', {command:'library-sync'});
-    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
+    const result = await execFileAsync(runtime.node, [path.resolve(__dirname, '../library/cli.ts'), 'endpoint'], { windowsHide:true });
     const ep = JSON.parse(result.stdout).result;
     const url = new URL(ep.gui);
     if (id) url.searchParams.set('asset', id);
     if (folder) url.searchParams.set('folder', folder);
     const env = {...process.env}; delete env.ELECTRON_RUN_AS_NODE;
-    const child = require('node:child_process').spawn(process.execPath, [path.resolve(__dirname, '../library/main.cjs'), '--project', projectDir, url.toString()], { windowsHide:true, detached:true, stdio:'ignore', env });
+    const launch = runtime.electron('library', ['--project',projectDir,url.toString()]);
+    const child = require('node:child_process').spawn(launch.binary, launch.args, { windowsHide:true, detached:true, stdio:'ignore', env });
     child.unref(); return {opened:true};
   });
   handle('edit-library', async id => {
     const {project} = await request('/inspect');
     if (!project.media.some(m => m.metadata?.library?.assetId === id)) throw new Error('Asset is not in this project');
-    await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../library/cli.ts'), 'gui', '--id', id], {windowsHide:true});
+    await execFileAsync(runtime.node, [path.resolve(__dirname, '../library/cli.ts'), 'gui', '--id', id], {windowsHide:true});
     return {opened:true};
   });
   handle('library-media', async () => {
@@ -323,21 +328,12 @@ app.whenReady().then(async () => {
     return request('/command', payload);
   });
   handle('new-project', async () => {
-    const selected = await dialog.showSaveDialog(window, {title:'New project folder', buttonLabel:'Create', defaultPath:path.join(path.dirname(projectDir), 'Untitled')});
-    if (selected.canceled || !selected.filePath) return null;
-    const destination = path.resolve(selected.filePath);
-    const result = await execFileAsync(process.env.AFCLIP_NODE_PATH || 'node', [path.resolve(__dirname, '../cli.ts'), 'create', destination], {windowsHide:true, timeout:30000});
-    const reply = JSON.parse(result.stdout.trim());
-    if (!reply.ok) throw new Error(reply.error?.message || 'Could not create project');
-    return switchProject(destination);
+    const destination = await projectDialogs.create(window,path.dirname(projectDir));
+    return destination ? switchProject(destination) : null;
   });
   handle('open-project', async () => {
-    const selected = await dialog.showOpenDialog(window, {title:'Open project', buttonLabel:'Open', defaultPath:path.dirname(projectDir), properties:['openDirectory']});
-    if (selected.canceled || !selected.filePaths.length) return null;
-    const destination = path.resolve(selected.filePaths[0]);
-    try { await fs.access(path.join(destination, 'project.json')); }
-    catch { throw new Error('Choose a project folder containing project.json'); }
-    return switchProject(destination);
+    const destination = await projectDialogs.open(window,path.dirname(projectDir));
+    return destination ? switchProject(destination) : null;
   });
   handle('collect', async revision => {
     const selected = await dialog.showSaveDialog(window, {title:'Collect project folder', buttonLabel:'Collect', defaultPath:path.join(path.dirname(projectDir), path.basename(projectDir)+'-collected')});
@@ -416,6 +412,8 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
+  const updates = require('../desktop/updates.cjs')(window, projectDir);
+  handle('updates', () => updates.show());
   await rememberProject();
   if (process.connected) process.send({type:'project-ready'});
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {
@@ -432,5 +430,5 @@ app.whenReady().then(async () => {
   }
 });
 
-app.on('window-all-closed', () => { previewSession?.close(); streamController?.abort(); app.exit(0); });
+app.on('window-all-closed', () => { previewSession?.close(); streamController?.abort(); app.quit(); });
 app.on('before-quit', () => { previewSession?.close(); streamController?.abort(); clearTimeout(captureTimer); });

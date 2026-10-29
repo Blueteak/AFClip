@@ -1,3 +1,8 @@
+import runtimeInfo from '../shared/runtime.cjs';
+import lifecycle from '../shared/lifecycle.cjs';
+lifecycle.assertAvailable();
+let serviceReady=false;
+await lifecycle.register('library-service',{busy:()=>!serviceReady||!!jobs.active||requests>0||db.queuedJobs().length>0,close:()=>{for(const s of subscribers)s.end();server.close(()=>process.exit(0));server.closeAllConnections();}});
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
@@ -16,11 +21,12 @@ const dir=path.resolve(process.argv[2]);fs.mkdirSync(dir,{recursive:true});
 const lock=path.join(dir,'service.lock'),endpointFile=path.join(dir,'endpoint.json');
 try{const fd=fs.openSync(lock,'wx');fs.writeFileSync(fd,String(process.pid));fs.closeSync(fd);}catch(e:any){if(e.code!=='EEXIST')throw e;let alive=false;try{process.kill(Number(fs.readFileSync(lock,'utf8')),0);alive=true;}catch{}if(alive)process.exit(0);fs.unlinkSync(lock);const fd=fs.openSync(lock,'wx');fs.writeFileSync(fd,String(process.pid));fs.closeSync(fd);}
 process.on('exit',()=>{try{if(fs.readFileSync(lock,'utf8')===String(process.pid)){fs.unlinkSync(lock);fs.rmSync(endpointFile,{force:true});}}catch{}});
+let requests=0;
 const db=new Catalog(dir),ops=new Operations(db),token=randomBytes(32).toString('hex'),readerToken=randomBytes(32).toString('hex'),subscribers=new Set<http.ServerResponse>();
 function changed(){for(const res of subscribers)res.write(`data: ${JSON.stringify({revision:db.meta('revision'),at:now()})}\n\n`);}
 const jobs=new Jobs(db,ops,changed);
 const intake=new Intake(db,ops,jobs);jobs.scan=j=>intake.scan(j);
-setInterval(()=>intake.watch(),15000).unref();
+setInterval(()=>{try{lifecycle.assertAvailable();intake.watch();}catch{}},15000).unref();
 const root=fileURLToPath(new URL('../../',import.meta.url));
 function importFiles(c:any) {
   if(c.command==='import'&&(c.paths||[c.path]).some((p:string)=>fs.statSync(p).isDirectory()))return intake.queue(c);
@@ -33,6 +39,7 @@ function importFiles(c:any) {
   return {items:imported.map(a=>ops.inspect(a.id)),jobs:verification,identityVerification:'background'};
 }
 async function command(c:any):Promise<any> {
+  lifecycle.assertAvailable();
   assert(c&&typeof c.command==='string','Command required');let result:any;
   switch(c.command) {
     case 'overview':return ops.overview(c.compact);
@@ -113,7 +120,7 @@ const server=http.createServer(async(req,res)=>{
     if(!authorized){json(res,{ok:false,error:{code:'UNAUTHORIZED',message:'Open the GUI using the library CLI.'}},401);return;}
     if(req.headers.origin&&req.headers.origin!==`http://${host}`)fail('ORIGIN_DENIED','Origin is not this local library');
     if(req.method==='GET'&&staticFiles[u.pathname]){const file=path.join(root,staticFiles[u.pathname]);res.writeHead(200,{'Content-Type':u.pathname==='/'?'text/html':u.pathname.endsWith('.css')?'text/css':'text/javascript','Cache-Control':'no-cache','Content-Security-Policy':"default-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'"});res.end(fs.readFileSync(file));return;}
-    if(u.pathname==='/v1/health'){json(res,{ok:true,result:{version:1,libraryId:db.meta('id')}});return;}
+    if(u.pathname==='/v1/health'){json(res,{ok:true,result:{version:1,libraryId:db.meta('id'),release:runtimeInfo.identity}});return;}
     if(req.method==='GET'&&u.pathname==='/v1/events'){res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache'});subscribers.add(res);res.write(`data: ${JSON.stringify({revision:db.meta('revision'),resync:true})}\n\n`);req.on('close',()=>subscribers.delete(res));return;}
     if(['GET','HEAD'].includes(req.method||'')&&u.pathname.startsWith('/v1/artifacts/')){const parts=u.pathname.split('/'),sourceId=parts[3],name=parts[4];db.get(sourceId,'source');assert(/^[a-f0-9]{64}\.(png|wav|mp4)$/.test(name),'Invalid artifact key');jobs.readers.set(sourceId,Date.now());res.once('close',jobs.hold(sourceId));media(req,res,path.join(dir,'cache','artifacts',`${sourceId}.${name}`));return;}
     if(['GET','HEAD'].includes(req.method||'')&&u.pathname.startsWith('/v1/media/')){const [, , ,id,type]=u.pathname.split('/'),s=db.get(id,'source');if(type!=='image')jobs.readers.set(s.id,Date.now());res.once('close',jobs.hold(s.id));const cache=path.join(dir,'cache');let file:string;
@@ -122,8 +129,9 @@ const server=http.createServer(async(req,res)=>{
       else {const suffix:Record<string,string>={image:'png',audio:'wav',container:'mp4'};assert(suffix[type],'Unknown artifact');file=path.join(cache,`${id}.${suffix[type]}`);}
       media(req,res,file!);return;
     }
-    if(req.method!=='POST'||u.pathname!=='/v1/command')fail('NOT_FOUND','Unknown route');let body='';for await(const chunk of req){body+=chunk;assert(body.length<4*1024**2,'Request too large');}const payload=JSON.parse(body);if(!writer&&!['overview','search','inspect','preview','waveform','frames','jobs','prepare','artifact','original','selection'].includes(payload.command))fail('READ_ONLY','Open the standalone library to edit annotations or organization');json(res,{ok:true,result:await command(payload)});
+    if(req.method!=='POST'||u.pathname!=='/v1/command')fail('NOT_FOUND','Unknown route');let body='';for await(const chunk of req){body+=chunk;assert(body.length<4*1024**2,'Request too large');}lifecycle.assertAvailable();requests++;res.once('finish',()=>requests--);const payload=JSON.parse(body);if(!writer&&!['overview','search','inspect','preview','waveform','frames','jobs','prepare','artifact','original','selection'].includes(payload.command))fail('READ_ONLY','Open the standalone library to edit annotations or organization');json(res,{ok:true,result:await command(payload)});
   }catch(e:any){if(res.headersSent){res.destroy();return;}json(res,{ok:false,error:{code:e.code||'INTERNAL',message:e.message,details:e.details||{}}},e.code==='CONFLICT'?409:400);}
 });
+serviceReady=true;
 server.listen(0,'127.0.0.1',()=>{const url=`http://127.0.0.1:${(server.address() as any).port}`;atomicJSON(endpointFile,{url:url+'/v1',gui:url+'/?token='+token,readerGui:url+'/?token='+readerToken+'&mode=afclip',token,pid:process.pid,catalogDir:dir});});
 setInterval(()=>{for(const s of subscribers)s.write(': heartbeat\n\n');if(!jobs.active)jobs.evict();},30000).unref();

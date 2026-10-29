@@ -404,6 +404,7 @@ action('binGrid', { menu: 'View', group: 4, label: 'Media bin as grid', icon: 'g
 action('resetLayout', { menu: 'View', group: 4, label: 'Reset panel layout', run: () => { Object.assign(prefs, { leftW: 250, rightW: 290, tlH: 330, trackH: 50 }); savePrefs(); applyLayout(); fitZoom = true; drawTimeline(); } });
 action('palette', { menu: 'Help', group: 1, label: 'Search commands…', icon: 'command', keys: ['Ctrl+Space'], desc: 'Find any action by name and see its shortcut.', run: () => openPalette() });
 action('shortcuts', { menu: 'Help', group: 1, label: 'Keyboard shortcuts', icon: 'keyboard', keys: ['?', 'Ctrl+/'], run: () => openShortcuts() });
+action('updates', {menu:'Help', group:3, label:'Updates…', run:() => api.updates()});
 action('welcome', { menu: 'Help', group: 2, label: 'Getting started', icon: 'help', run: () => welcome(true) });
 
 const keymap = new Map();
@@ -3763,6 +3764,6 @@ refresh().then(async () => {
   const jobs = (Array.isArray(state) ? state : state.jobs || (state.id ? [state] : [])).sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
   for (const job of jobs) await onJob(job, { silent: true });
   if (prefs.autoRender && clips().length) requestFrame(0);
-  welcome();
+  // Getting started remains available in Help; first launch has no welcome overlay.
   api.ready();
 }).catch(error => { setConnected(false, explain(error)); say(explain(error), 'error'); api.ready(); });
