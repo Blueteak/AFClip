@@ -25,7 +25,7 @@ async function main(){
     if(!existing||!lifecycle.alive(existing.pid))fs.writeFileSync(lock,JSON.stringify({pid:owner}),{mode:0o600});
     records=await lifecycle.processes();
     if(records.some(r=>r.busy)){fs.rmSync(lock,{force:true});throw new Error('AFClip is still working. Retry when it finishes.');}
-    for(const record of records)await lifecycle.call(record,'close');
+    for(const record of records.sort((a,b)=>Number(!a.workspace)-Number(!b.workspace)))await lifecycle.close(record);
     const deadline=Date.now()+20000;
     while(records.some(r=>lifecycle.alive(r.pid))){if(Date.now()>deadline)throw new Error('AFClip could not close. Retry after closing its windows.');await pause(100);}
     return;

@@ -213,13 +213,24 @@ app.whenReady().then(async () => {
       if (!projectDir) {app.quit(); return;}
     }
   }
-  try { await fs.access(path.join(projectDir, 'project.json')); }
-  catch { throw new Error(`Choose a project folder containing project.json: ${projectDir}`); }
+  while (true) {
+    try {
+      await fs.access(path.join(projectDir, 'project.json')).catch(() => {
+        throw new Error(`Choose a project folder containing a readable project.json: ${projectDir}`);
+      });
+      endpoint = await connectProject(projectDir);
+      break;
+    } catch (error) {
+      if (!runtime.packaged || args.includes('--quit-after-capture')) throw error;
+      await dialog.showMessageBox({type:'error',message:'Could not open project',detail:projectDialogs.commandError(error),buttons:['OK']});
+      projectDir = await projectDialogs.firstLaunch();
+      if (!projectDir) {app.quit(); return;}
+    }
+  }
   require('../render/graphic-protocol.cjs')(protocol, previewGraphics);
   raster=require('../render/asset-raster.cjs')(()=>previewGraphics.graphics);
   handle('asset-raster',data=>raster.render(data));
   app.on('before-quit',()=>raster.close());
-  endpoint = await connectProject(projectDir);
 
   protocol.handle('afclip-media', async req => {
     const id = new URL(req.url).hostname;

@@ -72,7 +72,7 @@ module.exports = function updates(window, project) {
         settings.expected=downloaded.version;write(settingsFile,settings);
         // Close windows first so their previews stop before services are replaced.
         const others=frozen.filter(r=>r.pid!==process.pid);
-        for(const record of others.sort((a,b)=>Number(!a.workspace)-Number(!b.workspace)))await lifecycle.call(record,'close');
+        for(const record of others.sort((a,b)=>Number(!a.workspace)-Number(!b.workspace)))await lifecycle.close(record);
         const deadline=Date.now()+20000;
         while(others.some(r=>lifecycle.alive(r.pid))){if(Date.now()>deadline)throw new Error('A background process did not stop. Retry after closing it.');await pause(100);}
         // Quit listeners close this editor's own previews. All other work is idle.

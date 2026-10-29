@@ -11,7 +11,13 @@ async function create(window, parent) {
   const selected = await show('showSaveDialog',window,{title:'New project',buttonLabel:'Create',defaultPath:path.join(directory,'Untitled')});
   if (selected.canceled || !selected.filePath) return null;
   const destination = path.resolve(selected.filePath);
-  const result = await exec(runtime.node,[path.join(runtime.root,'src/cli.ts'),'create',destination,'--fps','60'],{windowsHide:true,timeout:30000});
+  const existing = await fs.stat(destination).catch(error => {if (error.code !== 'ENOENT') throw error; return null;});
+  if (existing && (!existing.isDirectory() || (await fs.readdir(destination)).length)) {
+    throw new Error('Choose a new or empty folder. Use Open project for an existing project.');
+  }
+  let result;
+  try { result = await exec(runtime.node,[path.join(runtime.root,'src/cli.ts'),'create',destination,'--fps','60'],{windowsHide:true,timeout:30000}); }
+  catch (error) { throw new Error(commandError(error)); }
   const reply = JSON.parse(result.stdout);
   if (!reply.ok) throw new Error(reply.error?.message || 'Could not create project');
   return destination;
@@ -31,4 +37,10 @@ async function firstLaunch() {
     catch (e) {await dialog.showMessageBox({type:'error',message:e.message,buttons:['OK']});}
   }
 }
-module.exports = {create,open,firstLaunch};
+function commandError(error) {
+  for (const output of [error.stdout, error.stderr]) {
+    try { const reply = JSON.parse(output); if (reply.error?.message) return reply.error.message; } catch {}
+  }
+  return error.message;
+}
+module.exports = {create,open,firstLaunch,commandError};

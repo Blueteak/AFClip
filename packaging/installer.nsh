@@ -19,6 +19,9 @@
   Pop $1
   ${If} $0 != 0
     DetailPrint "$1"
+    MessageBox MB_OK|MB_ICONEXCLAMATION "AFClip was installed, but its command-line shortcuts could not be added to PATH. You can open AFClip from Start. Run this installer again to repair the shortcuts.$\r$\n$\r$\n$1" /SD IDOK
+    SetErrorLevel 2
+    Quit
   ${EndIf}
   SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:Environment" /TIMEOUT=5000
 !macroend

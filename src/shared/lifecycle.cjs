@@ -65,9 +65,15 @@ async function processes() {
   }
   return records;
 }
+async function close(record) {
+  // Closing a window can also stop its workers before we reach their records.
+  if (!alive(record.pid)) return;
+  try { await call(record, 'close'); }
+  catch (error) { if (alive(record.pid)) throw error; }
+}
 function lock() {
   assertAvailable(); fs.mkdirSync(directory, {recursive:true});
   fs.writeFileSync(lockFile, JSON.stringify({pid:process.pid}), {flag:'wx',mode:0o600});
 }
 function unlock() { if (read(lockFile)?.pid === process.pid) fs.rmSync(lockFile,{force:true}); }
-module.exports = {register, assertAvailable, processes, call, lock, unlock, directory, alive};
+module.exports = {register, assertAvailable, processes, call, close, lock, unlock, directory, alive};
