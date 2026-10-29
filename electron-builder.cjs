@@ -1,6 +1,7 @@
 module.exports = {
   appId: 'com.afclip.desktop', productName: 'AFClip',
   executableName: 'AFClip', asar: false,
+  forceCodeSigning: process.env.AFCLIP_RELEASE_UPDATES === '1',
   directories: {output:'dist',buildResources:'packaging'},
   files: ['src/**/*','assets/icons/afclip.*','package.json',
     {from:'build/release.json',to:'release.json'},

@@ -60,7 +60,8 @@ async function processes() {
     if (!record) continue;
     if (!alive(record.pid)) {fs.rmSync(file,{force:true}); continue;}
     // An unresponsive live process blocks replacement rather than being killed.
-    records.push({...record, ...await call(record, 'status')});
+    try {records.push({...record, ...await call(record, 'status')});}
+    catch(e){if(alive(record.pid))throw e;fs.rmSync(file,{force:true});}
   }
   return records;
 }

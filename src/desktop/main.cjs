@@ -1,5 +1,8 @@
 const path = require('node:path');
 const runtime = require('../shared/runtime.cjs');
+const {app}=require('electron');
+app.setName('AFClip');
+app.setPath('userData',path.join(app.getPath('appData'),'AFClip'));
 const supplied = process.argv.slice(1);
 const flag = supplied.find(arg => arg.startsWith('--afclip-role='));
 const role = flag ? flag.slice('--afclip-role='.length) : 'editor';
