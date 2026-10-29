@@ -33,8 +33,8 @@ module.exports = function updates(window, project) {
   autoUpdater.autoDownload=true;
   autoUpdater.autoInstallOnAppQuit=false;
   autoUpdater.disableWebInstaller=true;
-  autoUpdater.allowDowngrade=false;
   autoUpdater.channel=settings.channel==='nightly'?'nightly':'latest';
+  autoUpdater.allowDowngrade=false;
   autoUpdater.allowPrerelease=settings.channel==='nightly';
   if(process.env.AFCLIP_UPDATE_FEED){
     const feed=new URL(process.env.AFCLIP_UPDATE_FEED);
@@ -91,7 +91,7 @@ module.exports = function updates(window, project) {
       if(settings.pinned)settings.pinned=false;
       else settings.channel=settings.channel==='nightly'?'stable':'nightly';
       waiting=false;
-      autoUpdater.channel=settings.channel==='nightly'?'nightly':'latest';autoUpdater.allowPrerelease=settings.channel==='nightly';
+      autoUpdater.channel=settings.channel==='nightly'?'nightly':'latest';autoUpdater.allowDowngrade=false;autoUpdater.allowPrerelease=settings.channel==='nightly';
       downloaded=null;write(settingsFile,settings);await check();
     }
     if(result.response===3)await shell.openExternal(downloads);
