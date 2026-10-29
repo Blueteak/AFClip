@@ -412,7 +412,9 @@ app.whenReady().then(async () => {
   handle('ready', async () => { if (option('--capture')) { clearTimeout(captureTimer); captureTimer = setTimeout(() => capture().catch(console.error), Number(option('--capture-delay') || 1200)); } });
   await window.loadFile(path.join(__dirname, 'index.html'));
   window.show();
-  const updates = require('../desktop/updates.cjs')(window, projectDir);
+  let updates;
+  try {updates = require('../desktop/updates.cjs')(window, projectDir);}
+  catch(error) {updates = {show: () => dialog.showMessageBox(window,{type:'error',message:'Updates unavailable',detail:error.message,buttons:['OK']})};}
   handle('updates', () => updates.show());
   await rememberProject();
   if (process.connected) process.send({type:'project-ready'});

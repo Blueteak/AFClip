@@ -20,7 +20,9 @@ async function main(){
     }
     if(records.some(r=>r.busy))throw new Error('AFClip is still working. Finish exports, library jobs, and agent conversations, then run this installer again.');
     fs.mkdirSync(lifecycle.directory,{recursive:true});
-    fs.writeFileSync(lock,JSON.stringify({pid:owner}),{mode:0o600});
+    const existing=fs.existsSync(lock)?JSON.parse(fs.readFileSync(lock,'utf8')):null;
+    // The old uninstaller runs inside replacement. Keep the outer installer's barrier.
+    if(!existing||!lifecycle.alive(existing.pid))fs.writeFileSync(lock,JSON.stringify({pid:owner}),{mode:0o600});
     records=await lifecycle.processes();
     if(records.some(r=>r.busy)){fs.rmSync(lock,{force:true});throw new Error('AFClip is still working. Retry when it finishes.');}
     for(const record of records)await lifecycle.call(record,'close');

@@ -14,8 +14,15 @@ module.exports = function updates(window, project) {
   if (!runtime.packaged) return {show:()=>dialog.showMessageBox(window,{message:'Source checkout',detail:'Update this checkout with Git. Installed releases update separately.',buttons:['OK']})};
   const ownerFile=path.join(lifecycle.directory,'update-owner.json');
   const owner=read(ownerFile,null);
-  if(owner&&owner.pid!==process.pid&&lifecycle.alive(owner.pid))return {show:()=>dialog.showMessageBox(window,{message:'Updates are managed by another AFClip window',buttons:['OK']})};
-  write(ownerFile,{pid:process.pid});
+  if(owner&&!lifecycle.alive(owner.pid))fs.rmSync(ownerFile,{force:true});
+  try{fs.mkdirSync(lifecycle.directory,{recursive:true});fs.writeFileSync(ownerFile,JSON.stringify({pid:process.pid}),{flag:'wx'});}
+  catch(e){
+    if(e.code!=='EEXIST')throw e;
+    let delegate;
+    const acquire=()=>{if(!lifecycle.alive(read(ownerFile,{pid:0}).pid)){clearInterval(timer);delegate=updates(window,project);}};
+    const timer=setInterval(()=>{if(window.isDestroyed())clearInterval(timer);else acquire();},5000);timer.unref();
+    return {show:()=>{acquire();return delegate?delegate.show():dialog.showMessageBox(window,{message:'Updates are managed by another AFClip window',buttons:['OK']});}};
+  }
   process.on('exit',()=>{try{if(read(ownerFile,null)?.pid===process.pid)fs.rmSync(ownerFile,{force:true});}catch{}});
   const {autoUpdater} = require('electron-updater');
   let settings=read(settingsFile,{channel:'stable'}), downloaded=null, error=null, waiting=false, installing=false;
@@ -83,15 +90,16 @@ module.exports = function updates(window, project) {
     if(result.response===2){
       if(settings.pinned)settings.pinned=false;
       else settings.channel=settings.channel==='nightly'?'stable':'nightly';
+      waiting=false;
       autoUpdater.channel=settings.channel==='nightly'?'nightly':'latest';autoUpdater.allowPrerelease=settings.channel==='nightly';
       downloaded=null;write(settingsFile,settings);await check();
     }
     if(result.response===3)await shell.openExternal(downloads);
   }
-  if(enabled&&!settings.pinned){const first=setTimeout(check,15000);const timer=setInterval(check,4*60*60*1000);first.unref();timer.unref();}
+  if(enabled){const automatic=()=>{if(!settings.pinned&&!waiting&&!installing)void check();};const first=setTimeout(automatic,15000);const timer=setInterval(automatic,4*60*60*1000);first.unref();timer.unref();}
   // Restore additional windows once, with fresh endpoints from this release.
   const workspace=read(workspaceFile,[]);
-  if(workspace.length){
+  if(workspace.length&&!error){
     fs.rmSync(workspaceFile,{force:true});
     let skippedEditor=false;
     for(const item of workspace){
