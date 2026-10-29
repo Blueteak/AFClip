@@ -56,7 +56,8 @@ jobs:
           path: |
             dist/*.exe
             dist/*.blockmap
-            dist/*.yml
+            dist/latest.yml
+            dist/nightly.yml
             build/release.json
           if-no-files-found: error
       - name: Publish explicit stable or nightly release
@@ -65,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = node -p "require('./package.json').version"
-          $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.exe','.blockmap','.yml' } | ForEach-Object FullName)
+          $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.exe','.blockmap' -or $_.Name -in 'latest.yml','nightly.yml' } | ForEach-Object FullName)
           $args = @('release','create',"v$version",'--target','${{ github.sha }}','--title',"AFClip $version",'--generate-notes')
           if ($version -match '-nightly\.') { $args += '--prerelease' }
           gh @args @files 'build/release.json'
