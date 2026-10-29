@@ -6,7 +6,7 @@ const {randomBytes, createHash} = require('node:crypto');
 const runtime = require('./runtime.cjs');
 const directory = path.join(runtime.dataRoot, 'installations', createHash('sha256').update(runtime.root).digest('hex').slice(0, 20));
 const lockFile = path.join(directory, 'updating.json');
-function alive(pid) { try { process.kill(pid, 0); return true; } catch (e) { return e.code !== 'ESRCH'; } }
+function alive(pid) { if(!Number.isSafeInteger(pid)||pid<=0)return false; try { process.kill(pid, 0); return true; } catch (e) { return e.code !== 'ESRCH'; } }
 function read(file) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } }
 function assertAvailable() {
   if (!runtime.packaged) return;

@@ -24,7 +24,7 @@ async function main(){
     if(!hash)throw new Error('Missing runtime checksum');
     await download(base+asset,path.join(runtime,name),hash);
   }
-  await download(base+'LICENSE',path.join(runtime,'NODE-LICENSE.txt'));
+  await download(`https://raw.githubusercontent.com/nodejs/node/v${nodeVersion}/LICENSE`,path.join(runtime,'NODE-LICENSE.txt'));
   const encoder=await require('../src/render/native/build.cjs')();
   fs.copyFileSync(encoder,path.join(runtime,'texture-encoder.exe'));
   for(const [name,entry] of [['af-clip','src/cli.ts'],['af-lib','src/library/cli.ts']]){
