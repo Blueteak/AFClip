@@ -54,6 +54,12 @@ if(primary)app.whenReady().then(async()=>{
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(e,next)=>{if(new URL(next).origin!==url.origin)e.preventDefault();});
   await window.loadURL(url.toString());loaded=true;window.show();window.focus();
+  if(runtime.packaged&&process.platform==='darwin'){
+    let updates;
+    try{updates=require('../desktop/updates.cjs')(window,{role:'library',catalog,project});}
+    catch(error){updates={show:()=>dialog.showMessageBox(window,{type:'error',message:'Updates unavailable',detail:error.message,buttons:['OK']})};}
+    require('../desktop/mac-setup.cjs').menu(window,updates);
+  }
   if(pendingOpen){reopen(pendingOpen);pendingOpen=null;}
   if(dev)require('../gui/dev-reload.cjs')(window,undefined,{files:[
     ...['index.html','app.js','review-tools.js','annotation-timeline.js','styles.css'].map(name=>path.join(__dirname,'gui',name)),

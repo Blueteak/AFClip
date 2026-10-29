@@ -427,6 +427,7 @@ app.whenReady().then(async () => {
   try {updates = require('../desktop/updates.cjs')(window, projectDir);}
   catch(error) {updates = {show: () => dialog.showMessageBox(window,{type:'error',message:'Updates unavailable',detail:error.message,buttons:['OK']})};}
   handle('updates', () => updates.show());
+  if(process.platform==='darwin')require('../desktop/mac-setup.cjs').menu(window,updates);
   await rememberProject();
   if (process.connected) process.send({type:'project-ready'});
   if (args.includes('--dev')) require('./dev-reload.cjs')(window, () => {

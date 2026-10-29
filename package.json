@@ -17,7 +17,9 @@
     "bench:solutions": "node benchmarks/windows/solutions.cjs",
     "bench:gpu": "node benchmarks/windows/gpu.cjs",
     "dist:win": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --win --x64 --publish never",
-    "pack:win": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --win --x64 --dir --publish never"
+    "pack:win": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --win --x64 --dir --publish never",
+    "dist:mac": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --mac --arm64 --publish never",
+    "pack:mac": "node scripts/prepare-release.cjs && electron-builder --config electron-builder.cjs --mac --arm64 --dir --publish never"
   },
   "optionalDependencies": {
     "@ffprobe-installer/darwin-arm64": "5.0.1"

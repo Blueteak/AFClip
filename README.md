@@ -29,7 +29,7 @@ npm ci
 npm run dist:win
 ```
 
-The installer lands in `dist/`. Node, Electron, FFmpeg/ffprobe and the native encoder are bundled. **Help > Updates** manages published releases; private builds keep automatic checks off. Publication is explicit, requires a public repository and license, and uses the `WINDOWS_CSC_LINK` / `WINDOWS_CSC_KEY_PASSWORD` Actions secrets. Uninstall keeps projects, originals and catalog data. See the [macOS installation handoff](docs/macos-setup-handoff.md) for the Mac agent's work.
+The installer lands in `dist/`. Node, Electron, FFmpeg/ffprobe and the native encoder are bundled. **Help > Updates** manages published releases; private builds keep automatic checks off. Publication is explicit, requires a public repository and license, and uses the `WINDOWS_CSC_LINK` / `WINDOWS_CSC_KEY_PASSWORD` Actions secrets. Uninstall keeps projects, originals and catalog data. On Apple Silicon, run `npm ci` then `npm run dist:mac`, or download the **macOS installer** workflow artifact. Open its DMG, drag AFClip to Applications, and launch. No account or developer tools are needed to use the installed app. Local builds are ad-hoc signed; public Developer ID signing and notarization remain pending. See [macOS installation](docs/macos-installation.md).
 
 Install from a checkout with Node 24 or newer:
 

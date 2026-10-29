@@ -1,0 +1,44 @@
+name: macOS installer
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Optional build version, such as 0.1.1 or 0.1.1-nightly.1
+        type: string
+        required: false
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.2'
+          cache: npm
+      - run: npm ci
+      - name: Set requested version
+        if: inputs.version != ''
+        env:
+          AFCLIP_BUILD_VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$AFCLIP_BUILD_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-nightly\.[0-9]+)?$ ]] || exit 1
+          npm version "$AFCLIP_BUILD_VERSION" --no-git-tag-version
+      - name: Build local signed installers
+        run: npm run dist:mac
+      - name: Verify app signature and bundled runtime
+        run: |
+          codesign --verify --deep --strict dist/mac-arm64/AFClip.app
+          test -f dist/mac-arm64/AFClip.app/Contents/Resources/app/release.json
+          env PATH=/usr/bin:/bin dist/mac-arm64/AFClip.app/Contents/Resources/bin/af-clip help create
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AFClip-macOS-${{ inputs.version || 'current' }}-${{ github.run_number }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/*-mac.yml
+            build/release.json
+          if-no-files-found: error

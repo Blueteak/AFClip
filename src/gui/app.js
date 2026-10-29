@@ -1442,7 +1442,7 @@ setInterval(pollJobs, 700);
 
 function openExport() {
   const hasRange = inF != null || outF != null;
-  const state = { range: hasRange ? 'range' : 'all', mode: prefs.renderMode, verification: prefs.verification };
+  const state = { range: hasRange ? 'range' : 'all', mode: navigator.platform.startsWith('Mac')?'software':prefs.renderMode, verification: prefs.verification };
   const rangeFrames = () => state.range === 'range' ? [inF ?? 0, (outF ?? lastFrame()) + 1] : [0, timelineEndF()];
   const summary = h('div', { class: 'dialog-summary' });
   const update = () => { const [s, e] = rangeFrames(); const p = project(); summary.textContent = `${p.resolution.width}×${p.resolution.height} · ${fpsLabel()} fps · H.264 + AAC 48 kHz · ${tc(s)} → ${tc(e)} (${shortTc(e - s)})`; };
@@ -1454,13 +1454,13 @@ function openExport() {
   };
   const body = h('div', { class: 'dialog-body' },
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Range'), seg('range', [['all', 'Entire sequence', 'Everything from 00:00:00:00 to the last clip.'], ['range', 'In to Out', 'Only the range marked with I and O.', !hasRange]])),
-    h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Renderer'), seg('mode', [['gpu', 'GPU', 'D3D11 composition and NVENC encoding. Needs a compatible NVIDIA GPU.'], ['software', 'Software', 'CPU composition and x264. Slower, works everywhere.']])),
+    navigator.platform.startsWith('Mac')?null:h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Renderer'), seg('mode', [['gpu', 'GPU', 'D3D11 composition and NVENC encoding. Needs a compatible NVIDIA GPU.'], ['software', 'Software', 'CPU composition and x264. Slower, works everywhere.']])),
     h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Verification'), seg('verification', [['quick', 'Quick', 'Check streams, timestamps and durations without decoding. Fast.'], ['full', 'Thorough', 'Also decode and count every frame. Takes longer.']])),
     summary);
   update();
   dialog({ title: 'Export', iconName: 'export', body, foot: ['Choose where to save next'],
     buttons: [{ label: 'Cancel' }, { label: 'Export', kind: 'primary', keys: 'Enter', run: async () => {
-      prefs.renderMode = state.mode; prefs.verification = state.verification; savePrefs(); syncChrome();
+      if(!navigator.platform.startsWith('Mac'))prefs.renderMode = state.mode; prefs.verification = state.verification; savePrefs(); syncChrome();
       const [s, e] = rangeFrames();
       try {
         const job = await api.render({ kind: 'export', mode: state.mode, verification: state.verification, range: state.range === 'range' ? { start: fromF(s), end: fromF(e) } : undefined });

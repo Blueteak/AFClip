@@ -67,12 +67,12 @@ Exact polling intervals, release metadata schema, signing configuration, and ins
 
 ## Current gaps to address before distribution
 
-Windows now has a self-contained NSIS build, packaged launch paths, bundled Node and media tools, a prebuilt native encoder, first-launch New/Open dialogs, release-aware service connections, coordinated update shutdown, and format compatibility metadata. The manually dispatched workflow retains private artifacts by default. See [README](README.md) for build commands and the [macOS handoff](docs/macos-setup-handoff.md) for platform work and review instructions.
+Windows now has a self-contained NSIS build, packaged launch paths, bundled Node and media tools, a prebuilt native encoder, first-launch New/Open dialogs, release-aware service connections, coordinated update shutdown, and format compatibility metadata. The manually dispatched workflow retains private artifacts by default. Apple Silicon now has self-contained DMG/ZIP builds, Applications-folder installation, bundled terminal commands and software export defaults. See [README](README.md) for build commands and [macOS installation](docs/macos-installation.md) for platform details.
 
 Before public distribution:
 
 - Complete native Windows installer/update acceptance on a clean user profile, including active work and failed replacement.
-- Implement and validate macOS packaging, Applications-folder handling, signing and notarization.
+- Complete Mac Developer ID signing, notarization and clean-profile Gatekeeper acceptance. Local Mac builds use ad-hoc signing.
 - Set up signing credentials, choose the license, and make the repository public before publishing installers/update feeds.
 - Add compatible-release discovery and selection for project/library format conflicts. Current checks reject unsupported formats; they do not yet recommend a specific compatible installer.
 - Verify downgrade pinning and workspace restoration on both platforms. Conversion remains optional and is not implemented.

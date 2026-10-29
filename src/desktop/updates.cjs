@@ -98,12 +98,13 @@ module.exports = function updates(window, project) {
   }
   if(enabled){const automatic=()=>{if(!settings.pinned&&!waiting&&!installing)void check();};const first=setTimeout(automatic,15000);const timer=setInterval(automatic,4*60*60*1000);first.unref();timer.unref();}
   // Restore additional windows once, with fresh endpoints from this release.
+  const currentWindow=typeof project==='object'?project:{role:'editor',project};
   const workspace=read(workspaceFile,[]);
   if(workspace.length&&!error){
     fs.rmSync(workspaceFile,{force:true});
-    let skippedEditor=false;
+    let skippedCurrent=false;
     for(const item of workspace){
-      if(item.role==='editor'&&item.project===project&&!skippedEditor){skippedEditor=true;continue;}
+      if(!skippedCurrent&&JSON.stringify(item)===JSON.stringify(currentWindow)){skippedCurrent=true;continue;}
       const args=item.role==='editor'?[item.project]:['--catalog',item.catalog,...(item.project?['--project',item.project]:[])];
       const launch=runtime.electron(item.role,args);const child=spawn(launch.binary,launch.args,{detached:true,stdio:'ignore',windowsHide:true});child.on('error',e=>{error=e.message;});child.unref();
     }

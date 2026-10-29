@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import {spawn} from 'node:child_process';
 import {createInterface} from 'node:readline';
 import {randomUUID} from 'node:crypto';
@@ -9,7 +10,9 @@ export function executable(provider, config={}) {
   if(config.executable) return config.executable;
   const name=provider==='codex'?'codex':'claude';
   const names=process.platform==='win32'?[name+'.exe',name+'.cmd']: [name];
-  for(const dir of (process.env.PATH||'').split(path.delimiter)) for(const n of names) { const p=path.join(dir,n); if(fs.existsSync(p)) return p; }
+  const dirs=(process.env.PATH||'').split(path.delimiter);
+  if(process.platform==='darwin')dirs.push(path.join(os.homedir(),'.local/bin'),'/opt/homebrew/bin','/usr/local/bin',path.join(os.homedir(),'.npm-global/bin'));
+  for(const dir of dirs) for(const n of names) { const p=path.join(dir,n); if(fs.existsSync(p)) return p; }
   throw new Error(`${name} is not installed or is not on PATH. Set its executable in Agent settings.`);
 }
 function launch(file,args,options={}) {
