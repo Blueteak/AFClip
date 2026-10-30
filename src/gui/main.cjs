@@ -269,9 +269,9 @@ app.whenReady().then(async () => {
 
   // The renderer owns every shortcut, so drop Electron's default menu accelerators (reload, devtools, close).
   Menu.setApplicationMenu(null);
-  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1080, minHeight: 680, backgroundColor: '#0e0f11', title: 'AFClip', show: false,
+  window = new BrowserWindow({ width: 1460, height: 940, minWidth: 1080, minHeight: 680, backgroundColor: '#191919', title: 'AFClip', show: false,
     icon: path.resolve(__dirname, '../../assets/icons', process.platform === 'win32' ? 'afclip.ico' : 'afclip.png'),
-    titleBarStyle: 'hidden', titleBarOverlay: { color: '#141518', symbolColor: '#9ba1aa', height: 36 },
+    titleBarStyle: 'hidden', titleBarOverlay: { color: '#191919', symbolColor: '#bdbdbd', height: 36 },
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), sandbox: true, contextIsolation: true, nodeIntegration: false, webSecurity: true },
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

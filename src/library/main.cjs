@@ -43,7 +43,7 @@ if(primary)app.whenReady().then(async()=>{
   if(project){url.searchParams.set('mode','project');url.searchParams.set('token',new URL(endpoint.gui).searchParams.get('token'));}
   const dev=process.argv.includes('--dev');if(dev)url.searchParams.set('dev','1');
   Menu.setApplicationMenu(null);
-  window=new BrowserWindow({width:1500,height:980,minWidth:900,minHeight:680,title:'AFClip Content Library',backgroundColor:'#0e0f11',webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,partition:'persist:library-writer'}});
+  window=new BrowserWindow({width:1500,height:980,minWidth:900,minHeight:680,title:'AFClip Content Library',backgroundColor:'#191919',webPreferences:{preload:path.join(__dirname,'preload.cjs'),sandbox:true,contextIsolation:true,nodeIntegration:false,partition:'persist:library-writer'}});
   const check=e=>{if(e.sender!==window.webContents||e.senderFrame!==window.webContents.mainFrame)throw new Error('Unknown sender');};
   const handle=(name,fn)=>ipcMain.handle('library:'+name,async(e,...args)=>{check(e);lifecycle.assertAvailable();requests++;try{return await fn(...args);}finally{requests--;}});
   handle('pick',async()=>{const r=await dialog.showOpenDialog(window,{properties:['openFile','multiSelections'],filters:[{name:'Audio and video',extensions:['mp4','mov','mkv','webm','wav','mp3','flac','ogg','m4a']}]});return r.canceled?[]:r.filePaths;});

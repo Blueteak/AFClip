@@ -14,6 +14,12 @@
 ## UI Design
 - If you are a GPT Model and your task requires creating a new UI Element/Style instead of reusing an existing one, spin up a Claude Opus 5.5 Sub-Agent for that task.
 - Professional, sleek, Dark Mode
+- Style reference: Unity 6 Editor dark skin. Keep new UI consistent with it
+    - Colors: #383838 panels on #191919 dock gaps, #2A2A2A inset fields, #585858 bevelled buttons, #46607C checked, #2C5D87 selection, #3A79BB focus
+    - Shape: 3px radii, dark tab strip with active tab merging into panel, toolbar bars, bold full-width inspector section headers, compact 20px fields
+    - Timeline: Unity Timeline clips (dark body, colored bottom bar), white playhead; video blue, audio orange, graphic purple, image green
+    - Font: Inter (system fallback), 12px
+    - Use the tokens in `src/gui/styles.css` `:root`; the Content Library inherits them. No native-styled controls
 - Keybindings over buttons
 - Minimal text, no explanations in base UI, leave that for tooltips
 - Re-use component layout styling whenever possible

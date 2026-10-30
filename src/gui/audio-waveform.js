@@ -24,12 +24,12 @@
   const BINS = 16384, BINS_HI = 32768, MIN_SPAN = .02, MAX_GAIN = 1000;
   const RULER = 22, OVERVIEW = 18, LANE_GAP = 1, PAD = .06;
   const C = {
-    bg: '#0a0b0c', lane: '#0c0e10', rulerBg: '#131417', line: '#24262b', tick: '#3a3e45', label: '#6d737d', text: '#a3a9b2',
-    center: 'rgba(255,255,255,.07)', guide: 'rgba(255,255,255,.045)', guideLabel: 'rgba(163,169,178,.55)',
-    peak: 'rgba(44,106,82,.72)', peakEdge: '#3b7f62', rms: '#43946f',
-    peakPlayed: 'rgba(67,148,111,.78)', peakEdgePlayed: '#5fbf92', rmsPlayed: '#7fdcb0',
-    accent: '#4f9dff', hover: 'rgba(220,223,228,.35)', range: '#6987b4', take: '#c18a39',
-    selection: 'rgba(79,157,255,.07)', selectionEdge: 'rgba(79,157,255,.55)',
+    bg: '#1e1e1e', lane: '#262626', rulerBg: '#383838', line: '#1a1a1a', tick: '#6a6a6a', label: '#8b8b8b', text: '#bdbdbd',
+    center: 'rgba(255,255,255,.08)', guide: 'rgba(255,255,255,.05)', guideLabel: 'rgba(189,189,189,.55)',
+    peak: 'rgba(122,80,26,.8)', peakEdge: '#a8701f', rms: '#d48a28',
+    peakPlayed: 'rgba(176,112,32,.85)', peakEdgePlayed: '#f0a43c', rmsPlayed: '#ffc36e',
+    accent: '#ececec', hover: 'rgba(210,210,210,.35)', range: '#4c8ae0', take: '#f09a2c',
+    selection: 'rgba(58,121,187,.12)', selectionEdge: 'rgba(58,121,187,.8)',
   };
   const TICKS = [[.001, .0002], [.002, .0005], [.005, .001], [.01, .002], [.02, .005], [.05, .01], [.1, .02], [.2, .05], [.5, .1],
     [1, .2], [2, .5], [5, 1], [10, 2], [15, 5], [30, 5], [60, 10], [120, 30], [300, 60], [600, 120], [900, 300], [1800, 300],
@@ -336,7 +336,7 @@
           g.fillStyle = C.selection; g.fillRect(a, top, b - a, bottom - top);
           g.fillStyle = C.selectionEdge; g.fillRect(Math.round(a), top, Math.max(1, dpr), bottom - top); g.fillRect(Math.round(b) - Math.max(1, dpr), top, Math.max(1, dpr), bottom - top);
         } else {
-          g.fillStyle = r.kind === 'take' ? 'rgba(193,138,57,.08)' : 'rgba(105,135,180,.09)'; g.fillRect(a, top, b - a, bottom - top);
+          g.fillStyle = r.kind === 'take' ? 'rgba(240,154,44,.08)' : 'rgba(76,138,224,.09)'; g.fillRect(a, top, b - a, bottom - top);
         }
       }
     }
@@ -369,7 +369,7 @@
       g.fillStyle = C.line; g.fillRect(0, y0, w, Math.max(1, Math.round(dpr)));
       if (full && this.duration > 0) {
         const n = Math.max(1, Math.floor(w / Math.max(1, Math.round(dpr)))), step = w / n, cy = y0 + oh / 2, half = oh / 2 - 3 * dpr, gain = this.gain;
-        g.fillStyle = 'rgba(67,148,111,.55)';
+        g.fillStyle = 'rgba(240,154,44,.55)';
         for (let c = 0; c < n; c++) {
           const a = c / n * this.duration, b = (c + 1) / n * this.duration;
           const i0 = clamp(Math.floor((a - full.start) / full.binDur), 0, full.bins - 1), i1 = clamp(Math.ceil((b - full.start) / full.binDur), i0 + 1, full.bins);
@@ -378,8 +378,8 @@
         }
       }
       const a = this.viewStart / this.duration * w, b = (this.viewStart + this.viewSpan) / this.duration * w;
-      g.fillStyle = 'rgba(79,157,255,.14)'; g.fillRect(a, y0 + dpr, b - a, oh - dpr);
-      g.strokeStyle = 'rgba(79,157,255,.7)'; g.lineWidth = Math.max(1, dpr); g.strokeRect(a + g.lineWidth / 2, y0 + dpr + g.lineWidth / 2, Math.max(1, b - a - g.lineWidth), oh - dpr - g.lineWidth);
+      g.fillStyle = 'rgba(58,121,187,.2)'; g.fillRect(a, y0 + dpr, b - a, oh - dpr);
+      g.strokeStyle = 'rgba(123,176,240,.85)'; g.lineWidth = Math.max(1, dpr); g.strokeRect(a + g.lineWidth / 2, y0 + dpr + g.lineWidth / 2, Math.max(1, b - a - g.lineWidth), oh - dpr - g.lineWidth);
       const p = this.time / this.duration * w; g.fillStyle = C.accent; g.fillRect(Math.round(p), y0, Math.max(1, Math.round(dpr)), oh);
     }
     compose() {
@@ -393,14 +393,14 @@
       let pill = null;
       if (x >= 0 && x <= w) {
         g.fillStyle = C.accent; g.fillRect(Math.round(x - dpr * .5), rh, Math.max(1, Math.round(dpr * 1.25)), bottom - rh);
-        pill = this.pill(g, x, this.format(this.time), C.accent, '#fff');
+        pill = this.pill(g, x, this.format(this.time), C.accent, '#191919');
       }
       const hv = this.hover;
       if (hv != null && !this.drag && hv.y < bottom) {
         const hx = Math.round(this.xOf(hv.t));
         g.fillStyle = C.hover; g.fillRect(hx, rh, Math.max(1, Math.round(dpr * .75)), bottom - rh);
         const label = this.format(hv.t), lw = this.pillWidth(g, label);
-        if (!pill || hx + lw / 2 < pill.a - 4 * dpr || hx - lw / 2 > pill.b + 4 * dpr) this.pill(g, hx, label, '#2d3036', '#dcdfe4');
+        if (!pill || hx + lw / 2 < pill.a - 4 * dpr || hx - lw / 2 > pill.b + 4 * dpr) this.pill(g, hx, label, '#585858', '#eeeeee');
       }
     }
     pillWidth(g, text) { g.font = this.font(10, 600); return g.measureText(text).width + 12 * this.dpr; }

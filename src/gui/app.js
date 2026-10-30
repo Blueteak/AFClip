@@ -233,7 +233,7 @@ let hintTimer = null, hoverHint = null;
 function hintItems(items) {
   const el = $('hint'); el.replaceChildren();
   for (const [i, item] of items.entries()) {
-    if (i) el.append(h('span', { style: { margin: '0 4px', color: '#3d4148' } }, '·'));
+    if (i) el.append(h('span', { style: { margin: '0 4px', color: '#5a5a5a' } }, '·'));
     if (item.keys) for (const k of [].concat(item.keys)) el.append(k.startsWith('#') ? h('span', {}, k.slice(1)) : kbd(k));
     el.append(h('span', {}, ` ${item.text}`));
   }
@@ -2793,7 +2793,7 @@ function paintAudioControls(el, c) {
   const canvas = area.querySelector('canvas'), ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!canvas.peaks) return;
-  ctx.strokeStyle = '#c5e6da'; ctx.globalAlpha = .65; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#efe2cf'; ctx.globalAlpha = .65; ctx.lineWidth = 1;
   ctx.beginPath();
   const audible = { ...c, mute: false };
   for (let x = 0; x < canvas.width; x++) {
