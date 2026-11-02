@@ -235,6 +235,7 @@ window.AFClipAgents = host => {
     textarea.style.height = 'auto';
     const full = textarea.scrollHeight + 2;
     textarea.style.height = `${Math.min(140, full)}px`; textarea.style.overflowY = full > 140 ? 'auto' : 'hidden';
+    positionPopup();
   }
 
   function addImages(files) {
