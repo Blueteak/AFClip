@@ -10,6 +10,10 @@ on:
         description: Publish a signed release and its update feed
         type: boolean
         default: false
+      publish_test:
+        description: Publish an unsigned prerelease in the private repository
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -45,6 +49,21 @@ jobs:
           $private = gh api repos/${{ github.repository }} --jq '.private'
           if ($LASTEXITCODE -or $private -ne 'false') { throw 'Public release hosting requires a public repository' }
           if (!$env:CSC_LINK -or !$env:CSC_KEY_PASSWORD) { throw 'Windows signing credentials are required for publication' }
+      - name: Check private test publication
+        if: inputs.publish_test
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNED_PUBLICATION: ${{ inputs.publish }}
+        run: |
+          if ($env:SIGNED_PUBLICATION -eq 'true') { throw 'Choose either publish or publish_test' }
+          $private = gh api repos/${{ github.repository }} --jq '.private'
+          if ($LASTEXITCODE -or $private -ne 'true') { throw 'Test publication requires a private repository' }
+      - name: Generate release presentation
+        if: inputs.publish || inputs.publish_test
+        run: |
+          $version = node -p "require('./package.json').version"
+          node scripts/generate-release-notes.cjs $version '${{ github.sha }}'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Build installer
         env:
           CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
@@ -61,11 +80,14 @@ jobs:
             dist/latest.yml
             dist/nightly.yml
             build/release.json
+            build/release-notes.md
+            build/release-title.txt
           if-no-files-found: error
       - name: Publish explicit stable or nightly release
-        if: inputs.publish
+        if: inputs.publish || inputs.publish_test
         env:
           GH_TOKEN: ${{ github.token }}
+          TEST_PUBLICATION: ${{ inputs.publish_test }}
         run: |
           $version = node -p "require('./package.json').version"
           node scripts/generate-release-notes.cjs $version '${{ github.sha }}'
@@ -73,6 +95,6 @@ jobs:
           $title = (Get-Content build/release-title.txt -Raw).Trim()
           $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.exe','.blockmap' -or $_.Name -in 'latest.yml','nightly.yml' } | ForEach-Object FullName)
           $args = @('release','create',"v$version",'--target','${{ github.sha }}','--title',$title,'--notes-file','build/release-notes.md')
-          if ($version -match '-nightly\.') { $args += '--prerelease' }
+          if ($version -match '-nightly\.' -or $env:TEST_PUBLICATION -eq 'true') { $args += '--prerelease' }
           gh @args @files 'build/release.json'
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
