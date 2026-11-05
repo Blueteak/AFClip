@@ -1,5 +1,5 @@
 // Capture comparable old/new output from disposable fixtures.
-// node benchmarks/cli/tokens.mjs <output.json>
+// node benchmarks/cli/tokens.mjs <output.json> <project-directory>
 // Count strings with your model's tokenizer; character counts are not token counts.
 import fs from 'node:fs';
 import os from 'node:os';

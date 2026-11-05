@@ -140,7 +140,7 @@ changes on stderr. Elapsed-time-only heartbeat messages are no longer emitted.
 Capture comparable outputs without modifying an existing project or catalog:
 
 ```sh
-node benchmarks/cli/tokens.mjs /path/to/output.json
+node benchmarks/cli/tokens.mjs /path/to/output.json /path/to/project
 ```
 
 The capture includes thirteen samples from disposable CLI calls and the repository
