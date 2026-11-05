@@ -10,8 +10,9 @@ const git = (...args) => execFileSync('git', args, {encoding:'utf8'}).trim();
 const sha = git('rev-parse', '--verify', `${target}^{commit}`);
 let previous = previousArg;
 if (!previous) {
-  try { previous = git('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', '--exclude', `v${version}`, sha); }
-  catch { previous = ''; }
+  const tags = git('tag', '--list', 'v[0-9]*', '--sort=-version:refname').split('\n').filter(Boolean);
+  const current = tags.indexOf(`v${version}`);
+  previous = tags[current < 0 ? 0 : current + 1] || '';
 }
 const range = previous ? `${previous}..${sha}` : sha;
 const commits = git('log', '--no-merges', '--format=%H%x09%aN%x09%aE%x09%s', range)
