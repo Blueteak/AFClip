@@ -2,6 +2,12 @@
 - Just push to main
 - Commit and push without asking unless there are huge changes with unknown value
 
+## Releases
+- Follow T3 Code's release presentation: `AFClip v<version>` for stable versions, `AFClip Nightly <version> (<12-character commit>)` for nightly builds.
+- Before publishing, write `release-notes/<version>.md`: up to seven short user-facing highlights, formatted `- **Feature.** What users can do.` Lead with capabilities; skip implementation details and routine fixes. Include material prerelease limitations.
+- Run `node scripts/generate-release-notes.cjs <version> <release-commit> [previous-tag]`. Publish using `build/release-title.txt` and `--notes-file build/release-notes.md`. The script adds counts and a collapsed commit changelog. Use the actual built commit, not the current HEAD when publishing older artifacts.
+- Reference: https://github.com/pingdotgg/t3code/blob/main/scripts/generate-release-notes.ts. AFClip keeps highlights in Markdown instead of requiring an AI API key during publication.
+
 ## Tests
 - No always-run test suite.
 - No test-driven development.

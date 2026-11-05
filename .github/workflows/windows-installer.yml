@@ -19,6 +19,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.2'
@@ -66,8 +68,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = node -p "require('./package.json').version"
+          node scripts/generate-release-notes.cjs $version '${{ github.sha }}'
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $title = (Get-Content build/release-title.txt -Raw).Trim()
           $files = @(Get-ChildItem dist -File | Where-Object { $_.Extension -in '.exe','.blockmap' -or $_.Name -in 'latest.yml','nightly.yml' } | ForEach-Object FullName)
-          $args = @('release','create',"v$version",'--target','${{ github.sha }}','--title',"AFClip $version",'--generate-notes')
+          $args = @('release','create',"v$version",'--target','${{ github.sha }}','--title',$title,'--notes-file','build/release-notes.md')
           if ($version -match '-nightly\.') { $args += '--prerelease' }
           gh @args @files 'build/release.json'
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
