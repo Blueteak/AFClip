@@ -12,7 +12,7 @@ import {frameWindow} from '../../src/shared/cli-frames.ts';
 import {revisions} from '../../src/shared/project.ts';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const output=process.argv[2];
-assert(output,'Supply output JSON path');
+assert(output && process.argv[3],'Supply output JSON path and external project directory');
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'afclip-tokens-'));
 const project=path.join(dir,'project'),catalog=path.join(dir,'library'),samples=[];
 function run(cli,args,input){
@@ -46,7 +46,7 @@ try{
  edit('af-clip marker-remove',['marker-remove',project,added.changes.markers[0].id]);
  const fullEdit=run('clip',['marker-add',project,'--time','2','--name','Full response','--full']);
  assert.equal(fullEdit.result.project.markers[0].name,'Full response');assert.equal(fullEdit.result.changes,undefined);
- const fixture=JSON.parse(fs.readFileSync(path.join(root,'/path/to/project/project.json'),'utf8'));
+ const fixture=JSON.parse(fs.readFileSync(path.resolve(process.argv[3],'project.json'),'utf8'));
  sample('af-clip inspect example edit',{ok:true,result:{project:fixture,revisions:revisions(fixture),history:{undo:0,redo:0},renderLock:null}});
  const beforeEdit={project:fixture,revisions:revisions(fixture),history:{undo:0,redo:0},renderLock:null};
  const edited=structuredClone(fixture);edited.revision++;edited.markers.push({id:'marker_benchmark',revision:1,name:'Cut',time:{num:1,den:1}});

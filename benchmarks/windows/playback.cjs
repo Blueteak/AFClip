@@ -9,7 +9,8 @@ const root = path.resolve(__dirname, '../..');
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 if (!process.versions.electron) {
-  const source = path.resolve(process.argv[2] || path.join(root, '/path/to/project'));
+  if (!process.argv[2]) throw new Error('Supply an external project directory');
+  const source = path.resolve(process.argv[2]);
   const height = Number(process.argv[4] || 1080), width = height * 16 / 9;
   if (![1080, 1440, 2160].includes(height)) throw new Error('Measurement height must be 1080, 1440 or 2160');
   const output = path.join(root, '.cache/playback', new Date().toISOString().replace(/[:.]/g, '-'));

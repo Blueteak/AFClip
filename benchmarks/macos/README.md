@@ -4,6 +4,7 @@ Use the same visible editor diagnostic as Windows. It measures original-source p
 
 ```sh
 npm ci
+export AFCLIP_BENCH_GRAPHICS=/absolute/path/to/graphics
 node benchmarks/macos/project.ts .cache/macos/gameplay /absolute/path/clip1.mp4 /absolute/path/clip2.mp4
 node benchmarks/macos/prepare.cjs .cache/macos/gameplay
 node benchmarks/windows/playback.cjs .cache/macos/gameplay 64 1080 --reuse-cache

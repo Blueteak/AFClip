@@ -12,7 +12,6 @@
     "start": "node src/gui/launch.cjs",
     "dev": "node src/gui/launch.cjs --dev",
     "dev:install": "node scripts/install-dev-launcher.cjs",
-    "edit:example": "node /path/to/project/build.mjs",
     "bench:windows": "node benchmarks/windows/run.cjs",
     "bench:solutions": "node benchmarks/windows/solutions.cjs",
     "bench:gpu": "node benchmarks/windows/gpu.cjs",

@@ -13,8 +13,8 @@ createProject(dir, { name:'Mac gameplay performance', width:1920, height:1080, f
 const project = JSON.parse(fs.readFileSync(path.join(dir,'project.json'),'utf8'));
 const sources = await Promise.all(inputs.map(file => inspectMedia(file)));
 for (const m of sources) if (m.kind !== 'video' || m.duration.num/m.duration.den < 19) throw new Error('Sources must contain at least 19 seconds of video');
-const root = path.resolve(import.meta.dirname, '../..');
-const titles = ['opening','closing'].map(name=>importGraphic(dir,path.join(root,'/path/to/project/graphics',name)));
+if (!process.env.AFCLIP_BENCH_GRAPHICS) throw new Error('Set AFCLIP_BENCH_GRAPHICS to a directory containing opening and closing graphic packages');
+const titles = ['opening','closing'].map(name=>importGraphic(dir,path.join(process.env.AFCLIP_BENCH_GRAPHICS,name)));
 project.media = [...project.media,...sources,...titles];
 project.tracks = ['footage','titles'].map(id=>({id,revision:0,name:id,disabled:false,locked:false}));
 const t = (seconds:number) => ({num:Math.round(seconds*60),den:60});

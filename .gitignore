@@ -46,3 +46,6 @@ media/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Private editing projects stay outside this repository
+/path/to/project/

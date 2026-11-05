@@ -200,37 +200,3 @@ requests; exact rendering waits for each requested frame. General effect-output
 caching and adaptive reduced-resolution effects are not implemented. Code is
 preloaded before use; this does not guarantee zero GPU/decoder startup stalls.
 
-## Sample example
-
-The example has dissolve at 8 seconds, wipe at 16, blur dissolve at 24, and spin
-at 32. Shot 5 also has a small single-input blur. The remaining cuts use the new
-dissolve asset. Its existing edit and sound bed are retained.
-
-```powershell
-# For an existing example with legacy transitions, close its engine first:
-node /path/to/project/update-transitions.mjs
-
-# 1080p60 playback with a disposable three-blur stack on shot 5:
-node benchmarks/windows/playback.cjs /path/to/project 42 1080 --reuse-cache --effect-stack
-
-# Exact export containing the three requested transitions:
-af-clip export /path/to/project exports/transitions.mp4 --start 7 --end 25 --mode gpu --verify full --wait
-```
-
-`node /path/to/project/showcase.mjs` pushes the format further:
-WebGL/Canvas transitions on every cut (ember burn, glass shatter, glitch,
-vortex, page curl, zoom punch, hex flip), stacked effects, HTML overlays,
-kinetic type, a boss HUD and a 2x2 split-screen from clip transforms. Packages
-live in `/path/to/project/showcase/`; `--sync` reloads edited copies.
-
-`/path/to/project/logo/` holds the Sample logo PNGs (full, letters,
-ink) and two transparency-safe Canvas2D effects for image clips: `ink-reveal`
-(noisy radial spread with punch) and `gilded-reveal` (angled wipe, blur settle,
-albedo-tinted glint). The parts recompose the full logo at these offsets in its
-2000x686 canvas: letters scale 0.59 at (466, 146); ink scale 0.4135 at
-(353.5, -14.5). Grimoire title's `logoSpace` reserves room when `title` is empty.
-
-These are opt-in diagnostics. Performance records count completed asset renders
-as well as source-video presentation; they do not measure physical scanout.
-Temporal sampling, nested-scene editing and overlapping transition
-composition remain deferred.
