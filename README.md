@@ -4,6 +4,8 @@ Agent First Clip. Home: [afclip.com](https://afclip.com).
 
 AFClip is a local desktop video editor targeted at making short videos. People and Agents edit the same project concurrently through a GUI or CLI. Every project action can work through the CLI, including editing and exporting with the GUI closed.
 
+_Ask your agent to review and install for you - this is supposed to be a video editor that is easy and effective for your AI Agent to work with. Agents know where they want to look for tools, so having them install makes sure it's intuitive for them to use it._
+
 ## Design
 
 - [MVP Overview](AFClip-MVP-Overview.md): software behavior and scope.
